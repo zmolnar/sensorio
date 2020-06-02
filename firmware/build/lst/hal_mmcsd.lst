@@ -1,0 +1,85 @@
+ARM GAS  /tmp/ccgwXZbz.s 			page 1
+
+
+   1              		.cpu cortex-m3
+   2              		.eabi_attribute 20, 1
+   3              		.eabi_attribute 21, 1
+   4              		.eabi_attribute 23, 3
+   5              		.eabi_attribute 24, 1
+   6              		.eabi_attribute 25, 1
+   7              		.eabi_attribute 26, 1
+   8              		.eabi_attribute 30, 6
+   9              		.eabi_attribute 34, 1
+  10              		.eabi_attribute 18, 4
+  11              		.file	"hal_mmcsd.c"
+  12              		.section	.gnu.lto_.inline.1a872e1434d173ef,"",%progbits
+  13 0000 789C6363 		.ascii	"x\234cc```b@\006\000\000\232\000\011"
+  13      60606062 
+  13      40060000 
+  13      9A0009
+  14              		.text
+  15              		.section	.gnu.lto_.symbol_nodes.1a872e1434d173ef,"",%progbits
+  16 0000 789C6363 		.ascii	"x\234cc```b\000\001\000\000R\000\011"
+  16      60606062 
+  16      00010000 
+  16      520009
+  17              		.text
+  18              		.section	.gnu.lto_.refs.1a872e1434d173ef,"",%progbits
+  19 0000 789C6363 		.ascii	"x\234cc```\004b\006\000\000D\000\010"
+  19      60606004 
+  19      62060000 
+  19      440008
+  20              		.text
+  21              		.section	.gnu.lto_.decls.1a872e1434d173ef,"",%progbits
+  22 0000 789C6363 		.ascii	"x\234cc\200\000F V\001\342\377@\000b\037d \000\000\276"
+  22      80004620 
+  22      5601E2FF 
+  22      4000621F 
+  22      64200000 
+  23 0015 7C04EA   		.ascii	"|\004\352"
+  24              		.text
+  25              		.section	.gnu.lto_.symtab.1a872e1434d173ef,"",%progbits
+  26              		.text
+  27              		.section	.gnu.lto_.opts,"",%progbits
+  28 0000 272D666D 		.ascii	"'-fmath-errno' '-fsigned-zeros' '-ftrapping-math' '"
+  28      6174682D 
+  28      6572726E 
+  28      6F272027 
+  28      2D667369 
+  29 0033 2D666E6F 		.ascii	"-fno-trapv' '-fno-strict-overflow' '-fno-openmp' '-"
+  29      2D747261 
+  29      70762720 
+  29      272D666E 
+  29      6F2D7374 
+  30 0066 666E6F2D 		.ascii	"fno-openacc' '-mcpu=cortex-m3' '-mthumb' '-O0' '-fo"
+  30      6F70656E 
+  30      61636327 
+  30      20272D6D 
+  30      6370753D 
+  31 0099 6D69742D 		.ascii	"mit-frame-pointer' '-falign-functions=16' '-ffuncti"
+  31      6672616D 
+ARM GAS  /tmp/ccgwXZbz.s 			page 2
+
+
+  31      652D706F 
+  31      696E7465 
+  31      72272027 
+  32 00cc 6F6E2D73 		.ascii	"on-sections' '-fdata-sections' '-fno-common' '-flto"
+  32      65637469 
+  32      6F6E7327 
+  32      20272D66 
+  32      64617461 
+  33 00ff 2700     		.ascii	"'\000"
+  34              		.text
+  35              		.comm	__gnu_lto_v1,1,1
+  36              		.comm	__gnu_lto_slim,1,1
+  37              		.ident	"GCC: (GNU Tools for Arm Embedded Processors 7-2018-q3-update) 7.3.1 20180622 (release) [AR
+ARM GAS  /tmp/ccgwXZbz.s 			page 3
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 hal_mmcsd.c
+                            *COM*:0000000000000001 __gnu_lto_v1
+                            *COM*:0000000000000001 __gnu_lto_slim
+
+NO UNDEFINED SYMBOLS
