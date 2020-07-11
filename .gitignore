@@ -1,1 +1,4 @@
 firmware/sensorio/.dep
+firmware/sensorio/sampler/.dep
+firmware/sensorio/sampler/build
+firmware/blueprint-templates
