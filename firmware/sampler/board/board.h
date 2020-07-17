@@ -500,7 +500,7 @@
 #define VAL_GPIOB_MODER             (PIN_MODE_ANALOG(GPIOB_TIM3_CH3) |      \
                                      PIN_MODE_ANALOG(GPIOB_TIM3_CH4) |      \
                                      PIN_MODE_ANALOG(GPIOB_PIN2) |          \
-                                     PIN_MODE_ANALOG(GPIOB_SWO) |           \
+                                     PIN_MODE_ALTERNATE(GPIOB_SWO) |        \
                                      PIN_MODE_ANALOG(GPIOB_TIM3_CH1) |      \
                                      PIN_MODE_ANALOG(GPIOB_PIN5) |          \
                                      PIN_MODE_ANALOG(GPIOB_STLINK_USART1_TX) |\

@@ -16,8 +16,6 @@
 
 #include "ch.h"
 #include "hal.h"
-#include "rt_test_root.h"
-#include "oslib_test_root.h"
 
 /*
  * LEDs blinker thread, times are in milliseconds.
@@ -28,14 +26,10 @@ static THD_FUNCTION(Thread1, arg) {
   (void)arg;
   chRegSetThreadName("blinker");
   while (true) {
-    palClearLine(LINE_LED_GREEN);
-    chThdSleepMilliseconds(50);
-    palClearLine(LINE_LED_RED);
-    chThdSleepMilliseconds(200);
-    palSetLine(LINE_LED_GREEN);
-    chThdSleepMilliseconds(50);
-    palSetLine(LINE_LED_RED);
-    chThdSleepMilliseconds(200);
+    palClearLine(LINE_LED2);
+    chThdSleepMilliseconds(250);
+    palSetLine(LINE_LED2);
+    chThdSleepMilliseconds(250);
   }
 }
 
@@ -55,11 +49,6 @@ int main(void) {
   chSysInit();
 
   /*
-   * Activates the serial driver 2 using the driver default configuration.
-   */
-  sdStart(&SD2, NULL);
-
-  /*
    * Creates the blinker thread.
    */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
@@ -69,10 +58,6 @@ int main(void) {
    * sleeping in a loop and check the button state.
    */
   while (true) {
-    if (palReadLine(LINE_JOY_CENTER)) {
-      test_execute((BaseSequentialStream *)&SD2, &rt_test_suite);
-      test_execute((BaseSequentialStream *)&SD2, &oslib_test_suite);
-    }
     chThdSleepMilliseconds(500);
   }
 }

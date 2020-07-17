@@ -1,4 +1,5 @@
 firmware/sensorio/.dep
-firmware/sensorio/sampler/.dep
-firmware/sensorio/sampler/build
+firmware/sampler/.dep
+firmware/sampler/build
+firmware/sampler/segger
 firmware/blueprint-templates
