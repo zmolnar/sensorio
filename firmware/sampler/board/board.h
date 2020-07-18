@@ -507,8 +507,8 @@
                                      PIN_MODE_ANALOG(GPIOB_STLINK_USART1_RX) |\
                                      PIN_MODE_ANALOG(GPIOB_I2C1_SCL) |      \
                                      PIN_MODE_ANALOG(GPIOB_I2C1_SDA) |      \
-                                     PIN_MODE_ANALOG(GPIOB_I2C2_SCL) |      \
-                                     PIN_MODE_ANALOG(GPIOB_I2C2_SDA) |      \
+                                     PIN_MODE_ALTERNATE(GPIOB_I2C2_SCL) |      \
+                                     PIN_MODE_ALTERNATE(GPIOB_I2C2_SDA) |      \
                                      PIN_MODE_ANALOG(GPIOB_PIN12) |         \
                                      PIN_MODE_ANALOG(GPIOB_PIN13) |         \
                                      PIN_MODE_OUTPUT(GPIOB_LED2) |          \
@@ -523,8 +523,8 @@
                                      PIN_OTYPE_PUSHPULL(GPIOB_STLINK_USART1_RX) |\
                                      PIN_OTYPE_PUSHPULL(GPIOB_I2C1_SCL) |   \
                                      PIN_OTYPE_PUSHPULL(GPIOB_I2C1_SDA) |   \
-                                     PIN_OTYPE_PUSHPULL(GPIOB_I2C2_SCL) |   \
-                                     PIN_OTYPE_PUSHPULL(GPIOB_I2C2_SDA) |   \
+                                     PIN_OTYPE_OPENDRAIN(GPIOB_I2C2_SCL) |   \
+                                     PIN_OTYPE_OPENDRAIN(GPIOB_I2C2_SDA) |   \
                                      PIN_OTYPE_PUSHPULL(GPIOB_PIN12) |      \
                                      PIN_OTYPE_PUSHPULL(GPIOB_PIN13) |      \
                                      PIN_OTYPE_PUSHPULL(GPIOB_LED2) |       \
@@ -554,8 +554,8 @@
                                      PIN_PUPDR_FLOATING(GPIOB_STLINK_USART1_TX) |\
                                      PIN_PUPDR_FLOATING(GPIOB_STLINK_USART1_RX) |\
                                      PIN_PUPDR_FLOATING(GPIOB_I2C1_SCL) |   \
-                                     PIN_PUPDR_FLOATING(GPIOB_I2C1_SDA) |   \
-                                     PIN_PUPDR_FLOATING(GPIOB_I2C2_SCL) |   \
+                                     PIN_PUPDR_PULLUP(GPIOB_I2C1_SDA) |   \
+                                     PIN_PUPDR_PULLUP(GPIOB_I2C2_SCL) |   \
                                      PIN_PUPDR_FLOATING(GPIOB_I2C2_SDA) |   \
                                      PIN_PUPDR_FLOATING(GPIOB_PIN12) |      \
                                      PIN_PUPDR_FLOATING(GPIOB_PIN13) |      \
@@ -587,8 +587,8 @@
                                      PIN_AFIO_AF(GPIOB_STLINK_USART1_RX, 0U))
 #define VAL_GPIOB_AFRH              (PIN_AFIO_AF(GPIOB_I2C1_SCL, 0U) |      \
                                      PIN_AFIO_AF(GPIOB_I2C1_SDA, 0U) |      \
-                                     PIN_AFIO_AF(GPIOB_I2C2_SCL, 0U) |      \
-                                     PIN_AFIO_AF(GPIOB_I2C2_SDA, 0U) |      \
+                                     PIN_AFIO_AF(GPIOB_I2C2_SCL, 4U) |      \
+                                     PIN_AFIO_AF(GPIOB_I2C2_SDA, 4U) |      \
                                      PIN_AFIO_AF(GPIOB_PIN12, 0U) |         \
                                      PIN_AFIO_AF(GPIOB_PIN13, 0U) |         \
                                      PIN_AFIO_AF(GPIOB_LED2, 0U) |          \

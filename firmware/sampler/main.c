@@ -17,11 +17,15 @@
 #include "ch.h"
 #include "hal.h"
 
+#include "SamplerThread.h"
+
+static THD_WORKING_AREA(waSampler, 1024);
+
 /*
  * LEDs blinker thread, times are in milliseconds.
  */
-static THD_WORKING_AREA(waThread1, 128);
-static THD_FUNCTION(Thread1, arg) {
+static THD_WORKING_AREA(waBlinker, 128);
+static THD_FUNCTION(BlinkerThread, arg) {
 
   (void)arg;
   chRegSetThreadName("blinker");
@@ -51,7 +55,12 @@ int main(void) {
   /*
    * Creates the blinker thread.
    */
-  chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+  chThdCreateStatic(waBlinker, sizeof(waBlinker), NORMALPRIO, BlinkerThread, NULL);
+
+  /*
+   * Creates the sampler thread.
+   */
+  chThdCreateStatic(waSampler, sizeof(waSampler), NORMALPRIO, SamplerThread, NULL);
 
   /*
    * Normal main() thread activity, in this demo it does nothing except
