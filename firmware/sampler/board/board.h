@@ -805,7 +805,7 @@
                                      PIN_MODE_ANALOG(GPIOD_STSAFE_A100_RESET) |\
                                      PIN_MODE_ANALOG(GPIOD_USART3_TX) |     \
                                      PIN_MODE_ANALOG(GPIOD_USART3_RX) |     \
-                                     PIN_MODE_ANALOG(GPIOD_LPS22HB_INT_DRDY_EXTI10) |\
+                                     PIN_MODE_INPUT(GPIOD_LPS22HB_INT_DRDY_EXTI10) |\
                                      PIN_MODE_ANALOG(GPIOD_LSM6DSL_INT1_EXTI11) |\
                                      PIN_MODE_ANALOG(GPIOD_USB_OTG_FS_PWR_EN) |\
                                      PIN_MODE_ANALOG(GPIOD_SPBTLE_RF_SPI3_CSN) |\
@@ -853,7 +853,7 @@
                                      PIN_PUPDR_PULLUP(GPIOD_STSAFE_A100_RESET) |\
                                      PIN_PUPDR_FLOATING(GPIOD_USART3_TX) |  \
                                      PIN_PUPDR_FLOATING(GPIOD_USART3_RX) |  \
-                                     PIN_PUPDR_FLOATING(GPIOD_LPS22HB_INT_DRDY_EXTI10) |\
+                                     PIN_PUPDR_PULLUP(GPIOD_LPS22HB_INT_DRDY_EXTI10) |\
                                      PIN_PUPDR_FLOATING(GPIOD_LSM6DSL_INT1_EXTI11) |\
                                      PIN_PUPDR_FLOATING(GPIOD_USB_OTG_FS_PWR_EN) |\
                                      PIN_PUPDR_FLOATING(GPIOD_SPBTLE_RF_SPI3_CSN) |\
