@@ -12,6 +12,8 @@
 #include "ex.h"
 #include "lps22hb.h"
 
+#include "chprintf.h"
+#include "memstreams.h"
 #include <string.h>
 
 /*****************************************************************************/
@@ -56,6 +58,24 @@ static LPS22HBConfig lps22hbConfig = {
     .outputdatarate    = LPS22HB_ODR_75HZ,
 };
 
+void printSWO(const char *fmt, ...)
+{
+  MemoryStream ms;
+  uint8_t buf[128];
+  memset(buf, 0, sizeof(buf));
+
+  msObjectInit(&ms, buf, sizeof(buf), 0);
+
+  va_list ap;
+  va_start(ap, fmt);
+  chvprintf((BaseSequentialStream *)&ms, fmt, ap);
+  va_end(ap);
+
+  size_t i = 0;
+  for (i = 0; buf[i] != '\0'; ++i)
+    ITM_SendChar(buf[i]);
+}
+
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
 /*****************************************************************************/
@@ -75,15 +95,13 @@ static void baroDataReady(void *p)
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
-
-float pressure = 0;
-uint32_t counter = 0;
-
-
 THD_FUNCTION(SamplerThread, arg)
 {
   (void)arg;
   chRegSetThreadName("sampler-thread");
+
+  float pressure = 0;
+  uint32_t pressureCounter = 0;
 
   memset(events, 0, sizeof(events));
   chMBObjectInit(&samplerMailbox, events, sizeof(events) / sizeof(events[0]));
@@ -102,8 +120,11 @@ THD_FUNCTION(SamplerThread, arg)
     if (MSG_OK == msg) {
       switch ((DataReadySource_t)evt) {
       case DATA_READY_BARO: {
+        systime_t now = chVTGetSystemTime();
         lps22hbBarometerReadCooked(&LPS22HB, &pressure);
-        counter++;
+        printSWO("%9d %7d %4.4f\n", (int)now, (int)pressureCounter, pressure);
+
+        pressureCounter++;
         break;
       }
       default: {
