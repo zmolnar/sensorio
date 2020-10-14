@@ -348,8 +348,8 @@
  * PA14 - SWCLK                     (alternate 0).
  * PA15 - TIM2_CH1                  (analog).
  */
-#define VAL_GPIOA_MODER             (PIN_MODE_ANALOG(GPIOA_UART4_TX) |      \
-                                     PIN_MODE_ANALOG(GPIOA_UART4_RX) |      \
+#define VAL_GPIOA_MODER             (PIN_MODE_ALTERNATE(GPIOA_UART4_TX) |      \
+                                     PIN_MODE_ALTERNATE(GPIOA_UART4_RX) |      \
                                      PIN_MODE_ANALOG(GPIOA_TIM2_CH3) |      \
                                      PIN_MODE_ANALOG(GPIOA_PIN3) |          \
                                      PIN_MODE_ANALOG(GPIOA_PIN4) |          \
@@ -396,8 +396,8 @@
                                      PIN_OSPEED_HIGH(GPIOA_SWDIO) |         \
                                      PIN_OSPEED_HIGH(GPIOA_SWCLK) |         \
                                      PIN_OSPEED_HIGH(GPIOA_TIM2_CH1))
-#define VAL_GPIOA_PUPDR             (PIN_PUPDR_FLOATING(GPIOA_UART4_TX) |   \
-                                     PIN_PUPDR_FLOATING(GPIOA_UART4_RX) |   \
+#define VAL_GPIOA_PUPDR             (PIN_PUPDR_PULLUP(GPIOA_UART4_TX) |   \
+                                     PIN_PUPDR_PULLUP(GPIOA_UART4_RX) |   \
                                      PIN_PUPDR_FLOATING(GPIOA_TIM2_CH3) |   \
                                      PIN_PUPDR_FLOATING(GPIOA_PIN3) |       \
                                      PIN_PUPDR_FLOATING(GPIOA_PIN4) |       \
@@ -428,8 +428,8 @@
                                      PIN_ODR_HIGH(GPIOA_SWDIO) |            \
                                      PIN_ODR_HIGH(GPIOA_SWCLK) |            \
                                      PIN_ODR_HIGH(GPIOA_TIM2_CH1))
-#define VAL_GPIOA_AFRL              (PIN_AFIO_AF(GPIOA_UART4_TX, 0U) |      \
-                                     PIN_AFIO_AF(GPIOA_UART4_RX, 0U) |      \
+#define VAL_GPIOA_AFRL              (PIN_AFIO_AF(GPIOA_UART4_TX, 8U) |      \
+                                     PIN_AFIO_AF(GPIOA_UART4_RX, 8U) |      \
                                      PIN_AFIO_AF(GPIOA_TIM2_CH3, 0U) |      \
                                      PIN_AFIO_AF(GPIOA_PIN3, 0U) |          \
                                      PIN_AFIO_AF(GPIOA_PIN4, 0U) |          \
@@ -806,7 +806,7 @@
                                      PIN_MODE_ANALOG(GPIOD_USART3_TX) |     \
                                      PIN_MODE_ANALOG(GPIOD_USART3_RX) |     \
                                      PIN_MODE_INPUT(GPIOD_LPS22HB_INT_DRDY_EXTI10) |\
-                                     PIN_MODE_ANALOG(GPIOD_LSM6DSL_INT1_EXTI11) |\
+                                     PIN_MODE_INPUT(GPIOD_LSM6DSL_INT1_EXTI11) |\
                                      PIN_MODE_ANALOG(GPIOD_USB_OTG_FS_PWR_EN) |\
                                      PIN_MODE_ANALOG(GPIOD_SPBTLE_RF_SPI3_CSN) |\
                                      PIN_MODE_ANALOG(GPIOD_PIN14) |         \
@@ -853,8 +853,8 @@
                                      PIN_PUPDR_PULLUP(GPIOD_STSAFE_A100_RESET) |\
                                      PIN_PUPDR_FLOATING(GPIOD_USART3_TX) |  \
                                      PIN_PUPDR_FLOATING(GPIOD_USART3_RX) |  \
-                                     PIN_PUPDR_PULLUP(GPIOD_LPS22HB_INT_DRDY_EXTI10) |\
-                                     PIN_PUPDR_FLOATING(GPIOD_LSM6DSL_INT1_EXTI11) |\
+                                     PIN_PUPDR_PULLDOWN(GPIOD_LPS22HB_INT_DRDY_EXTI10) |\
+                                     PIN_PUPDR_PULLDOWN(GPIOD_LSM6DSL_INT1_EXTI11) |\
                                      PIN_PUPDR_FLOATING(GPIOD_USB_OTG_FS_PWR_EN) |\
                                      PIN_PUPDR_FLOATING(GPIOD_SPBTLE_RF_SPI3_CSN) |\
                                      PIN_PUPDR_FLOATING(GPIOD_PIN14) |      \
@@ -869,8 +869,8 @@
                                      PIN_ODR_HIGH(GPIOD_STSAFE_A100_RESET) |\
                                      PIN_ODR_HIGH(GPIOD_USART3_TX) |        \
                                      PIN_ODR_HIGH(GPIOD_USART3_RX) |        \
-                                     PIN_ODR_HIGH(GPIOD_LPS22HB_INT_DRDY_EXTI10) |\
-                                     PIN_ODR_HIGH(GPIOD_LSM6DSL_INT1_EXTI11) |\
+                                     PIN_ODR_LOW(GPIOD_LPS22HB_INT_DRDY_EXTI10) |\
+                                     PIN_ODR_LOW(GPIOD_LSM6DSL_INT1_EXTI11) |\
                                      PIN_ODR_HIGH(GPIOD_USB_OTG_FS_PWR_EN) |\
                                      PIN_ODR_HIGH(GPIOD_SPBTLE_RF_SPI3_CSN) |\
                                      PIN_ODR_HIGH(GPIOD_PIN14) |            \

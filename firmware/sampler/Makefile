@@ -111,6 +111,7 @@ include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk
 include $(CHIBIOS)/tools/mk/autobuild.mk
 # External sensor drivers.
 include $(CHIBIOS)/os/ex/devices/ST/lps22hb.mk
+include $(CHIBIOS)/os/ex/devices/ST/lsm6dsl.mk
 # Other files (optional).
 include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 #include $(CHIBIOS)/test/lib/test.mk
@@ -154,7 +155,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS = -D CHPRINTF_USE_FLOAT
+UDEFS = -D CHPRINTF_USE_FLOAT -D LSM6DSL_SHARED_I2C -D LPS22HB_SHARED_I2C
 
 # Define ASM defines here
 UADEFS =

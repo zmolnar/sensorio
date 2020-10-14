@@ -220,6 +220,15 @@
 #define LSM6DSL_AD_Z_OFS_USR                0x75
 /** @} */
 
+#define LSM6DSL_AD_INT1_CTRL_STEP_DETECTOR  (1 << 7)
+#define LSM6DSL_AD_INT1_CTRL_SIGN_MOT       (1 << 6)      
+#define LSM6DSL_AD_INT1_CTRL_FULL_FLAG      (1 << 5)       
+#define LSM6DSL_AD_INT1_CTRL_FIFO_OVR       (1 << 4)      
+#define LSM6DSL_AD_INT1_CTRL_FTH            (1 << 3) 
+#define LSM6DSL_AD_INT1_CTRL_BOOT           (1 << 2)  
+#define LSM6DSL_AD_INT1_CTRL_DRDY_G         (1 << 1)    
+#define LSM6DSL_AD_INT1_CTRL_DRDY_XL        (1 << 0)     
+
 /**
  * @name    LSM6DSL_AD_CTRL1_XL register bits definitions
  * @{
@@ -482,9 +491,9 @@ typedef enum {
  */
 typedef enum {
   LSM6DSL_ACC_FS_2G = 0x00,         /**< Full scale �2g.                    */
-  LSM6DSL_ACC_FS_4G = 0x40,         /**< Full scale �4g.                    */
-  LSM6DSL_ACC_FS_8G = 0x80,         /**< Full scale �8g.                    */
-  LSM6DSL_ACC_FS_16G = 0xC0         /**< Full scale �16g.                   */
+  LSM6DSL_ACC_FS_4G = 0x08,         /**< Full scale �4g.                    */
+  LSM6DSL_ACC_FS_8G = 0x0c,         /**< Full scale �8g.                    */
+  LSM6DSL_ACC_FS_16G = 0x04         /**< Full scale �16g.                   */
 } lsm6dsl_acc_fs_t;
 
 /**
@@ -517,7 +526,6 @@ typedef enum {
  * @brief LSM6DSL gyroscope subsystem full scale.
  */
 typedef enum {
-  LSM6DSL_GYRO_FS_125DPS  = 0x02,   /**< Full scale �125 degree per second  */
   LSM6DSL_GYRO_FS_250DPS  = 0x00,   /**< Full scale �250 degree per second  */
   LSM6DSL_GYRO_FS_500DPS  = 0x04,   /**< Full scale �500 degree per second  */
   LSM6DSL_GYRO_FS_1000DPS = 0x08,   /**< Full scale �1000 degree per second */

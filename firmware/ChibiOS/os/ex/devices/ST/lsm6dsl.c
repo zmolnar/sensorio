@@ -683,10 +683,7 @@ static msg_t gyro_reset_sensivity(void *ip) {
 
   osalDbgAssert((devp->state == LSM6DSL_READY),
                 "gyro_reset_sensivity(), invalid state");
-  if(devp->config->gyrofullscale == LSM6DSL_GYRO_FS_125DPS)
-    for(i = 0; i < LSM6DSL_GYRO_NUMBER_OF_AXES; i++)
-      devp->gyrosensitivity[i] = LSM6DSL_GYRO_SENS_125DPS;
-  else if(devp->config->gyrofullscale == LSM6DSL_GYRO_FS_250DPS)
+  if(devp->config->gyrofullscale == LSM6DSL_GYRO_FS_250DPS)
     for(i = 0; i < LSM6DSL_GYRO_NUMBER_OF_AXES; i++)
       devp->gyrosensitivity[i] = LSM6DSL_GYRO_SENS_250DPS;
   else if(devp->config->gyrofullscale == LSM6DSL_GYRO_FS_500DPS)
@@ -732,10 +729,7 @@ static msg_t gyro_set_full_scale(LSM6DSLDriver *devp, lsm6dsl_gyro_fs_t fs) {
                 "gyro_set_full_scale(), channel not ready");
 #endif
 
-  if(fs == LSM6DSL_GYRO_FS_125DPS) {
-    newfs = LSM6DSL_GYRO_125DPS;
-  }
-  else if(fs == LSM6DSL_GYRO_FS_250DPS) {
+  if(fs == LSM6DSL_GYRO_FS_250DPS) {
     newfs = LSM6DSL_GYRO_250DPS;
   }
   else if(fs == LSM6DSL_GYRO_FS_500DPS) {
@@ -865,6 +859,25 @@ void lsm6dslStart(LSM6DSLDriver *devp, const LSM6DSLConfig *config) {
   {
     cr[0] = LSM6DSL_AD_CTRL3_C;
     cr[1] = LSMDSL_CTRL3_C_IF_INC;
+  }
+#if LSM6DSL_USE_I2C
+#if LSM6DSL_SHARED_I2C
+  i2cAcquireBus(devp->config->i2cp);
+#endif /* LSM6DSL_SHARED_I2C */
+
+  i2cStart(devp->config->i2cp, devp->config->i2ccfg);
+  lsm6dslI2CWriteRegister(devp->config->i2cp, devp->config->slaveaddress,
+                          cr, 1);
+
+#if LSM6DSL_SHARED_I2C
+  i2cReleaseBus(devp->config->i2cp);
+#endif /* LSM6DSL_SHARED_I2C */
+#endif /* LSM6DSL_USE_I2C */
+
+  /* Configure Interrupt control register.*/
+  {
+    cr[0] = LSM6DSL_AD_INT1_CTRL;
+    cr[1] = LSM6DSL_AD_INT1_CTRL_DRDY_XL;
   }
 #if LSM6DSL_USE_I2C
 #if LSM6DSL_SHARED_I2C
@@ -1015,16 +1028,7 @@ void lsm6dslStart(LSM6DSLDriver *devp, const LSM6DSLConfig *config) {
     for(i = 0; i < LSM6DSL_ACC_NUMBER_OF_AXES; i++)
       devp->accbias[i] = LSM6DSL_ACC_BIAS;
 
-  if(devp->config->gyrofullscale == LSM6DSL_GYRO_FS_125DPS) {
-    for(i = 0; i < LSM6DSL_GYRO_NUMBER_OF_AXES; i++) {
-      if(devp->config->gyrosensitivity == NULL)
-        devp->gyrosensitivity[i] = LSM6DSL_GYRO_SENS_125DPS;
-      else
-        devp->gyrosensitivity[i] = devp->config->gyrosensitivity[i];
-    }
-    devp->gyrofullscale = LSM6DSL_GYRO_125DPS;
-  }
-  else if(devp->config->gyrofullscale == LSM6DSL_GYRO_FS_250DPS) {
+  if(devp->config->gyrofullscale == LSM6DSL_GYRO_FS_250DPS) {
     for(i = 0; i < LSM6DSL_GYRO_NUMBER_OF_AXES; i++) {
       if(devp->config->gyrosensitivity == NULL)
         devp->gyrosensitivity[i] = LSM6DSL_GYRO_SENS_250DPS;
