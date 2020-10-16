@@ -19,7 +19,7 @@
 
 #include "SamplerThread.h"
 
-static THD_WORKING_AREA(waSampler, 1024);
+static THD_WORKING_AREA(waSampler, 4096);
 
 /*
  * LEDs blinker thread, times are in milliseconds.

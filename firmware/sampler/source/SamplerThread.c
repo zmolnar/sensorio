@@ -15,7 +15,6 @@
 #include "lsm6dsl.h"
 
 #include "chprintf.h"
-#include "memstreams.h"
 
 #include <string.h>
 
@@ -76,23 +75,40 @@ static LSM6DSLConfig lsm6dslConfig = {
     .gyrooutdatarate = LSM6DSL_GYRO_ODR_416Hz,
 };
 
-static SerialConfig serialCfg = 
-{
-  .speed = 460800,
-  .cr1 = 0,
-  .cr2 = 0,
-  .cr3 = 0,
+static SerialConfig serialCfg = {
+    .speed = 921600,
+    .cr1   = 0,
+    .cr2   = 0,
+    .cr3   = 0,
 };
+
+virtual_timer_t baroTimer;
+virtual_timer_t accGyroTimer;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
 /*****************************************************************************/
+void baroTimeoutCb(void *p)
+{
+  (void)p;
+
+  chSysHalt("baro sensor timeout");
+}
+
+void accGyroTimeoutCb(void *p)
+{
+  (void)p;
+
+  chSysHalt("acc/gyro sensor timeout");
+}
+
 static void baroDataReady(void *p)
 {
   (void)p;
 
   chSysLockFromISR();
   chMBPostI(&samplerMailbox, DATA_READY_BARO);
+  chVTSetI(&baroTimer, TIME_MS2I(15), baroTimeoutCb, NULL);
   chSysUnlockFromISR();
 }
 
@@ -102,29 +118,8 @@ static void accGyroDataReady(void *p)
 
   chSysLockFromISR();
   chMBPostI(&samplerMailbox, DATA_READY_ACC_GYRO);
+  chVTSetI(&accGyroTimer, TIME_MS2I(5), accGyroTimeoutCb, NULL);
   chSysUnlockFromISR();
-}
-
-void printSWO(const char *fmt, ...)
-{
-  MemoryStream ms;
-  uint8_t      buf[128];
-  memset(buf, 0, sizeof(buf));
-
-  msObjectInit(&ms, buf, sizeof(buf), 0);
-
-  va_list ap;
-  va_start(ap, fmt);
-  size_t n = chvprintf((BaseSequentialStream *)&ms, fmt, ap);
-  va_end(ap);
-
-  sdWrite(&SD4, buf, n);
-
-#if 0
-  size_t i = 0;
-  for (i = 0; buf[i] != '\0'; ++i)
-    ITM_SendChar(buf[i]);
-#endif    
 }
 
 /*****************************************************************************/
@@ -142,17 +137,15 @@ THD_FUNCTION(SamplerThread, arg)
 
   chThdSleepMilliseconds(100);
 
-  float    pressure        = 0;
-  uint32_t pressureCounter = 0;
-  uint32_t accGyroCounter  = 0;
-
-  struct accGyroData_s {
-    float acc[3];
-    float gyro[3];
-  } accGyroData;
-
   memset(events, 0, sizeof(events));
   chMBObjectInit(&samplerMailbox, events, sizeof(events) / sizeof(events[0]));
+
+  chVTObjectInit(&baroTimer);
+  chVTObjectInit(&accGyroTimer);
+
+  float pressure;
+  float gyro[3];
+  float acc[3];
 
   palSetLineCallback(LINE_LPS22HB_INT_DRDY_EXTI10, baroDataReady, NULL);
   palEnableLineEvent(LINE_LPS22HB_INT_DRDY_EXTI10, PAL_EVENT_MODE_RISING_EDGE);
@@ -166,42 +159,30 @@ THD_FUNCTION(SamplerThread, arg)
 
   lsm6dslObjectInit(&LSM6DSL);
   lsm6dslStart(&LSM6DSL, &lsm6dslConfig);
-  lsm6dslGyroscopeReadCooked(&LSM6DSL, accGyroData.gyro);
-  lsm6dslAccelerometerReadCooked(&LSM6DSL, accGyroData.acc);
+  lsm6dslGyroscopeReadCooked(&LSM6DSL, gyro);
+
+  lsm6dslAccelerometerReadCooked(&LSM6DSL, acc);
+
+  BaseSequentialStream *ostream = (BaseSequentialStream*)&SD4;
 
   while (true) {
     msg_t evt;
     msg_t msg = chMBFetchTimeout(&samplerMailbox, &evt, TIME_INFINITE);
 
     if (MSG_OK == msg) {
-      systime_t now = chVTGetSystemTime();
 
       switch ((DataReadySource_t)evt) {
       case DATA_READY_BARO: {
         lps22hbBarometerReadCooked(&LPS22HB, &pressure);
+        chprintf(ostream, "1 %4.4f\n", pressure);
 
-        pressureCounter++;
-        printSWO("%9d %7d %4.4f\r\n", (int)now, (int)pressureCounter, pressure);
-        
         break;
       }
       case DATA_READY_ACC_GYRO: {
-        lsm6dslGyroscopeReadCooked(&LSM6DSL, accGyroData.gyro);
-        lsm6dslAccelerometerReadCooked(&LSM6DSL, accGyroData.acc);
-
-        accGyroCounter++;
-        printSWO(
-            "%9d %7d "
-            "%4.4f %4.4f %4.4f "
-            "%4.4f %4.4f %4.4f\r\n",
-            (int)now,
-            (int)accGyroCounter,
-            accGyroData.acc[0],
-            accGyroData.acc[1],
-            accGyroData.acc[2],
-            accGyroData.gyro[0],
-            accGyroData.gyro[1],
-            accGyroData.gyro[2]);
+        lsm6dslGyroscopeReadCooked(&LSM6DSL, gyro);
+        lsm6dslAccelerometerReadCooked(&LSM6DSL, acc);
+        chprintf(ostream, "2 %4.4f %4.4f %4.4f %4.4f %4.4f %4.4f\n",
+                 acc[0], acc[1],acc[2], gyro[0], gyro[1], gyro[2]);
 
         break;
       }
