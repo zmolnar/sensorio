@@ -12,30 +12,16 @@
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
-#define C(i) prom[(i)]
+// Cx compensation parameter in the PROM
+#define C(x) prom[(x)]
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
 /*****************************************************************************/
-/**
- * MS5611 command set.
- * @defgroup MS5611 pressure sensor command set.
- * @{
- */
-typedef enum {
-  MS5611_CMD_RESET         = 0x1e, /**< Reset command. */
-  MS5611_CMD_CONV_PRESSURE = 0x40,
-  MS5611_CMD_CONV_TEMP     = 0x50,
-  MS5611_CMD_ADC_READ      = 0x00, /**< Read conversation result. */
-  MS5611_CMD_PROM_READ     = 0xa0, /**< Read PROM register. */
-} ms5611_command_t;
 
 /*****************************************************************************/
 /* MACRO DEFINITIONS                                                         */
 /*****************************************************************************/
-#define MS5611_CMD_CONV_PRESSURE_OSR(osr)  (MS5611_CMD_CONV_PRESSURE + (osr))
-#define MS5611_CMD_CONV_TEMP_OSR(osr)      (MS5611_CMD_CONV_TEMP + (osr))
-#define MS5611_CMD_READ_PROM_REGISTER(reg) (MS5611_CMD_PROM_READ + ((reg) << 1))
 
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
@@ -50,7 +36,7 @@ typedef enum {
 /*****************************************************************************/
 bool MS5611Class::begin(int sda, int scl, int freq, int addr)
 {
-  bool result = false;
+  bool success = false;
 
   if (twi.begin(sda, scl, freq)) {
     this->addr = addr;
@@ -58,7 +44,11 @@ bool MS5611Class::begin(int sda, int scl, int freq, int addr)
     if (reset()) {
       delay(250);
 
-      result = readCalibration();
+      if (readCalibration()) {
+        success = true;
+      } else {
+        Serial.print("PROM read failed.");
+      }
     } else {
       Serial.print("Reset failed.");
     }
@@ -66,7 +56,53 @@ bool MS5611Class::begin(int sda, int scl, int freq, int addr)
     Serial.print("TWI begin failed.");
   }
 
-  return result;
+  return success;
+}
+
+bool MS5611Class::convert(ms5611_osr_t osr)
+{
+  bool success = doConversion(MS5611_CMD_CONV_PRESSURE, osr, p_raw);
+
+  if (success) {
+    success = doConversion(MS5611_CMD_CONV_TEMP, osr, t_raw);
+  }
+
+  if (success) {
+    int64_t dT    = (int64_t)t_raw - ((uint64_t)C(5) << 8);
+    int64_t temp  = 2000 + ((dT * (int64_t)C(6)) >> 23);
+    int64_t off   = ((uint64_t)C(2) << 16) + (((int64_t)C(4) * dT) >> 7);
+    int64_t sens  = ((int64_t)C(1) << 15) + ((dT * (int64_t)(C(3)) >> 8));
+    int64_t temp2 = 0;
+    int64_t off2  = 0;
+    int64_t sens2 = 0;
+
+    /* Second order temperature compensation. */
+    if (temp < 2000) {
+      temp2 = ((dT * dT) >> 31);
+      off2  = (5 * (temp - 2000) * (temp - 2000)) >> 1;
+      sens2 = (5 * (temp - 2000) * (temp - 2000)) >> 2;
+
+      /* Very low temperature. */
+      if (temp < (-15)) {
+        off2  = off2 + (7 * (temp + 1500) * (temp + 1500));
+        sens2 = sens2 + ((11 * (temp + 1500) * (temp + 1500)) >> 2);
+      }
+    } else {
+      temp2 = 0;
+      off2  = 0;
+      sens2 = 0;
+    }
+
+    temp -= temp2;
+    off -= off2;
+    sens -= sens2;
+
+    /* Calculate temperature and temperature compensated pressure */
+    t_comp = (int32_t)temp;
+    p_comp = (uint32_t)(((((int64_t)p_raw * sens) >> 21) - off) >> 15);
+  }
+
+  return success;
 }
 
 bool MS5611Class::reset(void)
@@ -85,7 +121,7 @@ bool MS5611Class::readCalibration(void)
   for (size_t i = 0; (i < 8) && success; ++i) {
     success = false;
 
-    uint32_t cmd = MS5611_CMD_READ_PROM_REGISTER(i);
+    uint32_t cmd = MS5611_CMD_READ_PROM + (i << 1);
     twi.beginTransmission(addr);
     twi.write(cmd);
     twi.endTransmission();
@@ -139,6 +175,46 @@ bool MS5611Class::validateProm(uint16_t prom[8])
   remainder = (0x000F & (remainder >> 12));
 
   return (remainder == crc_read);
+}
+
+bool MS5611Class::doConversion(ms5611_command_t cmd, ms5611_osr_t osr, uint32_t &data)
+{
+  static const uint32_t conv_time_array[5] = {1, 2, 3, 5, 9};
+
+  twi.beginTransmission(addr);
+  twi.write(cmd | (osr << 1));
+  i2c_err_t err = (i2c_err_t)twi.endTransmission();
+
+  bool success = false;
+
+  if (I2C_ERROR_OK == err) {
+    delay(conv_time_array[osr]);
+
+    twi.beginTransmission(addr);
+    twi.write(MS5611_CMD_READ_ADC);
+    twi.endTransmission();
+
+    twi.beginTransmission(addr);
+    twi.requestFrom(addr, (uint8_t)3);
+
+    if (twi.available()) {
+      uint8_t msb = (uint8_t)twi.read();
+      if (twi.available()) {
+        uint8_t xsb = (uint8_t)twi.read();
+        if (twi.available()) {
+          uint8_t lsb = (uint8_t)twi.read();
+          data        = ((uint32_t)msb << 16);
+          data += ((uint32_t)xsb << 8);
+          data += (uint32_t)lsb;
+          success = true;
+        }
+      }
+    }
+
+    twi.endTransmission();
+  }
+
+  return success;
 }
 
 /****************************** END OF FILE **********************************/
