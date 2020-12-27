@@ -34,7 +34,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
-bool MS5611Class::begin(int sda, int scl, int freq, int addr)
+bool MS5611::begin(int sda, int scl, int freq, int addr)
 {
   bool success = false;
 
@@ -59,12 +59,12 @@ bool MS5611Class::begin(int sda, int scl, int freq, int addr)
   return success;
 }
 
-bool MS5611Class::convert(ms5611_osr_t osr)
+bool MS5611::convert(Osr osr)
 {
-  bool success = doConversion(MS5611_CMD_CONV_PRESSURE, osr, p_raw);
+  bool success = doConversion(CONV_PRESSURE, osr, p_raw);
 
   if (success) {
-    success = doConversion(MS5611_CMD_CONV_TEMP, osr, t_raw);
+    success = doConversion(CONV_TEMP, osr, t_raw);
   }
 
   if (success) {
@@ -105,23 +105,23 @@ bool MS5611Class::convert(ms5611_osr_t osr)
   return success;
 }
 
-bool MS5611Class::reset(void)
+bool MS5611::reset(void)
 {
   twi.beginTransmission(addr);
-  twi.write(MS5611_CMD_RESET);
-  uint8_t err = twi.endTransmission();
+  twi.write(RESET);
+  i2c_err_t err = (i2c_err_t)twi.endTransmission();
 
-  return I2C_ERROR_OK == (i2c_err_t)err;
+  return I2C_ERROR_OK == err;
 }
 
-bool MS5611Class::readCalibration(void)
+bool MS5611::readCalibration(void)
 {
   bool success = true;
 
   for (size_t i = 0; (i < 8) && success; ++i) {
     success = false;
 
-    uint32_t cmd = MS5611_CMD_READ_PROM + (i << 1);
+    uint32_t cmd = READ_PROM + (i << 1);
     twi.beginTransmission(addr);
     twi.write(cmd);
     twi.endTransmission();
@@ -148,7 +148,7 @@ bool MS5611Class::readCalibration(void)
   return success;
 }
 
-bool MS5611Class::validateProm(uint16_t prom[8])
+bool MS5611::validateProm(uint16_t prom[8])
 {
   uint16_t p7_backup = prom[7];
   uint16_t crc_read  = prom[7] & 0x000f;
@@ -177,9 +177,15 @@ bool MS5611Class::validateProm(uint16_t prom[8])
   return (remainder == crc_read);
 }
 
-bool MS5611Class::doConversion(ms5611_command_t cmd, ms5611_osr_t osr, uint32_t &data)
+bool MS5611::doConversion(Command cmd, Osr osr, uint32_t &data)
 {
-  static const uint32_t conv_time_array[5] = {1, 2, 3, 5, 9};
+  static const uint32_t conv_time_array[5] = {
+      [OSR_256]  = 1,
+      [OSR_512]  = 2,
+      [OSR_1024] = 3,
+      [OSR_2048] = 5,
+      [OSR_4096] = 9,
+  };
 
   twi.beginTransmission(addr);
   twi.write(cmd | (osr << 1));
@@ -191,7 +197,7 @@ bool MS5611Class::doConversion(ms5611_command_t cmd, ms5611_osr_t osr, uint32_t 
     delay(conv_time_array[osr]);
 
     twi.beginTransmission(addr);
-    twi.write(MS5611_CMD_READ_ADC);
+    twi.write(READ_ADC);
     twi.endTransmission();
 
     twi.beginTransmission(addr);

@@ -15,6 +15,9 @@
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
+#define BPS_SDA 13
+#define BPS_SCL 14
+#define BPS_FREQ 400000
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
@@ -39,16 +42,17 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
-static float convertPressureToAltitude(float pressure) {
-    return 44330 * (1 - pow ((pressure / 101325.0), 0.1902));
+static float convertPressureToAltitude(float pressure)
+{
+  return 44330 * (1 - pow((pressure / 101325.0), 0.1902));
 }
 
 void PressureReaderThread(void *p)
 {
-  TwoWire     ms5611_twi = TwoWire(0);
-  MS5611Class ms5611     = MS5611Class(ms5611_twi);
+  TwoWire ms5611_twi = TwoWire(0);
+  MS5611  ms5611     = MS5611(ms5611_twi);
 
-  if (!ms5611.begin(13, 14, 400000)) {
+  if (!ms5611.begin(BPS_SDA, BPS_SCL, BPS_FREQ)) {
     Serial.print("Failed to initialize\n");
   } else {
     Serial.print("Succeeded to initialize\n");
@@ -57,11 +61,11 @@ void PressureReaderThread(void *p)
   while (1) {
     delay(1000);
 
-    bool result = ms5611.convert(MS5611_OSR_4096);
+    bool result = ms5611.convert(MS5611::Osr::OSR_4096);
 
     if (result) {
       uint32_t p_comp = ms5611.getCompensatedPressure();
-      float alt = convertPressureToAltitude((float)p_comp);
+      float    alt    = convertPressureToAltitude((float)p_comp);
 
       Serial.print("t_raw : ");
       Serial.println(ms5611.getRawTemp());
