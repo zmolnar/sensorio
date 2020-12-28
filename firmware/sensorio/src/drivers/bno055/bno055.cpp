@@ -153,6 +153,87 @@ bool BNO055::getGravity(Gravity_t &data)
   return OK == error;
 }
 
+bool BNO055::enableInterrupt(Interrupt irq)
+{
+  BNO055_RETURN_FUNCTION_TYPE err = BNO055_ERROR;
+
+  u8 reg = 0;
+  err    = bno055.bus_read(bno055.dev_addr, BNO055_INT_ADDR, &reg, sizeof(u8));
+
+  if (BNO055_SUCCESS == err) {
+    u8 mask = static_cast<u8>(irq);
+    reg |= mask;
+    err = bno055.bus_write(bno055.dev_addr, BNO055_INT_ADDR, &reg, sizeof(u8));
+  }
+
+  error = convertError(err);
+
+  return OK == error;
+}
+
+bool BNO055::disableInterrupt(Interrupt irq)
+{
+  BNO055_RETURN_FUNCTION_TYPE err = BNO055_ERROR;
+
+  u8 reg = 0;
+  err    = bno055.bus_read(bno055.dev_addr, BNO055_INT_ADDR, &reg, sizeof(u8));
+
+  if (BNO055_SUCCESS == err) {
+    u8 mask = static_cast<u8>(irq);
+    reg &= ~mask;
+    err = bno055.bus_write(bno055.dev_addr, BNO055_INT_ADDR, &reg, sizeof(u8));
+  }
+
+  error = convertError(err);
+
+  return OK == error;
+}
+
+bool BNO055::maskInterrupt(Interrupt irq)
+{
+  BNO055_RETURN_FUNCTION_TYPE err = BNO055_ERROR;
+
+  u8 reg = 0;
+  err    = bno055.bus_read(bno055.dev_addr, BNO055_INT_MASK_ADDR, &reg, sizeof(u8));
+
+  if (BNO055_SUCCESS == err) {
+    u8 mask = static_cast<u8>(irq);
+    reg &= ~mask;
+    err = bno055.bus_write(bno055.dev_addr, BNO055_INT_MASK_ADDR, &reg, sizeof(u8));
+  }
+
+  error = convertError(err);
+
+  return OK == error;
+}
+
+bool BNO055::unmaskInterrupt(Interrupt irq)
+{
+  BNO055_RETURN_FUNCTION_TYPE err = BNO055_ERROR;
+
+  u8 reg = 0;
+  err    = bno055.bus_read(bno055.dev_addr, BNO055_INT_MASK_ADDR, &reg, sizeof(u8));
+
+  if (BNO055_SUCCESS == err) {
+    u8 mask = static_cast<u8>(irq);
+    reg |= mask;
+    err = bno055.bus_write(bno055.dev_addr, BNO055_INT_MASK_ADDR, &reg, sizeof(u8));
+  }
+
+  error = convertError(err);
+
+  return OK == error;
+}
+
+bool BNO055::readInterruptStatus(u8 &status)
+{
+  BNO055_RETURN_FUNCTION_TYPE err = BNO055_ERROR;
+  err = bno055.bus_read(bno055.dev_addr, BNO055_INTR_STAT_ADDR, &status, sizeof(u8));
+  error = convertError(err);
+
+  return OK == error;
+}
+
 BNO055::Error BNO055::convertError(BNO055_RETURN_FUNCTION_TYPE e)
 {
   Error error;

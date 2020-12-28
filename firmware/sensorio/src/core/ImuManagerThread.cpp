@@ -15,9 +15,10 @@
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
-#define BNO_SCL 16
-#define BNO_SDA 17
+#define BNO_SCL  16
+#define BNO_SDA  17
 #define BNO_FREQ 400000
+#define BNO_INT  25
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
@@ -78,6 +79,10 @@ static s8 i2c_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
   return (i == cnt) ? BNO055_SUCCESS : BNO055_ERROR;
 }
 
+static void bno_isr(void)
+{
+}
+
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
@@ -85,10 +90,22 @@ void ImuManagerThread(void *p)
 {
   BNO055 bno055 = BNO055(i2c_init, i2c_bus_read, i2c_bus_write, delay);
 
+  bool success = false;
+
   if (bno055.begin()) {
     if (bno055.setPowerMode(BNO055::PowerMode::NORMAL)) {
       if (bno055.setOperationMode(BNO055::OperationMode::NDOF)) {
-        Serial.println("BNO055 successfully initialized");
+        if (bno055.enableInterrupt(BNO055::Interrupt::ACC_BSX_DRDY)) {
+          if (bno055.unmaskInterrupt(BNO055::Interrupt::ACC_BSX_DRDY)) {
+            attachInterrupt(BNO_INT, bno_isr, RISING);
+            success = true;
+            Serial.println("BNO055 successfully initialized");
+          } else {
+            Serial.println("Failed to unmask interrupt");
+          }
+        } else {
+          Serial.println("Failed to enable interrupt");
+        }
       } else {
         Serial.println("Failed to set BNO005 operation mode");
       }
@@ -100,11 +117,13 @@ void ImuManagerThread(void *p)
   }
 
   while (1) {
-    BNO055::Euler_t euler;
-    if (!bno055.getEulerAngles(euler, BNO055::Unit::DEG)) {
-      Serial.println("Failed to read Euler angles");
+    if (success) {
+      BNO055::Euler_t euler;
+      if (!bno055.getEulerAngles(euler, BNO055::Unit::DEG)) {
+        Serial.println("Failed to read Euler angles");
+      }
     }
-
+    
     delay(1000);
   }
 }

@@ -86,6 +86,17 @@ public:
     FAHRENHEIT, // Fahrenheit
   };
 
+  typedef enum {
+    ACC_BSX_DRDY   = 0x01 << 0,
+    MAG_DRDY       = 0x01 << 1,
+    GYRO_AM        = 0x01 << 2,
+    GYRO_HIGH_RATE = 0x01 << 3,
+    GYRO_DRDY      = 0x01 << 4,
+    ACC_HIGH_G     = 0x01 << 5,
+    ACC_AM         = 0x01 << 6,
+    ACC_NM         = 0x01 << 7,
+  } Interrupt;
+
   typedef struct bno055_accel_double_t        Accel_t;
   typedef struct bno055_gyro_double_t         Gyro_t;
   typedef struct bno055_mag_double_t          Mag_t;
@@ -121,6 +132,12 @@ public:
   bool  getQuaternion(Quaternion_t &data);
   bool  getLinearAcceleration(LinearAccel_t &data);
   bool  getGravity(Gravity_t &data);
+
+  bool  enableInterrupt(Interrupt irq);
+  bool  disableInterrupt(Interrupt irq);
+  bool  maskInterrupt(Interrupt irq);
+  bool  unmaskInterrupt(Interrupt irq);
+  bool  readInterruptStatus(u8 &status);
 
 private:
   bus_init_t init;
