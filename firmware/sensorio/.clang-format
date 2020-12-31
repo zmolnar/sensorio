@@ -27,7 +27,7 @@ BraceWrapping:
   SplitEmptyRecord : 'true'
 BreakBeforeTernaryOperators: 'true'
 BreakConstructorInitializers: AfterColon
-ColumnLimit: '100'
+ColumnLimit: '80'
 CompactNamespaces: 'false'
 ConstructorInitializerAllOnOneLineOrOnePerLine: 'true'
 Cpp11BracedListStyle: 'true'

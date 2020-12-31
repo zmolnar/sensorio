@@ -11,6 +11,7 @@
 #include <Arduino.h>
 
 #include "drivers/lcd/SharpLcd.h"
+#include "drivers/encoder/Encoder.h"
 #include "lvgl.h"
 
 /*****************************************************************************/
@@ -73,7 +74,8 @@ void LvglThread(void *p)
   SharpLcdRegisterDriver();
 
   // Initialize input device
-  // TODO Encoder init
+  EncoderInit();
+  EncoderRegisterDriver();
 
   // Draw initial screen
   // TODO startup screen init
