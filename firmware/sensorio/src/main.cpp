@@ -1,5 +1,6 @@
 #include <Arduino.h>
 
+#include "core/GpsManagerThread.h"
 #include "core/ImuManagerThread.h"
 #include "core/LvglThread.h"
 #include "core/PressureReaderThread.h"
@@ -19,12 +20,16 @@ void setup()
   xTaskCreatePinnedToCore(ImuManagerThread, "IMU manager", 2048, NULL, 1, NULL, 0);
 #endif
 
-#if 1
+#if 0
   xTaskCreatePinnedToCore(LvglThread, "LVGL thread", 2048, NULL, 1, NULL, 1);
 #endif
+
+#if 1
+  xTaskCreatePinnedToCore(GpsManagerThread, "GPS thread", 2048, NULL, 1, NULL, 0);
+#endif
+
 }
 
 void loop()
 {
-  // put your main code here, to run repeatedly:
 }
