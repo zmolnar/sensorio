@@ -11,9 +11,13 @@
 #include <Arduino.h>
 #include <MicroNMEA.h>
 
+#include "dashboard/Dashboard.h"
+
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
+#define GPS_3DFIX 18
+
 #define GPS_RX 26
 #define GPS_TX 27
 
@@ -32,7 +36,7 @@
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
 static TaskHandle_t gpsTask = NULL;
-static uint32_t counter = 0;
+static uint32_t     counter = 0;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -73,8 +77,10 @@ void GpsManagerThread(void *p)
   // Set task handler used for task notification
   gpsTask = xTaskGetCurrentTaskHandle();
 
+  pinMode(GPS_3DFIX, INPUT);
+
   // Setup NMEA parser
-  char buffer[100];
+  char      buffer[100];
   MicroNMEA nmea(buffer, sizeof(buffer));
   nmea.setBadChecksumHandler(badChecksumHandler);
   nmea.setUnknownSentenceHandler(unknownSentenceHandler);
@@ -97,7 +103,25 @@ void GpsManagerThread(void *p)
       while (gpsSerial.available()) {
         char c = gpsSerial.read();
         if (nmea.process(c)) {
-          // TODO update dashboard
+          DbDataGpsLock();
+
+          DbDataGpsSetLocked(HIGH == digitalRead(GPS_3DFIX));
+          long alt = 0;
+          nmea.getAltitude(alt);
+          DbDataGpsSetAltitude(alt);
+          DbDataGpsSetCourse(nmea.getCourse());
+          DbDataGpsSetLatitude(nmea.getLatitude());
+          DbDataGpsSetLongitude(nmea.getLongitude());
+          DbDataGpsSetNumOfSatellites(nmea.getNumSatellites());
+          DbDataGpsSetSpeed(nmea.getSpeed());
+          DbDataGpsSetYear(nmea.getYear());
+          DbDataGpsSetMonth(nmea.getMonth());
+          DbDataGpsSetDay(nmea.getDay());
+          DbDataGpsSetHour(nmea.getHour());
+          DbDataGpsSetMinute(nmea.getMinute());
+          DbDataGpsSetSecond(nmea.getSecond());
+
+          DbDataGpsUnlock();
         }
       }
     }

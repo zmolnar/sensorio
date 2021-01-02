@@ -4,6 +4,7 @@
 #include "core/ImuManagerThread.h"
 #include "core/LvglThread.h"
 #include "core/PressureReaderThread.h"
+#include "dashboard/Dashboard.h"
 
 void setup()
 {
@@ -11,6 +12,8 @@ void setup()
   Serial.println();
   Serial.println();
   Serial.print("Sensorio started ...\n");
+
+  DbInit();
 
 #if 0
   xTaskCreatePinnedToCore(PressureReaderThread, "pressure reader", 2048, NULL, 1, NULL, 0);
