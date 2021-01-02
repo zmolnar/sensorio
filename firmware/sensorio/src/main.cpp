@@ -27,7 +27,7 @@ void setup()
   xTaskCreatePinnedToCore(LvglThread, "LVGL thread", 2048, NULL, 1, NULL, 1);
 #endif
 
-#if 1
+#if 0
   xTaskCreatePinnedToCore(GpsManagerThread, "GPS thread", 2048, NULL, 1, NULL, 0);
 #endif
 
@@ -35,4 +35,5 @@ void setup()
 
 void loop()
 {
+  delay(1000);
 }

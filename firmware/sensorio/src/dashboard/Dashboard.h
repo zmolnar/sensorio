@@ -37,6 +37,7 @@ extern "C" {
 #endif
 
 void DbInit(void);
+void DbSaveConfig(void);
 
 // GPS section
 void DbDataGpsLock(void);
