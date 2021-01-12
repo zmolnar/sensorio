@@ -11,9 +11,14 @@ void setup()
   Serial.begin(115200);
   Serial.println();
   Serial.println();
-  Serial.print("Sensorio started ...\n");
+  Serial.println("Sensorio started ...");
 
   DbInit();
+  
+  pinMode(4, OUTPUT);
+  digitalWrite(4, HIGH);
+
+  Serial.println("power-on");
 
 #if 0
   xTaskCreatePinnedToCore(PressureReaderThread, "pressure reader", 2048, NULL, 1, NULL, 0);
@@ -27,7 +32,7 @@ void setup()
   xTaskCreatePinnedToCore(LvglThread, "LVGL thread", 2048, NULL, 1, NULL, 1);
 #endif
 
-#if 0
+#if 1
   xTaskCreatePinnedToCore(GpsManagerThread, "GPS thread", 2048, NULL, 1, NULL, 0);
 #endif
 
