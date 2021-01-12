@@ -102,7 +102,7 @@ static void DbLock(SemaphoreHandle_t &mutex)
 {
   BaseType_t res;
   do {
-    res = xSemaphoreTake(&mutex, portMAX_DELAY);
+    res = xSemaphoreTake(mutex, portMAX_DELAY);
   } while (pdTRUE != res);
 }
 
@@ -110,7 +110,7 @@ static void DbUnlock(SemaphoreHandle_t &mutex)
 {
   BaseType_t res;
   do {
-    res = xSemaphoreGive(&mutex);
+    res = xSemaphoreGive(mutex);
   } while (pdTRUE != res);
 }
 
@@ -131,8 +131,14 @@ void DbInit(void)
     db.config = defaultConfig;
   }
 
-  db.locks.gpsData = xSemaphoreCreateBinary();
-  db.locks.config  = xSemaphoreCreateBinary();
+  db.locks.gpsData = xSemaphoreCreateMutex();
+  if (NULL == db.locks.gpsData) {
+    Serial.println("CreateMutex failed");
+  }
+  db.locks.config  = xSemaphoreCreateMutex();
+  if (NULL == db.locks.config) {
+    Serial.println("CreateMutex failed");
+  }
 }
 
 void DbSaveConfig(void)
