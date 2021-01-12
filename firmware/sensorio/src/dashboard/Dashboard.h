@@ -9,9 +9,10 @@
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
-#include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -24,6 +25,23 @@
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
 /*****************************************************************************/
+typedef struct GpsData_s {
+  bool     locked;
+  uint32_t altitude;
+  uint32_t course;
+  uint32_t latitude;
+  uint32_t longitude;
+  uint32_t numOfSatellites;
+  uint32_t speed;
+  struct Time_s {
+    uint32_t year;
+    uint8_t  month;
+    uint8_t  day;
+    uint8_t  hour;
+    uint8_t  minute;
+    uint8_t  second;
+  } time;
+} GpsData_t;
 
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL VARIABLES                                           */
@@ -33,43 +51,19 @@
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-void DbInit(void);
-void DbSaveConfig(void);
+  void DbInit(void);
+  void DbSaveConfig(void);
 
-// GPS section
-void DbDataGpsLock(void);
-void DbDataGpsUnlock(void);
+  // GPS section
+  void DbDataGpsLock(void);
+  void DbDataGpsUnlock(void);
+  void DbDataGpsGet(GpsData_t *p);
+  void DbDataGpsSet(GpsData_t *p);
 
-void DbDataGpsSetLocked(bool state);
-void DbDataGpsSetAltitude(uint32_t altitude);
-void DbDataGpsSetCourse(uint32_t course);
-void DbDataGpsSetLatitude(uint32_t latitude);
-void DbDataGpsSetLongitude(uint32_t longitude);
-void DbDataGpsSetNumOfSatellites(uint32_t sats);
-void DbDataGpsSetSpeed(uint32_t speed);
-void DbDataGpsSetYear(uint32_t year);
-void DbDataGpsSetMonth(uint8_t month);
-void DbDataGpsSetDay(uint8_t day);
-void DbDataGpsSetHour(uint8_t hour);
-void DbDataGpsSetMinute(uint8_t minute);
-void DbDataGpsSetSecond(uint8_t sec);
-
-bool DbDataGpsGetLocked(void);
-uint32_t DbDataGpsGetAltitude(void);
-uint32_t DbDataGpsGetCourse(void);
-uint32_t DbDataGpsGetLatitude(void);
-uint32_t DbDataGpsGetLongitude(void);
-uint32_t DbDataGpsGetnumOfSatellites(void);
-uint32_t DbDataGpsGetSpeed(void);
-uint32_t DbDataGpsGetYear(void);
-uint8_t DbDataGpsGetMonth(void);
-uint8_t DbDataGpsGetDay(void);
-uint8_t DbDataGpsGetHour(void);
-uint8_t DbDataGpsGetMinute(void);
-uint8_t DbDataGpsGetSecond(void);
 #ifdef __cplusplus
 }
 #endif

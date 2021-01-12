@@ -114,24 +114,28 @@ void GpsManagerThread(void *p)
       while (gpsSerial.available()) {
         char c = gpsSerial.read();
         if (nmea.process(c) && isValid) {
-          DbDataGpsLock();
+          GpsData_t data;
+          memset(&data, 0, sizeof(data));
 
-          DbDataGpsSetLocked(HIGH == digitalRead(GPS_3DFIX));
           long alt = 0;
           nmea.getAltitude(alt);
-          DbDataGpsSetAltitude(alt);
-          DbDataGpsSetCourse(nmea.getCourse());
-          DbDataGpsSetLatitude(nmea.getLatitude());
-          DbDataGpsSetLongitude(nmea.getLongitude());
-          DbDataGpsSetNumOfSatellites(nmea.getNumSatellites());
-          DbDataGpsSetSpeed(nmea.getSpeed());
-          DbDataGpsSetYear(nmea.getYear());
-          DbDataGpsSetMonth(nmea.getMonth());
-          DbDataGpsSetDay(nmea.getDay());
-          DbDataGpsSetHour(nmea.getHour());
-          DbDataGpsSetMinute(nmea.getMinute());
-          DbDataGpsSetSecond(nmea.getSecond());
 
+          data.locked          = HIGH == digitalRead(GPS_3DFIX);
+          data.altitude        = (uint32_t)alt;
+          data.course          = nmea.getCourse();
+          data.latitude        = nmea.getLatitude();
+          data.longitude       = nmea.getLongitude();
+          data.numOfSatellites = nmea.getNumSatellites();
+          data.speed           = nmea.getSpeed();
+          data.time.year       = nmea.getYear();
+          data.time.month      = nmea.getMonth();
+          data.time.day        = nmea.getDay();
+          data.time.hour       = nmea.getHour();
+          data.time.minute     = nmea.getMinute();
+          data.time.second     = nmea.getSecond();
+
+          DbDataGpsLock();
+          DbDataGpsSet(&data);
           DbDataGpsUnlock();
         }
 
