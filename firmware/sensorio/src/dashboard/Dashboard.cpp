@@ -22,6 +22,7 @@
 /*****************************************************************************/
 typedef struct Data_s {
   GpsData_t gps;
+  BpsData_t bps;
 } Data_t;
 
 typedef struct Config_s {
@@ -31,7 +32,8 @@ typedef struct Config_s {
 
 typedef struct Locks_s {
   SemaphoreHandle_t config;
-  SemaphoreHandle_t gpsData;
+  SemaphoreHandle_t gps;
+  SemaphoreHandle_t bps;
 } Locks_t;
 
 typedef struct Dashboard_s {
@@ -115,13 +117,15 @@ void DbInit(void)
     db.config = defaultConfig;
   }
 
-  db.locks.gpsData = xSemaphoreCreateMutex();
-  if (NULL == db.locks.gpsData) {
-    Serial.println("CreateMutex failed");
-  }
+  db.locks.gps    = xSemaphoreCreateMutex();
+  db.locks.bps    = xSemaphoreCreateMutex();
   db.locks.config = xSemaphoreCreateMutex();
-  if (NULL == db.locks.config) {
+
+  if ((NULL == db.locks.gps) || (NULL == db.locks.bps) ||
+      (NULL == db.locks.config)) {
     Serial.println("CreateMutex failed");
+
+    // TODO write log
   }
 }
 
@@ -133,23 +137,32 @@ void DbSaveConfig(void)
   DbUnlock(db.locks.config);
 }
 
-void DbDataGpsLock(void)
-{
-  DbLock(db.locks.gpsData);
-}
-
-void DbDataGpsUnlock(void)
-{
-  DbUnlock(db.locks.gpsData);
-}
 void DbDataGpsGet(GpsData_t *p)
 {
-  memcpy(&db.data.gps, p, sizeof(GpsData_t));
+  DbLock(db.locks.gps);
+  memcpy(p, &db.data.gps, sizeof(GpsData_t));
+  DbUnlock(db.locks.gps);
 }
 
 void DbDataGpsSet(GpsData_t *p)
 {
-  memcpy(p, &db.data.gps, sizeof(GpsData_t));
+  DbLock(db.locks.gps);
+  memcpy(&db.data.gps, p, sizeof(GpsData_t));
+  DbUnlock(db.locks.gps);
+}
+
+void DbDataBpsGet(BpsData_t *p)
+{
+  DbLock(db.locks.bps);
+  memcpy(p, &db.data.bps, sizeof(BpsData_t));
+  DbUnlock(db.locks.bps);
+}
+
+void DbDataBpsSet(BpsData_t *p)
+{
+  DbLock(db.locks.bps);
+  memcpy(&db.data.bps, p, sizeof(BpsData_t));
+  DbUnlock(db.locks.bps);
 }
 
 /****************************** END OF FILE **********************************/

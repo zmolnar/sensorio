@@ -134,9 +134,7 @@ void GpsManagerThread(void *p)
           data.time.minute     = nmea.getMinute();
           data.time.second     = nmea.getSecond();
 
-          DbDataGpsLock();
           DbDataGpsSet(&data);
-          DbDataGpsUnlock();
         }
 
         isValid = true;

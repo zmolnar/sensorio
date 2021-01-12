@@ -43,6 +43,17 @@ typedef struct GpsData_s {
   } time;
 } GpsData_t;
 
+typedef struct BpsData_s {
+  struct {
+    uint32_t pressure;
+    uint32_t temp;
+  } raw;
+  struct {
+    uint32_t pressure;
+    uint32_t temp;
+  } cooked;
+} BpsData_t;
+
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL VARIABLES                                           */
 /*****************************************************************************/
@@ -59,10 +70,11 @@ extern "C"
   void DbSaveConfig(void);
 
   // GPS section
-  void DbDataGpsLock(void);
-  void DbDataGpsUnlock(void);
   void DbDataGpsGet(GpsData_t *p);
   void DbDataGpsSet(GpsData_t *p);
+
+  void DbDataBpsGet(BpsData_t *p);
+  void DbDataBpsSet(BpsData_t *p);
 
 #ifdef __cplusplus
 }

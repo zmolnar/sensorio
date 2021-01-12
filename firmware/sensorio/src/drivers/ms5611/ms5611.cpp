@@ -135,8 +135,9 @@ bool MS5611::readCalibration(void)
         prom[i]     = ((uint16_t)msb << 8) + lsb;
         success     = true;
       }
-
+#if 0
       Serial.printf("prom[%d] = %d\n", (int)i, (int)prom[i]);
+#endif      
     }
     twi.endTransmission();
   }
