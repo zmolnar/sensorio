@@ -36,7 +36,7 @@
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
 static TaskHandle_t gpsTask = NULL;
-static uint32_t     counter = 0;
+static bool         isValid = true;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -47,20 +47,17 @@ static uint32_t     counter = 0;
 /*****************************************************************************/
 static void badChecksumHandler(MicroNMEA &nmea)
 {
-  Serial.println("GPS bad checksum");
-  Serial.println(nmea.getSentence());
+  isValid = false;
 }
 
 static void unknownSentenceHandler(MicroNMEA &nmea)
 {
-  Serial.println("GPS unknown sentence");
-  Serial.println(nmea.getSentence());
+  isValid = false;
 }
 
 static void incomingDataISR(void)
 {
   detachInterrupt(UART_RX);
-  counter++;
 
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   vTaskNotifyGiveFromISR(gpsTask, &xHigherPriorityTaskWoken);
@@ -89,20 +86,34 @@ void GpsManagerThread(void *p)
   // Setup the UART interface
   HardwareSerial &gpsSerial = Serial2;
   gpsSerial.begin(9600, SERIAL_8N1, UART_RX, UART_TX);
+  while (!gpsSerial.available()) {
+    delay(1);
+  }
+  while (gpsSerial.available()) {
+    (void)gpsSerial.read();
+  }
+
+  // Set baudrate to 115200
   gpsSerial.println("$PMTK251,115200*1F");
+  while (!gpsSerial.available()) {
+    delay(1);
+  }
+  while (gpsSerial.available()) {
+    (void)gpsSerial.read();
+  }
   gpsSerial.updateBaudRate(115200);
 
   while (1) {
     attachInterrupt(UART_RX, incomingDataISR, FALLING);
+    uint32_t notification = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(5000));
 
-    uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     if (1 == notification) {
       while (!gpsSerial.available()) {
         delay(1);
       }
       while (gpsSerial.available()) {
         char c = gpsSerial.read();
-        if (nmea.process(c)) {
+        if (nmea.process(c) && isValid) {
           DbDataGpsLock();
 
           DbDataGpsSetLocked(HIGH == digitalRead(GPS_3DFIX));
@@ -123,6 +134,8 @@ void GpsManagerThread(void *p)
 
           DbDataGpsUnlock();
         }
+
+        isValid = true;
       }
     }
   }
