@@ -61,6 +61,12 @@ bool BNO055::begin(void)
   return success;
 }
 
+bool BNO055::getDeviceStatus(u8 &status)
+{
+  error = convertError(bno055_get_sys_stat_code(&status));
+  return OK == error;
+}
+
 bool BNO055::setPowerMode(PowerMode mode)
 {
   error = convertError(bno055_set_power_mode(static_cast<u8>(mode)));
@@ -70,6 +76,26 @@ bool BNO055::setPowerMode(PowerMode mode)
 bool BNO055::setOperationMode(OperationMode mode)
 {
   error = convertError(bno055_set_operation_mode(static_cast<u8>(mode)));
+  return OK == error;
+}
+
+bool BNO055::getClockSource(ClockSource &s)
+{
+  u8 src = 0;
+  error = convertError(bno055_get_clk_src(&src));
+
+  if (OK == error) {
+    s = static_cast<ClockSource>(src);
+  } else {
+    s = UNDEF;
+  }
+
+  return OK == error;
+}
+
+bool BNO055::setClockSource(ClockSource s)
+{
+  error = convertError(bno055_set_clk_src(static_cast<u8>(s)));
   return OK == error;
 }
 
@@ -150,87 +176,6 @@ bool BNO055::getLinearAcceleration(LinearAccel_t &data)
 bool BNO055::getGravity(Gravity_t &data)
 {
   error = convertError(bno055_convert_double_gravity_xyz_msq(&data));
-  return OK == error;
-}
-
-bool BNO055::enableInterrupt(Interrupt irq)
-{
-  BNO055_RETURN_FUNCTION_TYPE err = BNO055_ERROR;
-
-  u8 reg = 0;
-  err    = bno055.bus_read(bno055.dev_addr, BNO055_INT_ADDR, &reg, sizeof(u8));
-
-  if (BNO055_SUCCESS == err) {
-    u8 mask = static_cast<u8>(irq);
-    reg |= mask;
-    err = bno055.bus_write(bno055.dev_addr, BNO055_INT_ADDR, &reg, sizeof(u8));
-  }
-
-  error = convertError(err);
-
-  return OK == error;
-}
-
-bool BNO055::disableInterrupt(Interrupt irq)
-{
-  BNO055_RETURN_FUNCTION_TYPE err = BNO055_ERROR;
-
-  u8 reg = 0;
-  err    = bno055.bus_read(bno055.dev_addr, BNO055_INT_ADDR, &reg, sizeof(u8));
-
-  if (BNO055_SUCCESS == err) {
-    u8 mask = static_cast<u8>(irq);
-    reg &= ~mask;
-    err = bno055.bus_write(bno055.dev_addr, BNO055_INT_ADDR, &reg, sizeof(u8));
-  }
-
-  error = convertError(err);
-
-  return OK == error;
-}
-
-bool BNO055::maskInterrupt(Interrupt irq)
-{
-  BNO055_RETURN_FUNCTION_TYPE err = BNO055_ERROR;
-
-  u8 reg = 0;
-  err    = bno055.bus_read(bno055.dev_addr, BNO055_INT_MASK_ADDR, &reg, sizeof(u8));
-
-  if (BNO055_SUCCESS == err) {
-    u8 mask = static_cast<u8>(irq);
-    reg &= ~mask;
-    err = bno055.bus_write(bno055.dev_addr, BNO055_INT_MASK_ADDR, &reg, sizeof(u8));
-  }
-
-  error = convertError(err);
-
-  return OK == error;
-}
-
-bool BNO055::unmaskInterrupt(Interrupt irq)
-{
-  BNO055_RETURN_FUNCTION_TYPE err = BNO055_ERROR;
-
-  u8 reg = 0;
-  err    = bno055.bus_read(bno055.dev_addr, BNO055_INT_MASK_ADDR, &reg, sizeof(u8));
-
-  if (BNO055_SUCCESS == err) {
-    u8 mask = static_cast<u8>(irq);
-    reg |= mask;
-    err = bno055.bus_write(bno055.dev_addr, BNO055_INT_MASK_ADDR, &reg, sizeof(u8));
-  }
-
-  error = convertError(err);
-
-  return OK == error;
-}
-
-bool BNO055::readInterruptStatus(u8 &status)
-{
-  BNO055_RETURN_FUNCTION_TYPE err = BNO055_ERROR;
-  err = bno055.bus_read(bno055.dev_addr, BNO055_INTR_STAT_ADDR, &status, sizeof(u8));
-  error = convertError(err);
-
   return OK == error;
 }
 

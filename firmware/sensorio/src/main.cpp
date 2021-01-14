@@ -43,7 +43,7 @@ void setup()
                           0);
 #endif
 
-#if 0
+#if 1
   xTaskCreatePinnedToCore(ImuManagerThread, "IMU manager", 2048, NULL, PRIO_0_IMU, NULL, 0);
 #endif
 

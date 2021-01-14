@@ -18,7 +18,6 @@
 #define BNO_SCL  16
 #define BNO_SDA  17
 #define BNO_FREQ 400000
-#define BNO_INT  25
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
@@ -31,7 +30,8 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static TwoWire bno055_twi = TwoWire(1);
+static TwoWire      bno055_twi = TwoWire(1);
+static TaskHandle_t imuTask    = NULL;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -79,52 +79,77 @@ static s8 i2c_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
   return (i == cnt) ? BNO055_SUCCESS : BNO055_ERROR;
 }
 
-static void bno_isr(void)
-{
-}
-
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
 void ImuManagerThread(void *p)
 {
+  imuTask = xTaskGetCurrentTaskHandle();
+
   BNO055 bno055 = BNO055(i2c_init, i2c_bus_read, i2c_bus_write, delay);
 
   bool success = false;
+  while (!success) {
+    if (bno055.begin()) {
+      // Switch power mode to NORMAL
+      if (bno055.setPowerMode(BNO055::PowerMode::NORMAL)) {
+        // Enable to use the external crystal
+        if (bno055.setClockSource(BNO055::ClockSource::EXT)) {
+          delay(1000);
+          BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
 
-  if (bno055.begin()) {
-    if (bno055.setPowerMode(BNO055::PowerMode::NORMAL)) {
-      if (bno055.setOperationMode(BNO055::OperationMode::NDOF)) {
-        if (bno055.enableInterrupt(BNO055::Interrupt::ACC_BSX_DRDY)) {
-          if (bno055.unmaskInterrupt(BNO055::Interrupt::ACC_BSX_DRDY)) {
-            attachInterrupt(BNO_INT, bno_isr, RISING);
-            success = true;
-            Serial.println("BNO055 successfully initialized");
+          // Check if the crystal started properly
+          if (bno055.getClockSource(clk)) {
+            if (BNO055::ClockSource::EXT == clk) {
+              // Start embedded firmware
+              if (bno055.setOperationMode(BNO055::OperationMode::NDOF)) {
+                Serial.println("BNO055 is ready");
+                success = true;
+              } else {
+                Serial.println("Failed to set BNO055 operation mode");
+              }
+            } else {
+              Serial.println("Failed to start external crystal");
+            }
           } else {
-            Serial.println("Failed to unmask interrupt");
+            Serial.println("Failed to get external clock source");
           }
         } else {
-          Serial.println("Failed to enable interrupt");
+          Serial.println("Failed to enable external crystal");
         }
       } else {
-        Serial.println("Failed to set BNO005 operation mode");
+        Serial.println("Failed to set BNO005 power mode");
       }
     } else {
-      Serial.println("Failed to set BNO005 power mode");
+      Serial.println("Failed to initialize BNO055");
     }
-  } else {
-    Serial.println("Failed to initialize BNO055");
+
+    if (!success) {
+      delay(1000);
+    }
   }
 
   while (1) {
     if (success) {
-      BNO055::Euler_t euler;
-      if (!bno055.getEulerAngles(euler, BNO055::Unit::DEG)) {
-        Serial.println("Failed to read Euler angles");
+      uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+      if (1 == notification) {
+        u8 status = 0;
+        bno055.getDeviceStatus(status);
+
+        BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
+        bno055.getClockSource(clk);
+
+        BNO055::Euler_t euler;
+        if (bno055.getEulerAngles(euler, BNO055::Unit::DEG)) {
+          Serial.printf("%f/%f/%f\r\n", euler.h, euler.p, euler.r);
+        } else {
+          Serial.println("Failed to read Euler angles");
+        }
+      } else {
       }
+    } else {
+      delay(1000);
     }
-    
-    delay(1000);
   }
 }
 
