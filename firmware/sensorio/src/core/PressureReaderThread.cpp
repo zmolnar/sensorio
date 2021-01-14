@@ -7,6 +7,7 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "PressureReaderThread.h"
+#include "ImuManagerThread.h"
 
 #include <Arduino.h>
 
@@ -20,6 +21,8 @@
 #define BPS_SCL  14
 #define BPS_FREQ 400000
 
+#define SAMPLE_PERIOD_IN_MS 20
+
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
 /*****************************************************************************/
@@ -31,6 +34,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
+static TaskHandle_t bpsTask = NULL;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -39,12 +43,29 @@
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
+static void tick(TimerHandle_t xTimer)
+{
+  (void)xTimer;
+
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  vTaskNotifyGiveFromISR(bpsTask, &xHigherPriorityTaskWoken);
+  if (pdTRUE == xHigherPriorityTaskWoken) {
+    portYIELD_FROM_ISR();
+  }
+
+  vTaskNotifyGiveFromISR(imuTask, &xHigherPriorityTaskWoken);
+  if (pdTRUE == xHigherPriorityTaskWoken) {
+    portYIELD_FROM_ISR();
+  }
+}
 
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
 void PressureReaderThread(void *p)
 {
+  bpsTask = xTaskGetCurrentTaskHandle();
+
   TwoWire ms5611_twi = TwoWire(0);
   MS5611  ms5611     = MS5611(ms5611_twi);
 
@@ -55,22 +76,31 @@ void PressureReaderThread(void *p)
 
   Serial.print("MS5611 is ready\n");
 
+  TimerHandle_t timerHandle;
+  timerHandle = xTimerCreate("data sampling timer",
+                             pdMS_TO_TICKS(SAMPLE_PERIOD_IN_MS),
+                             pdTRUE,
+                             0,
+                             tick);
+  if (pdPASS != xTimerStart(timerHandle, 0)) {
+    Serial.println("Failed to start data sampling timer");
+  }
+
   while (1) {
-    // TODO sync with IMU interrupt
-    delay(1000);
+    uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    if (1 == notification) {
+      bool result = ms5611.convert(MS5611::Osr::OSR_4096);
 
-    bool result = ms5611.convert(MS5611::Osr::OSR_4096);
+      if (result) {
+        BpsData_t data;
+        memset(&data, 0, sizeof(data));
 
-    if (result) {
-      BpsData_t data;
-      memset(&data, 0, sizeof(data));
+        data.raw.temp        = ms5611.getRawTemp();
+        data.raw.pressure    = ms5611.getRawPressure();
+        data.cooked.temp     = ms5611.getCompensatedTemp();
+        data.cooked.pressure = ms5611.getCompensatedPressure();
 
-      data.raw.temp        = ms5611.getRawTemp();
-      data.raw.pressure    = ms5611.getRawPressure();
-      data.cooked.temp     = ms5611.getCompensatedTemp();
-      data.cooked.pressure = ms5611.getCompensatedPressure();
-
-      DbDataBpsSet(&data);
+        DbDataBpsSet(&data);
 
 #if 0
       Serial.print("t_raw : ");
@@ -84,8 +114,11 @@ void PressureReaderThread(void *p)
       Serial.println();
 #endif
 
+      } else {
+        Serial.println("MS5611 conversion error");
+      }
     } else {
-      Serial.println("MS5611 conversion error");
+      Serial.println("BPS task notification failed");
     }
   }
 }

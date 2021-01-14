@@ -30,8 +30,9 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static TwoWire      bno055_twi = TwoWire(1);
-static TaskHandle_t imuTask    = NULL;
+TaskHandle_t imuTask = NULL;
+
+static TwoWire bno055_twi = TwoWire(1);
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -130,25 +131,22 @@ void ImuManagerThread(void *p)
   }
 
   while (1) {
-    if (success) {
-      uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-      if (1 == notification) {
-        u8 status = 0;
-        bno055.getDeviceStatus(status);
+    uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    if (1 == notification) {
+      u8 status = 0;
+      bno055.getDeviceStatus(status);
 
-        BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
-        bno055.getClockSource(clk);
+      BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
+      bno055.getClockSource(clk);
 
-        BNO055::Euler_t euler;
-        if (bno055.getEulerAngles(euler, BNO055::Unit::DEG)) {
-          Serial.printf("%f/%f/%f\r\n", euler.h, euler.p, euler.r);
-        } else {
-          Serial.println("Failed to read Euler angles");
-        }
+      BNO055::Euler_t euler;
+      if (bno055.getEulerAngles(euler, BNO055::Unit::DEG)) {
+        Serial.printf("%f/%f/%f\r\n", euler.h, euler.p, euler.r);
       } else {
+        Serial.println("Failed to read Euler angles");
       }
     } else {
-      delay(1000);
+      Serial.println("IMU task notification failed");
     }
   }
 }
