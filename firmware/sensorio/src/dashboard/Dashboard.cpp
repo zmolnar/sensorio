@@ -23,6 +23,7 @@
 typedef struct Data_s {
   GpsData_t gps;
   BpsData_t bps;
+  ImuData_t imu;
 } Data_t;
 
 typedef struct Config_s {
@@ -34,6 +35,7 @@ typedef struct Locks_s {
   SemaphoreHandle_t config;
   SemaphoreHandle_t gps;
   SemaphoreHandle_t bps;
+  SemaphoreHandle_t imu;
 } Locks_t;
 
 typedef struct Dashboard_s {
@@ -117,12 +119,13 @@ void DbInit(void)
     db.config = defaultConfig;
   }
 
+  db.locks.config = xSemaphoreCreateMutex();
   db.locks.gps    = xSemaphoreCreateMutex();
   db.locks.bps    = xSemaphoreCreateMutex();
-  db.locks.config = xSemaphoreCreateMutex();
+  db.locks.imu    = xSemaphoreCreateMutex();
 
-  if ((NULL == db.locks.gps) || (NULL == db.locks.bps) ||
-      (NULL == db.locks.config)) {
+  if ((NULL == db.locks.config) || (NULL == db.locks.gps) ||
+      (NULL == db.locks.bps) || (NULL == db.locks.imu)) {
     Serial.println("CreateMutex failed");
 
     // TODO write log
@@ -163,6 +166,20 @@ void DbDataBpsSet(BpsData_t *p)
   DbLock(db.locks.bps);
   memcpy(&db.data.bps, p, sizeof(BpsData_t));
   DbUnlock(db.locks.bps);
+}
+
+void DbDataImuGet(ImuData_t *p)
+{
+  DbLock(db.locks.imu);
+  memcpy(p, &db.data.imu, sizeof(ImuData_t));
+  DbUnlock(db.locks.imu);    
+}
+
+void DbDataImuSet(ImuData_t *p)
+{
+  DbLock(db.locks.imu);
+  memcpy(&db.data.imu, p, sizeof(ImuData_t));
+  DbUnlock(db.locks.imu);  
 }
 
 /****************************** END OF FILE **********************************/

@@ -13,7 +13,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
@@ -54,6 +53,45 @@ typedef struct BpsData_s {
   } cooked;
 } BpsData_t;
 
+typedef enum {
+  IMU_SYS_IDLE              = 0,
+  IMU_SYS_ERROR             = 1,
+  IMU_SYS_PERIPHERAL_INIT   = 2,
+  IMU_SYS_INITIALIZING      = 3,
+  IMU_SYS_RUNNING_SELFTEST  = 4,
+  IMU_SYS_RUNNING_FUSION    = 5,
+  IMU_SYS_RUNNING_NO_FUSION = 6,
+  IMU_SYS_UNKNOWN           = 7,
+} ImuSystemStatus_t;
+
+typedef enum {
+  IMU_CLK_INTERNAL,
+  IMU_CLK_EXTERNAL,
+  IMU_CLK_UNKNOWN,
+} ImuClockSource_t;
+
+typedef struct ImuData_s {
+  struct {
+    ImuSystemStatus_t status;
+    ImuClockSource_t  clk;
+  } system;
+  struct {
+    double yaw;
+    double pitch;
+    double roll;
+  } euler;
+  struct {
+    double x;
+    double y;
+    double z;
+  } gravity;
+  struct {
+    double x;
+    double y;
+    double z;
+  } acceleration;
+} ImuData_t;
+
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL VARIABLES                                           */
 /*****************************************************************************/
@@ -69,12 +107,14 @@ extern "C"
   void DbInit(void);
   void DbSaveConfig(void);
 
-  // GPS section
   void DbDataGpsGet(GpsData_t *p);
   void DbDataGpsSet(GpsData_t *p);
 
   void DbDataBpsGet(BpsData_t *p);
   void DbDataBpsSet(BpsData_t *p);
+
+  void DbDataImuGet(ImuData_t *p);
+  void DbDataImuSet(ImuData_t *p);
 
 #ifdef __cplusplus
 }

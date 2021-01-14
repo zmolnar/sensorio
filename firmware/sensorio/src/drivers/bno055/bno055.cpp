@@ -42,6 +42,7 @@ bool BNO055::begin(void)
   bool success = false;
 
   if (init()) {
+    delay(100);
     error = convertError(bno055_init(&bno055));
     if (OK == error) {
       u8 chipId;
@@ -61,9 +62,17 @@ bool BNO055::begin(void)
   return success;
 }
 
-bool BNO055::getDeviceStatus(u8 &status)
+bool BNO055::getDeviceStatus(BNO055::Status &status)
 {
-  error = convertError(bno055_get_sys_stat_code(&status));
+  u8 code = 0;
+  error = convertError(bno055_get_sys_stat_code(&code));
+
+  if (OK == error) {
+    status = static_cast<Status>(code);
+  } else {
+    status = BNO055::Status::SYS_UNKNOWN;
+  }
+
   return OK == error;
 }
 

@@ -65,6 +65,17 @@ public:
     NDOF         = BNO055_OPERATION_MODE_NDOF,
   };
 
+  enum Status {
+    SYS_IDLE              = 0,
+    SYS_ERROR             = 1,
+    SYS_PERIPHERAL_INIT   = 2,
+    SYS_INITIALIZING      = 3,
+    SYS_RUNNING_SELFTEST  = 4,
+    SYS_RUNNING_FUSION    = 5,
+    SYS_RUNNING_NO_FUSION = 6,
+    SYS_UNKNOWN           = 7,
+  };
+
   enum Unit {
     // Acceleration units
     MSQ,    // Meter per seconds square
@@ -117,7 +128,7 @@ public:
   }
 
   bool  begin(void);
-  bool  getDeviceStatus(u8 &status);
+  bool  getDeviceStatus(BNO055::Status &status);
   bool  setPowerMode(PowerMode mode);
   bool  setOperationMode(OperationMode mode);
   bool  getClockSource(ClockSource &s);

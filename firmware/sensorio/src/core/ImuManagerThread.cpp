@@ -10,6 +10,7 @@
 #include <Wire.h>
 
 #include "ImuManagerThread.h"
+#include "dashboard/Dashboard.h"
 #include "drivers/bno055/bno055.h"
 
 /*****************************************************************************/
@@ -133,18 +134,82 @@ void ImuManagerThread(void *p)
   while (1) {
     uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     if (1 == notification) {
-      u8 status = 0;
+      ImuData_t data;
+      memset(&data, 0, sizeof(data));
+
+      BNO055::Status status = BNO055::Status::SYS_UNKNOWN;
       bno055.getDeviceStatus(status);
+      switch(status) {
+        case BNO055::Status::SYS_IDLE:
+          data.system.status = IMU_SYS_IDLE;
+          break;
+        case BNO055::Status::SYS_ERROR:
+          data.system.status = IMU_SYS_ERROR;
+          break;
+        case BNO055::Status::SYS_PERIPHERAL_INIT:
+          data.system.status = IMU_SYS_PERIPHERAL_INIT;
+          break;
+        case BNO055::Status::SYS_INITIALIZING:
+          data.system.status = IMU_SYS_INITIALIZING;
+          break;
+        case BNO055::Status::SYS_RUNNING_SELFTEST:
+          data.system.status = IMU_SYS_RUNNING_SELFTEST;
+          break;
+        case BNO055::Status::SYS_RUNNING_FUSION:
+          data.system.status = IMU_SYS_RUNNING_FUSION;
+          break;
+        case BNO055::Status::SYS_RUNNING_NO_FUSION:
+          data.system.status = IMU_SYS_RUNNING_NO_FUSION;
+          break;
+        default:
+          data.system.status = IMU_SYS_UNKNOWN;
+          break;        
+      }
 
       BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
       bno055.getClockSource(clk);
+      switch (clk) {
+      case BNO055::ClockSource::INT:
+        data.system.clk = IMU_CLK_INTERNAL;
+        break;
+      case BNO055::ClockSource::EXT:
+        data.system.clk = IMU_CLK_EXTERNAL;
+        break;
+      default:
+        data.system.clk = IMU_CLK_UNKNOWN;
+      }
 
       BNO055::Euler_t euler;
       if (bno055.getEulerAngles(euler, BNO055::Unit::DEG)) {
-        Serial.printf("%f/%f/%f\r\n", euler.h, euler.p, euler.r);
-      } else {
-        Serial.println("Failed to read Euler angles");
+        data.euler.yaw   = euler.h;
+        data.euler.pitch = euler.p;
+        data.euler.roll  = euler.r;
       }
+
+      BNO055::Gravity_t gravity;
+      if (bno055.getGravity(gravity)) {
+        data.gravity.x = gravity.x;
+        data.gravity.y = gravity.y;
+        data.gravity.z = gravity.z;
+      }
+
+      BNO055::LinearAccel_t acc;
+      if (bno055.getLinearAcceleration(acc)) {
+        data.acceleration.x = acc.x;
+        data.acceleration.y = acc.y;
+        data.acceleration.z = acc.z;
+      }
+
+      // TODO calculate vertical acceleration
+
+      // TODO update calibration status
+
+      DbDataImuSet(&data);
+
+#if 0
+        Serial.printf("%f/%f/%f\r\n", euler.h, euler.p, euler.r);
+#endif
+
     } else {
       Serial.println("IMU task notification failed");
     }
