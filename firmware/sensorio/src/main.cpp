@@ -58,8 +58,8 @@ void setup()
 #endif
 
   // Threads assigned to Core 1
-#if 0
-  xTaskCreatePinnedToCore(LvglThread, "LVGL thread", 2048, NULL, PRIO_1_LVGL, NULL, 1);
+#if 1
+  xTaskCreatePinnedToCore(LvglThread, "LVGL thread", 8192, NULL, PRIO_1_LVGL, NULL, 1);
 #endif
 }
 

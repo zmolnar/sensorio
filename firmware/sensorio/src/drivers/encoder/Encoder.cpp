@@ -17,7 +17,7 @@
 /*****************************************************************************/
 #define ENC_LEFT  23
 #define ENC_RIGHT 12
-#define ENC_OK    4
+#define ENC_OK    36
 
 #define ENC_SHUTDOWN_DELAY     pdMS_TO_TICKS(5000)
 #define ENC_TIMER_START_PERIOD pdMS_TO_TICKS(300)

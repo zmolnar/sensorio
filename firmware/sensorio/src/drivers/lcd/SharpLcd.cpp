@@ -57,14 +57,17 @@ static bool    vcomUpdateNeeded = false;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
-static void SharpLcdFlushCb(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p)
+static void SharpLcdFlushCb(lv_disp_drv_t *  disp_drv,
+                            const lv_area_t *area,
+                            lv_color_t *     color_p)
 {
-  // Transform area from LVGL's coordinate system to the drivers' coordinate system.
+  // Transform area from LVGL's coordinate system to the drivers' coordinate
+  // system.
   lv_area_t t_area;
   t_area.x1 = area->y1;
-  t_area.y1 = SHARP_LCD_VER_RES - 1 - area->x1;
+  t_area.y1 = SHARP_LCD_VER_RES - 1 - area->x2;
   t_area.x2 = area->y2;
-  t_area.y2 = SHARP_LCD_VER_RES - 1 - area->x2;
+  t_area.y2 = SHARP_LCD_VER_RES - 1 - area->x1;
 
   SPISettings cfg = SPISettings(LCD_SPI_FREQ, LCD_SPI_BYTEORDER, LCD_SPI_MODE);
   lcd_spi.beginTransaction(cfg);
@@ -73,7 +76,7 @@ static void SharpLcdFlushCb(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_c
   vcomUpdateNeeded = false;
 
   for (size_t line = t_area.y1; line < t_area.y2; ++line) {
-    size_t   length = (t_area.x2 - t_area.x1) / 8;
+    size_t   length = (t_area.x2 - t_area.x1 + 1) / 8;
     uint8_t *data   = (uint8_t *)color_p + ((line - t_area.y1) * length);
 
     configASSERT(length == (SHARP_LCD_HOR_RES / 8));
@@ -102,8 +105,11 @@ static void SharpLcdSetPxCb(lv_disp_drv_t *disp_drv,
                             lv_color_t     color,
                             lv_opa_t       opa)
 {
-  size_t  i    = (buf_w >> 3) * y + (x >> 3);
-  uint8_t mask = 0b10000000 >> (x % 8);
+  lv_coord_t xf = y;
+  lv_coord_t yf = buf_w - 1 - x;
+
+  size_t  i    = (yf * (SHARP_LCD_HOR_RES / 8)) + (xf >> 3);
+  uint8_t mask = 0b00000001 << (xf % 8);
 
   if (lv_color_brightness(color) > 128) {
     buf[i] |= mask;
@@ -167,7 +173,8 @@ void SharpLcdToggleVcom(void)
 void SharpLcdSendVcomIfNeeded(void)
 {
   if (vcomUpdateNeeded) {
-    SPISettings cfg = SPISettings(LCD_SPI_FREQ, LCD_SPI_BYTEORDER, LCD_SPI_MODE);
+    SPISettings cfg;
+    cfg = SPISettings(LCD_SPI_FREQ, LCD_SPI_BYTEORDER, LCD_SPI_MODE);
     lcd_spi.beginTransaction(cfg);
     digitalWrite(LCD_CS, HIGH);
     lcd_spi.write(BIT_VCOM);

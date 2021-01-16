@@ -133,7 +133,7 @@ void ImuManagerThread(void *p)
 
   while (1) {
     uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    if (1 == notification) {
+    if (0 < notification) {
       ImuData_t data;
       memset(&data, 0, sizeof(data));
 
