@@ -5,6 +5,7 @@
 #include "core/LvglThread.h"
 #include "core/PressureReaderThread.h"
 #include "dashboard/Dashboard.h"
+#include "Power.h"
 
 typedef enum {
   PRIO_0_INVALID = 0,
@@ -25,14 +26,10 @@ void setup()
   Serial.println();
   Serial.println("Sensorio started ...");
 
+  PowerStart();
+  
   DbInit();
 
-  pinMode(4, OUTPUT);
-  digitalWrite(4, HIGH);
-
-  Serial.println("power-on");
-
-  // Threads assigned to Core 0
 #if 1
   xTaskCreatePinnedToCore(PressureReaderThread,
                           "pressure reader",
@@ -44,22 +41,18 @@ void setup()
 #endif
 
 #if 1
-  xTaskCreatePinnedToCore(ImuManagerThread, "IMU manager", 4096, NULL, PRIO_0_IMU, NULL, 0);
+  xTaskCreatePinnedToCore(
+      ImuManagerThread, "IMU manager", 4096, NULL, PRIO_0_IMU, NULL, 0);
 #endif
 
 #if 1
-  xTaskCreatePinnedToCore(GpsManagerThread, 
-                          "GPS thread", 
-                          2048, 
-                          NULL, 
-                          PRIO_0_GPS, 
-                          NULL, 
-                          0);
+  xTaskCreatePinnedToCore(
+      GpsManagerThread, "GPS thread", 2048, NULL, PRIO_0_GPS, NULL, 0);
 #endif
 
-  // Threads assigned to Core 1
 #if 1
-  xTaskCreatePinnedToCore(LvglThread, "LVGL thread", 8192, NULL, PRIO_1_LVGL, NULL, 1);
+  xTaskCreatePinnedToCore(
+      LvglThread, "LVGL thread", 8192, NULL, PRIO_1_LVGL, NULL, 1);
 #endif
 }
 

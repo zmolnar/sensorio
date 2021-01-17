@@ -1,10 +1,10 @@
 /**
- * @file LvglThread.h
+ * @file Power.h
  * @brief
  */
 
-#ifndef LVGL_THREAD_H
-#define LVGL_THREAD_H
+#ifndef POWER_H
+#define POWER_H
 
 /*****************************************************************************/
 /* INCLUDES                                                                  */
@@ -29,9 +29,19 @@
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
-void LvglThread(void *p);
-void LvglStartupFinished(void);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
-#endif /* LVGL_THREAD_H */
+void PowerStart(void);
+void PowerStartupFinished(void);
+void PowerStop(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* POWER_H */
 
 /****************************** END OF FILE **********************************/
