@@ -8,9 +8,13 @@
 /*****************************************************************************/
 #include "Sensorio.h"
 
+#if defined(SIMULATOR)
+#include <stdio.h>
+#else
 #include "Power.h"
-
 #include "core/LvglThread.h"
+#endif
+
 #include "screens/Startup.h"
 
 /*****************************************************************************/
@@ -48,7 +52,11 @@ void SensorioStart(void)
 
 void SensorioStartupFinished(void)
 {
+#if defined(SIMULATOR)
+  printf("SIM: Startup finished\n");
+#else
   PowerStartupFinished();
+#endif
 }
 
 /****************************** END OF FILE **********************************/
