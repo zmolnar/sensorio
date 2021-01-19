@@ -100,7 +100,7 @@ void LvglThread(void *p)
 void LvglStartupFinished(void)
 {
   EncoderInit();
-  EncoderRegisterDriver();
+  EncoderRegisterDriver(SensorioGetEncoderGroup());
 }
 
 /****************************** END OF FILE **********************************/

@@ -9,6 +9,7 @@
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
+#include "lvgl.h"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -25,6 +26,9 @@
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL VARIABLES                                           */
 /*****************************************************************************/
+#if defined(SIMULATOR)
+extern lv_group_t *encgroup;
+#endif
 
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
@@ -34,12 +38,14 @@ extern "C"
 {
 #endif
 
-  void SensorioStart(void);
-  void SensorioStartupFinished(void);
+  void        SensorioStart(void);
+  void        SensorioStartupFinished(void);
+  lv_group_t *SensorioGetEncoderGroup(void);
+  void        SensorioConfirmExit(void);
 
 #ifdef __cplusplus
 }
-#endif  
+#endif
 
 #endif /* SENSORIO_H */
 

@@ -9,6 +9,7 @@
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
+#include "lvgl.h"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -32,7 +33,7 @@
 extern "C"
 {
   void EncoderInit(void);
-  void EncoderRegisterDriver(void);
+  void EncoderRegisterDriver(lv_group_t *group);
 }
 
 #endif /* ENCODER_H */

@@ -2,7 +2,7 @@
 #include "lvgl.h"
 #include "app_hal.h"
 
-#include "Sensorio.h"
+#include "gui/Sensorio.h"
 
 int main(void)
 {

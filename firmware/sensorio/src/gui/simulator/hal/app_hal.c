@@ -1,11 +1,12 @@
 #include <unistd.h>
+#include <stdio.h>
 #define SDL_MAIN_HANDLED        /*To fix SDL's "undefined reference to WinMain" issue*/
 #include <SDL2/SDL.h>
-#include "display/monitor.h"
-#include "indev/mouse.h"
-#include "indev/mousewheel.h"
-#include "indev/keyboard.h"
 
+#include "../drivers/monitor.h"
+#include "../drivers/keyboard.h"
+
+#include "gui/Sensorio.h"
 
 /**
  * A task to measure the elapsed time for LittlevGL
@@ -45,25 +46,16 @@ void hal_setup(void)
     //disp_drv.disp_map = monitor_map;        /*Used when `LV_VDB_SIZE == 0` in lv_conf.h (unbuffered drawing)*/
     lv_disp_drv_register(&disp_drv);
 
-    /* Add the mouse as input device
-     * Use the 'mouse' driver which reads the PC's mouse*/
-    mouse_init();
-    lv_indev_drv_t indev_drv;
-    lv_indev_drv_init(&indev_drv);          /*Basic initialization*/
-    indev_drv.type = LV_INDEV_TYPE_POINTER;
-    indev_drv.read_cb = mouse_read;         /*This function will be called periodically (by the library) to get the mouse position and state*/
-    lv_indev_drv_register(&indev_drv);
-
-#if 0
-    enc_group = lv_group_create();
-    
+#if 1
     keyboard_init();
+    encgroup = lv_group_create();
+
     lv_indev_drv_t indev_enc_drv;
     lv_indev_drv_init(&indev_enc_drv);
     indev_enc_drv.type = LV_INDEV_TYPE_ENCODER;
     indev_enc_drv.read_cb = encoder_read;         /*This function will be called periodically (by the library) to get the mouse position and state*/
     lv_indev_t *enc_indev = lv_indev_drv_register(&indev_enc_drv);
-    lv_indev_set_group(enc_indev, enc_group);
+    lv_indev_set_group(enc_indev, encgroup);
 #endif
 
     /* Tick init.

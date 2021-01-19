@@ -52,11 +52,13 @@ static void bar_increment(lv_task_t *t)
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
-lv_obj_t *startup_screen_create(void)
+lv_obj_t *startup_screen_create(lv_style_t *style)
 {
   lv_obj_t *scr = lv_obj_create(NULL, NULL);
+  lv_obj_add_style(scr, LV_STATE_DEFAULT, style);
 
   lv_obj_t *cont = lv_cont_create(scr, NULL);
+  lv_obj_add_style(cont, LV_STATE_DEFAULT, style);
   lv_obj_set_auto_realign(cont, true);
   lv_obj_align_origo(cont, NULL, LV_ALIGN_CENTER, 0, 0);
   lv_cont_set_fit(cont, LV_FIT_PARENT);

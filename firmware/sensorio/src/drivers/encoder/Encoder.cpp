@@ -12,6 +12,7 @@
 #include <Arduino.h>
 
 #include "Power.h"
+#include "gui/Sensorio.h"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -130,7 +131,7 @@ static void counterTick(TimerHandle_t xTimer)
 static void shutdownCallback(TimerHandle_t xTimer)
 {
   Serial.println("Shutdown!!!");
-  PowerStop();
+  SensorioConfirmExit();
 }
 
 static void encoderLeftISR(void)
@@ -284,7 +285,7 @@ void EncoderInit(void)
   attachInterrupt(ENC_OK, encoderOkISR, CHANGE);
 }
 
-void EncoderRegisterDriver(void)
+void EncoderRegisterDriver(lv_group_t *group)
 {
   lv_indev_drv_t enc_drv;
   lv_indev_drv_init(&enc_drv);
@@ -292,7 +293,7 @@ void EncoderRegisterDriver(void)
   enc_drv.read_cb       = EncoderRead;
   lv_indev_t *enc_indev = lv_indev_drv_register(&enc_drv);
 
-  encoder.group = lv_group_create();
+  encoder.group = group;
   lv_indev_set_group(enc_indev, encoder.group);
 }
 
