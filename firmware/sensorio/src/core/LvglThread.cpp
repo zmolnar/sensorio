@@ -33,6 +33,7 @@
 /*****************************************************************************/
 static TaskHandle_t  lvglTask = NULL;
 static TimerHandle_t timerHandle;
+static bool          shutdownRequested = false;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -77,7 +78,7 @@ void LvglThread(void *p)
   // Start GUI application
   SensorioStart();
 
-  lvglTask = xTaskGetCurrentTaskHandle();
+  lvglTask    = xTaskGetCurrentTaskHandle();
   timerHandle = xTimerCreate(
       "lvgl tick timer", pdMS_TO_TICKS(LVGL_TICK_IN_MS), pdTRUE, 0, tick);
   if (pdPASS != xTimerStart(timerHandle, 0)) {
@@ -90,6 +91,10 @@ void LvglThread(void *p)
     if (0 < notification) {
       lv_tick_inc(notification * LVGL_TICK_IN_MS);
       lv_task_handler();
+      if (shutdownRequested) {
+        SensorioConfirmExit();
+        shutdownRequested = false;
+      }
       SharpLcdSendVcomIfNeeded();
     } else {
       Serial.println("lvgl timeout");
@@ -101,6 +106,11 @@ void LvglStartupFinished(void)
 {
   EncoderInit();
   EncoderRegisterDriver(SensorioGetEncoderGroup());
+}
+
+void LvglShutdownRequested(void)
+{
+  shutdownRequested = true;
 }
 
 /****************************** END OF FILE **********************************/

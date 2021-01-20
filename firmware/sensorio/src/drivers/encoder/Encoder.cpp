@@ -11,8 +11,8 @@
 #include "lvgl.h"
 #include <Arduino.h>
 
+#include "core/LvglThread.h"
 #include "Power.h"
-#include "gui/Sensorio.h"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -131,7 +131,7 @@ static void counterTick(TimerHandle_t xTimer)
 static void shutdownCallback(TimerHandle_t xTimer)
 {
   Serial.println("Shutdown!!!");
-  SensorioConfirmExit();
+  LvglShutdownRequested();
 }
 
 static void encoderLeftISR(void)

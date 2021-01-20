@@ -31,6 +31,7 @@
 /*****************************************************************************/
 void LvglThread(void *p);
 void LvglStartupFinished(void);
+void LvglShutdownRequested(void);
 
 #endif /* LVGL_THREAD_H */
 
