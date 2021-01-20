@@ -133,7 +133,7 @@ void keyboard_handler(SDL_Event * event)
                 case SDLK_RIGHT:
                     enc_diff++;
                     break;
-                defailt:
+                default:
                     break;
             }
             break;

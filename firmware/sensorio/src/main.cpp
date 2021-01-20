@@ -52,7 +52,7 @@ void setup()
 
 #if 1
   xTaskCreatePinnedToCore(
-      LvglThread, "LVGL thread", 8192, NULL, PRIO_1_LVGL, NULL, 1);
+      LvglThread, "LVGL thread", 16384, NULL, PRIO_1_LVGL, NULL, 1);
 #endif
 }
 

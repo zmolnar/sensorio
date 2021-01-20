@@ -16,8 +16,10 @@
 #include "core/LvglThread.h"
 #endif
 
+#include "screens/PressureSensorData.h"
 #include "screens/Startup.h"
 #include "screens/Variometer.h"
+
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -44,6 +46,10 @@ static lv_group_t *encgroup;
 // Screen objects
 lv_obj_t *startup;
 lv_obj_t *vario;
+lv_obj_t *bpsdata;
+
+// Refresher task
+lv_task_t *task;
 
 // Default style for the screens
 static lv_style_t no_border_style;
@@ -58,21 +64,35 @@ static const char *exitMsgButtons[] = {"Yes", "Cancel", ""};
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
+static void refresh_task(lv_task_t *t)
+{
+  lv_event_send_refresh(lv_scr_act());
+}
+
 static void group_focus_cb(lv_group_t *g)
 {
   lv_obj_t *obj = lv_group_get_focused(g);
 
   if (vario == obj) {
     lv_scr_load(vario);
+  } else if (bpsdata == obj) {
+    lv_scr_load(bpsdata);
   } else {
     ;
   }
+
+  lv_event_send_refresh(lv_scr_act());
 }
 
 static void exit_msgbox_event_handler(lv_obj_t *obj, lv_event_t event)
 {
   if (LV_EVENT_VALUE_CHANGED == event) {
     uint16_t id = lv_msgbox_get_active_btn(obj);
+
+#if 0
+    const char *btext = lv_msgbox_get_active_btn_text(obj);
+    printf("id:%d btext:%x\n", id, (uint32_t)btext);
+#endif
 
     if (0 == id) {
       lv_obj_clean(lv_scr_act());
@@ -81,8 +101,8 @@ static void exit_msgbox_event_handler(lv_obj_t *obj, lv_event_t event)
       lv_group_remove_all_objs(encgroup);
       lv_group_add_obj(encgroup, vario);
       lv_group_focus_obj(vario);
+      task = lv_task_create(refresh_task, 100, LV_TASK_PRIO_LOW, NULL);
     }
-
     lv_obj_del(obj);
   }
 }
@@ -96,7 +116,6 @@ void SensorioStart(void)
   lv_style_set_border_width(&no_border_style, LV_STATE_DEFAULT, 0);
 
   startup = startup_screen_create(&no_border_style);
-  vario   = variometer_screen_create(&no_border_style);
 
 #if defined(SIMULATOR)
   // In the simulator app_hal.c will create the group.
@@ -112,8 +131,15 @@ void SensorioStart(void)
 void SensorioStartupFinished(void)
 {
   lv_obj_del(startup);
+
+  vario   = variometer_screen_create(&no_border_style);
+  bpsdata = bps_data_screen_create(&no_border_style);
+
   lv_group_add_obj(encgroup, vario);
+  lv_group_add_obj(encgroup, bpsdata);
   lv_group_focus_obj(vario);
+
+  task = lv_task_create(refresh_task, 100, LV_TASK_PRIO_LOW, NULL);
 
   PowerStartupFinished();
 }
@@ -125,6 +151,8 @@ lv_group_t *SensorioGetEncoderGroup(void)
 
 void SensorioConfirmExit(void)
 {
+  lv_task_del(task);
+
   lv_obj_t *mbox = lv_msgbox_create(lv_scr_act(), NULL);
   lv_msgbox_set_text(mbox, "Do you want to exit?");
   lv_msgbox_add_btns(mbox, exitMsgButtons);

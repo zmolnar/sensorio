@@ -16,10 +16,10 @@ lv_obj_t * variometer_screen_create(lv_style_t *style)
     lv_obj_t *act_vario = lv_label_create(scr, NULL);
     static lv_style_t act_vario_style;
     lv_style_init(&act_vario_style);
-    //lv_style_set_text_font(&act_vario_style, LV_STATE_DEFAULT, &lv_font_montserrat_48);
+    lv_style_set_text_font(&act_vario_style, LV_STATE_DEFAULT, &lv_font_montserrat_48);
     lv_obj_add_style(act_vario, LV_LABEL_PART_MAIN, &act_vario_style);
-    lv_label_set_text(act_vario, "+ 3.1");
     lv_obj_align(act_vario, scr, LV_ALIGN_IN_TOP_LEFT, 0, 0);
+    lv_label_set_text(act_vario, "");
 
     // C2 for maxline and label
     // lv_obj_t *c2 = lv_cont_create(scr, NULL);

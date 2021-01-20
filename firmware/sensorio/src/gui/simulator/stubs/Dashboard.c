@@ -3,10 +3,17 @@
  * @brief
  */
 
+#if !defined(SIMULATOR)
+#error Use this file only in the simulator!
+#endif
+
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "dashboard/Dashboard.h"
+
+#include <stdio.h>
+#include <string.h>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -56,7 +63,11 @@ void DbDataGpsSet(GpsData_t *p)
 
 void DbDataBpsGet(BpsData_t *p)
 {
+  static uint8_t offset = 0;
+
   memset(p, 0, sizeof(*p));
+  p->cooked.pressure = 101325 + (offset++ % 20);
+  p->cooked.temp = 2450;
 }
 
 void DbDataBpsSet(BpsData_t *p)
