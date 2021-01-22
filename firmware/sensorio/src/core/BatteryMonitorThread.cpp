@@ -37,6 +37,31 @@
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
+static BatteryStatus_t detectStatus(void) {
+  BatteryStatus_t status;
+  
+  pinMode(BAT_STAT, INPUT_PULLDOWN);
+  uint8_t low = digitalRead(BAT_STAT);
+
+  pinMode(BAT_STAT, INPUT_PULLUP);
+  uint8_t high = digitalRead(BAT_STAT);
+
+  pinMode(BAT_STAT, INPUT);
+  uint8_t floating = digitalRead(BAT_STAT);
+
+  if ((LOW == low) && (HIGH == high)) {
+    status = BAT_DISCHARGE;
+  } else if (LOW == floating) {
+    status = BAT_CHARGE;
+  } else if (HIGH == floating) {
+    status = BAT_CHARGE_FINISHED;
+  } else {
+    ;
+  }
+
+  return status;
+}
+
 static uint32_t voltage2percentage(double voltage)
 {
   uint32_t p = 0;
@@ -98,6 +123,7 @@ void BatteryMonitorThread(void *p)
     double voltage = ((value / 4096.0) * 3.57) * (330.0 / 220.0);
     
     Battery_t data;
+    data.status = detectStatus();
     data.voltage = voltage;
     data.percentage = voltage2percentage(voltage);
     DbDataBatterySet(&data);
