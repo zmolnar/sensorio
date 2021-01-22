@@ -67,7 +67,7 @@ void DbDataBpsGet(BpsData_t *p)
 
   memset(p, 0, sizeof(*p));
   p->cooked.pressure = 101325 + (offset++ % 20);
-  p->cooked.temp = 2450;
+  p->cooked.temp     = 2450;
 }
 
 void DbDataBpsSet(BpsData_t *p)
@@ -80,6 +80,18 @@ void DbDataImuGet(ImuData_t *p)
 }
 
 void DbDataImuSet(ImuData_t *p)
+{
+}
+
+void DbDataBatteryGet(Battery_t *p)
+{
+  p->voltage    = 4.08;
+  p->percentage = 80;
+  p->status     = BAT_CHARGE_FINISHED;
+  p->value      = 2929;
+}
+
+void DbDataBatterySet(Battery_t *p)
 {
 }
 

@@ -56,7 +56,7 @@ static BatteryStatus_t detectStatus(void) {
   } else if (HIGH == floating) {
     status = BAT_CHARGE_FINISHED;
   } else {
-    ;
+    status = BAT_INVALID;
   }
 
   return status;
@@ -126,6 +126,7 @@ void BatteryMonitorThread(void *p)
     data.status = detectStatus();
     data.voltage = voltage;
     data.percentage = voltage2percentage(voltage);
+    data.value = (uint32_t)value;
     DbDataBatterySet(&data);
 
     delay(5000);

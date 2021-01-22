@@ -96,12 +96,14 @@ typedef enum {
   BAT_DISCHARGE,
   BAT_CHARGE,
   BAT_CHARGE_FINISHED,
+  BAT_INVALID,
 } BatteryStatus_t;
 
 typedef struct Battery_s {
   BatteryStatus_t status;
   double voltage;
   uint32_t percentage;
+  uint32_t value;
 } Battery_t;
 
 /*****************************************************************************/
