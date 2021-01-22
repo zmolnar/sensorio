@@ -17,6 +17,7 @@
 #endif
 
 #include "screens/PressureSensorData.h"
+#include "screens/GpsData.h"
 #include "screens/ImuData.h"
 #include "screens/Startup.h"
 #include "screens/SystemStatus.h"
@@ -49,6 +50,7 @@ lv_obj_t *startup;
 lv_obj_t *vario;
 lv_obj_t *bpsdata;
 lv_obj_t *imudata;
+lv_obj_t *gpsdata;
 lv_obj_t *sysstat;
 
 // Refresher task
@@ -82,6 +84,8 @@ static void group_focus_cb(lv_group_t *g)
     lv_scr_load(bpsdata);
   } else if (imudata == obj) {
     lv_scr_load(imudata);
+  } else if (gpsdata == obj) {
+    lv_scr_load(gpsdata);
   } else if (sysstat == obj) {
     lv_scr_load(sysstat);
   } else {
@@ -109,6 +113,7 @@ static void exit_msgbox_event_handler(lv_obj_t *obj, lv_event_t event)
       lv_group_add_obj(encgroup, vario);
       lv_group_add_obj(encgroup, bpsdata);
       lv_group_add_obj(encgroup, imudata);
+      lv_group_add_obj(encgroup, gpsdata);
       lv_group_add_obj(encgroup, sysstat);
       lv_group_focus_obj(vario);
       task = lv_task_create(refresh_task, 100, LV_TASK_PRIO_LOW, NULL);
@@ -145,11 +150,13 @@ void SensorioStartupFinished(void)
   vario   = variometer_screen_create(&no_border_style);
   bpsdata = bps_data_screen_create(&no_border_style);
   imudata = imu_data_screen_create(&no_border_style);
+  gpsdata = gps_data_screen_create(&no_border_style);
   sysstat = system_status_screen_create(&no_border_style);
 
   lv_group_add_obj(encgroup, vario);
   lv_group_add_obj(encgroup, bpsdata);
   lv_group_add_obj(encgroup, imudata);
+  lv_group_add_obj(encgroup, gpsdata);
   lv_group_add_obj(encgroup, sysstat);
   lv_group_focus_obj(vario);
 
