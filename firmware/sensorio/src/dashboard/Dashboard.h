@@ -92,6 +92,11 @@ typedef struct ImuData_s {
   } acceleration;
 } ImuData_t;
 
+typedef struct Battery_s {
+  double voltage;
+  uint32_t percentage;
+} Battery_t;
+
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL VARIABLES                                           */
 /*****************************************************************************/
@@ -115,6 +120,9 @@ extern "C"
 
   void DbDataImuGet(ImuData_t *p);
   void DbDataImuSet(ImuData_t *p);
+
+  void DbDataBatteryGet(Battery_t *p);
+  void DbDataBatterySet(Battery_t *p);
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,6 @@
 #include <Arduino.h>
 
+#include "core/BatteryMonitorThread.h"
 #include "core/GpsManagerThread.h"
 #include "core/ImuManagerThread.h"
 #include "core/LvglThread.h"
@@ -12,6 +13,7 @@ typedef enum {
   PRIO_0_GPS,
   PRIO_0_IMU,
   PRIO_0_PRESS,
+  PRIO_0_BATTMON,
 } ThreadPrio_Core0_t;
 
 typedef enum {
@@ -48,6 +50,11 @@ void setup()
 #if 1
   xTaskCreatePinnedToCore(
       GpsManagerThread, "GPS thread", 2048, NULL, PRIO_0_GPS, NULL, 0);
+#endif
+
+#if 1
+  xTaskCreatePinnedToCore(
+      BatteryMonitorThread, "Battery thread", 2048, NULL, PRIO_0_BATTMON, NULL, 0);
 #endif
 
 #if 1
