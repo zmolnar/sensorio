@@ -26,6 +26,7 @@ typedef struct Data_s {
   FilterOutput_t filter;
   ImuData_t      imu;
   Battery_t      battery;
+  Board_t        board;
 } Data_t;
 
 typedef struct Config_s {
@@ -40,6 +41,7 @@ typedef struct Locks_s {
   SemaphoreHandle_t filter;
   SemaphoreHandle_t imu;
   SemaphoreHandle_t battery;
+  SemaphoreHandle_t board;
 } Locks_t;
 
 typedef struct Dashboard_s {
@@ -129,10 +131,12 @@ void DbInit(void)
   db.locks.filter  = xSemaphoreCreateMutex();
   db.locks.imu     = xSemaphoreCreateMutex();
   db.locks.battery = xSemaphoreCreateMutex();
+  db.locks.board   = xSemaphoreCreateMutex();
 
   if ((NULL == db.locks.config) || (NULL == db.locks.gps) ||
       (NULL == db.locks.bps) || (NULL == db.locks.filter) ||
-      (NULL == db.locks.imu) || (NULL == db.locks.battery)) {
+      (NULL == db.locks.imu) || (NULL == db.locks.battery) ||
+      (NULL == db.locks.board)) {
     Serial.println("CreateMutex failed");
 
     // TODO write log
@@ -179,7 +183,7 @@ void DbDataFilterOutputGet(FilterOutput_t *p)
 {
   DbLock(db.locks.filter);
   memcpy(p, &db.data.filter, sizeof(FilterOutput_t));
-  DbUnlock(db.locks.filter);  
+  DbUnlock(db.locks.filter);
 }
 
 void DbDataFilterOutputSet(FilterOutput_t *p)
@@ -215,6 +219,20 @@ void DbDataBatterySet(Battery_t *p)
   DbLock(db.locks.battery);
   memcpy(&db.data.battery, p, sizeof(Battery_t));
   DbUnlock(db.locks.battery);
+}
+
+void DbDataBoardGet(Board_t *p)
+{
+  DbLock(db.locks.board);
+  memcpy(p, &db.data.board, sizeof(Board_t));
+  DbUnlock(db.locks.board);  
+}
+
+void DbDataBoardSet(Board_t *p)
+{
+  DbLock(db.locks.board);
+  memcpy(&db.data.board, p, sizeof(Board_t));
+  DbUnlock(db.locks.board);    
 }
 
 /****************************** END OF FILE **********************************/

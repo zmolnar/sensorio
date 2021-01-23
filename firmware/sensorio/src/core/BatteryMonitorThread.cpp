@@ -15,8 +15,9 @@
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
-#define BAT_ADC  32
-#define BAT_STAT 39
+#define BAT_ADC     32
+#define USB_PRESENT 34
+#define BAT_STAT    39
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
@@ -37,26 +38,27 @@
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
-static BatteryStatus_t detectStatus(void) {
+static bool detectUSB(void)
+{
+  return (HIGH == digitalRead(USB_PRESENT));
+}
+
+static bool detectSTAT(void)
+{
+  return (HIGH == digitalRead(BAT_STAT));
+}
+
+static BatteryStatus_t decodeStatus(void)
+{
   BatteryStatus_t status;
-  
-  pinMode(BAT_STAT, INPUT_PULLDOWN);
-  uint8_t low = digitalRead(BAT_STAT);
 
-  pinMode(BAT_STAT, INPUT_PULLUP);
-  uint8_t high = digitalRead(BAT_STAT);
+  bool usbPresent     = detectUSB();
+  bool chargeFinished = detectSTAT();
 
-  pinMode(BAT_STAT, INPUT);
-  uint8_t floating = digitalRead(BAT_STAT);
-
-  if ((LOW == low) && (HIGH == high)) {
-    status = BAT_DISCHARGE;
-  } else if (LOW == floating) {
-    status = BAT_CHARGE;
-  } else if (HIGH == floating) {
-    status = BAT_CHARGE_FINISHED;
+  if (usbPresent) {
+    status = chargeFinished ? BAT_CHARGED : BAT_CHARGING;
   } else {
-    status = BAT_INVALID;
+    status = BAT_DISCHARGING;
   }
 
   return status;
@@ -118,18 +120,25 @@ static uint32_t voltage2percentage(double voltage)
 /*****************************************************************************/
 void BatteryMonitorThread(void *p)
 {
-  while (1) {
-    double value = (double)analogRead(BAT_ADC);
-    double voltage = ((value / 4096.0) * 3.57) * (330.0 / 220.0);
-    
-    Battery_t data;
-    data.status = detectStatus();
-    data.voltage = voltage;
-    data.percentage = voltage2percentage(voltage);
-    data.value = (uint32_t)value;
-    DbDataBatterySet(&data);
+  pinMode(BAT_STAT, INPUT);
+  pinMode(USB_PRESENT, INPUT);
 
-    delay(5000);
+  while (1) {
+    double value   = (double)analogRead(BAT_ADC);
+    double voltage = ((value / 4096.0) * 3.57) * (330.0 / 220.0);
+
+    Battery_t battery;
+    battery.status     = decodeStatus();
+    battery.voltage    = voltage;
+    battery.percentage = voltage2percentage(voltage);
+    battery.value      = (uint32_t)value;
+    DbDataBatterySet(&battery);
+
+    Board_t board;
+    board.usbConnected = detectUSB();
+    DbDataBoardSet(&board);
+
+    delay(1000);
   }
 }
 

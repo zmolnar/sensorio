@@ -112,11 +112,20 @@ void DbDataBatteryGet(Battery_t *p)
 {
   p->voltage    = 4.08;
   p->percentage = 80;
-  p->status     = BAT_CHARGE_FINISHED;
+  p->status     = BAT_CHARGED;
   p->value      = 2929;
 }
 
 void DbDataBatterySet(Battery_t *p)
+{
+}
+
+void DbDataBoardGet(Board_t *p)
+{
+  p->usbConnected = true;
+}
+
+void DbDataBoardSet(Board_t *p)
 {
 }
 

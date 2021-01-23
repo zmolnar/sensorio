@@ -105,9 +105,9 @@ typedef struct ImuData_s {
 } ImuData_t;
 
 typedef enum {
-  BAT_DISCHARGE,
-  BAT_CHARGE,
-  BAT_CHARGE_FINISHED,
+  BAT_DISCHARGING,
+  BAT_CHARGING,
+  BAT_CHARGED,
   BAT_INVALID,
 } BatteryStatus_t;
 
@@ -117,6 +117,10 @@ typedef struct Battery_s {
   uint32_t percentage;
   uint32_t value;
 } Battery_t;
+
+typedef struct Board_s {
+  bool usbConnected;
+} Board_t;
 
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL VARIABLES                                           */
@@ -147,6 +151,9 @@ extern "C"
 
   void DbDataBatteryGet(Battery_t *p);
   void DbDataBatterySet(Battery_t *p);
+
+  void DbDataBoardGet(Board_t *p);
+  void DbDataBoardSet(Board_t *p);
 
 #ifdef __cplusplus
 }

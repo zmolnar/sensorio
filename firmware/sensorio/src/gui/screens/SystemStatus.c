@@ -27,6 +27,7 @@
 /*****************************************************************************/
 static lv_obj_t *label;
 static lv_obj_t *battery;
+static lv_obj_t *board;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -52,6 +53,11 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
 
     lv_snprintf(buf, sizeof(buf), "%d", data.value);
     lv_table_set_cell_value(battery, 4, 1, buf);
+
+    Board_t bdata;
+    DbDataBoardGet(&bdata);
+
+    lv_table_set_cell_value(board, 1, 1, bdata.usbConnected ? "Yes" : "No");
   }
 }
 
@@ -127,6 +133,38 @@ lv_obj_t *system_status_screen_create(lv_style_t *style)
   lv_table_set_cell_value(battery, 2, 0, "Level");
   lv_table_set_cell_value(battery, 3, 0, "Status");
   lv_table_set_cell_value(battery, 4, 0, "ADC value");
+
+  board = lv_table_create(scr, NULL);
+  lv_obj_add_style(board, LV_TABLE_PART_BG, style);
+  lv_obj_add_style(board, LV_TABLE_PART_BG, &tstyle);
+  lv_obj_add_style(board, LV_TABLE_PART_CELL1, style);
+  lv_obj_add_style(board, LV_TABLE_PART_CELL1, &tstyle);
+  lv_obj_add_style(board, LV_TABLE_PART_CELL2, style);
+  lv_obj_add_style(board, LV_TABLE_PART_CELL2, &tstyle);
+  lv_obj_add_style(board, LV_TABLE_PART_CELL2, &hstyle);
+
+  lv_table_set_col_cnt(board, 2);
+  lv_table_set_row_cnt(board, 2);
+
+  lv_table_set_col_width(board, 0, lv_obj_get_width(scr) * 0.55);
+  lv_table_set_col_width(board, 1, lv_obj_get_width(scr) * 0.45);
+
+  lv_table_set_cell_type(board, 0, 0, 2);
+  lv_table_set_cell_type(board, 0, 1, 2);
+  lv_table_set_cell_type(board, 1, 0, 1);
+  lv_table_set_cell_type(board, 1, 1, 1);
+
+  lv_table_set_cell_merge_right(board, 0, 0, true);
+  lv_table_set_cell_merge_right(board, 0, 1, true);
+
+  lv_obj_align(board, battery, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
+  lv_table_set_cell_align(board, 0, 0, LV_LABEL_ALIGN_LEFT);
+  lv_table_set_cell_align(board, 0, 1, LV_LABEL_ALIGN_LEFT);
+  lv_table_set_cell_align(board, 1, 0, LV_LABEL_ALIGN_LEFT);
+  lv_table_set_cell_align(board, 1, 1, LV_LABEL_ALIGN_LEFT);
+
+  lv_table_set_cell_value(board, 0, 0, "Board");
+  lv_table_set_cell_value(board, 1, 0, "USB connected");
 
   return scr;
 }
