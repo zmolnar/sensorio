@@ -53,6 +53,18 @@ typedef struct BpsData_s {
   } cooked;
 } BpsData_t;
 
+typedef struct FilterOutput_s {
+  struct {
+    double averaged;
+    double instant;
+  } vario;
+  struct {
+    uint32_t fieldElevation;
+    uint32_t nautical;
+  } height;
+  uint32_t pressure;
+} FilterOutput_t;
+
 typedef enum {
   IMU_SYS_IDLE              = 0,
   IMU_SYS_ERROR             = 1,
@@ -126,6 +138,9 @@ extern "C"
 
   void DbDataBpsGet(BpsData_t *p);
   void DbDataBpsSet(BpsData_t *p);
+
+  void DbDataFilterOutputGet(FilterOutput_t *p);
+  void DbDataFilterOutputSet(FilterOutput_t *p);
 
   void DbDataImuGet(ImuData_t *p);
   void DbDataImuSet(ImuData_t *p);

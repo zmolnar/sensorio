@@ -54,19 +54,19 @@ void DbSaveConfig(void)
 
 void DbDataGpsGet(GpsData_t *p)
 {
-  p->locked = true;
-  p->altitude = 1089;
-  p->course = 129;
-  p->latitude = 190;
-  p->longitude = 39;
+  p->locked          = true;
+  p->altitude        = 1089;
+  p->course          = 129;
+  p->latitude        = 190;
+  p->longitude       = 39;
   p->numOfSatellites = 9;
-  p->speed = 49;
-  p->time.day = 22;
-  p->time.month = 1;
-  p->time.year = 2021;
-  p->time.hour = 20;
-  p->time.minute = 51;
-  p->time.second = 10;
+  p->speed           = 49;
+  p->time.day        = 22;
+  p->time.month      = 1;
+  p->time.year       = 2021;
+  p->time.hour       = 20;
+  p->time.minute     = 51;
+  p->time.second     = 10;
 }
 
 void DbDataGpsSet(GpsData_t *p)
@@ -83,6 +83,19 @@ void DbDataBpsGet(BpsData_t *p)
 }
 
 void DbDataBpsSet(BpsData_t *p)
+{
+}
+
+void DbDataFilterOutputGet(FilterOutput_t *p)
+{
+  p->vario.averaged        = 2.95;
+  p->vario.instant         = 4.19;
+  p->height.fieldElevation = -49;
+  p->height.nautical       = 287;
+  p->pressure              = 101325;
+}
+
+void DbDataFilterOutputSet(FilterOutput_t *p)
 {
 }
 
