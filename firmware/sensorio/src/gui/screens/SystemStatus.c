@@ -43,7 +43,7 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
     DbDataBatteryGet(&data);
 
     char buf[10];
-    lv_snprintf(buf, sizeof(buf), "%3.1f V", data.voltage);
+    lv_snprintf(buf, sizeof(buf), "%3.02f V", data.voltage);
     lv_table_set_cell_value(battery, 1, 1, buf);
     lv_snprintf(buf, sizeof(buf), "%d", data.percentage);
     lv_table_set_cell_value(battery, 2, 1, buf);
@@ -74,7 +74,7 @@ lv_obj_t *system_status_screen_create(lv_style_t *style)
   lv_style_init(&lstyle);
   lv_style_set_text_font(&lstyle, LV_STATE_DEFAULT, &lv_font_montserrat_24);
   label = lv_label_create(scr, NULL);
-  lv_label_set_text(label, "System status");
+  lv_label_set_text(label, "System");
   lv_obj_add_style(label, LV_STATE_DEFAULT, style);
   lv_obj_add_style(label, LV_STATE_DEFAULT, &lstyle);
   lv_obj_align(label, scr, LV_ALIGN_IN_TOP_MID, 0, 0);
