@@ -1,12 +1,12 @@
 /**
- * @file PressureSensorData.c
+ * @file BpsData.c
  * @brief
  */
 
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
-#include "PressureSensorData.h"
+#include "BpsData.h"
 #include "dashboard/Dashboard.h"
 
 #include <stdio.h>

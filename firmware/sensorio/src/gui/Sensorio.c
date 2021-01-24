@@ -16,7 +16,7 @@
 #include "core/LvglThread.h"
 #endif
 
-#include "screens/PressureSensorData.h"
+#include "screens/BpsData.h"
 #include "screens/GpsData.h"
 #include "screens/ImuData.h"
 #include "screens/Startup.h"

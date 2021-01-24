@@ -1,10 +1,10 @@
 /**
- * @file PressureSensorData.h
+ * @file BpsData.h
  * @brief
  */
 
-#ifndef PRESSURE_SENSOR_DATA_H
-#define PRESSURE_SENSOR_DATA_H
+#ifndef BPS_DATA_H
+#define BPS_DATA_H
 
 /*****************************************************************************/
 /* INCLUDES                                                                  */
@@ -40,6 +40,6 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif 
-#endif /* PRESSURE_SENSOR_DATA_H */
+#endif /* BPS_DATA_H */
 
 /****************************** END OF FILE **********************************/
