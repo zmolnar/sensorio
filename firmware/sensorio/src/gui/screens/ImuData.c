@@ -55,8 +55,8 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
 
     static const char *clkSource[] = {"Internal", "External"};
 
-    lv_table_set_cell_value(sensor, 1, 1, status[data.system.status]);
-    lv_table_set_cell_value(sensor, 2, 1, clkSource[data.system.clk]);
+    lv_table_set_cell_value(sensor, 0, 1, status[data.system.status]);
+    lv_table_set_cell_value(sensor, 1, 1, clkSource[data.system.clk]);
 
     lv_table_set_cell_value_fmt(euler, 1, 0, "Y: %3.1f", data.euler.yaw);
     lv_table_set_cell_value_fmt(euler, 1, 1, "P: %3.1f", data.euler.pitch);
@@ -111,32 +111,24 @@ lv_obj_t *imu_data_screen_create(lv_style_t *style)
   lv_obj_add_style(sensor, LV_TABLE_PART_CELL2, &hstyle);
 
   lv_table_set_col_cnt(sensor, 2);
-  lv_table_set_row_cnt(sensor, 3);
+  lv_table_set_row_cnt(sensor, 2);
 
   lv_table_set_col_width(sensor, 0, lv_obj_get_width(scr) * 0.4);
   lv_table_set_col_width(sensor, 1, lv_obj_get_width(scr) * 0.6);
 
-  lv_table_set_cell_type(sensor, 0, 0, 2);
-  lv_table_set_cell_type(sensor, 0, 1, 2);
+  lv_table_set_cell_type(sensor, 0, 0, 1);
+  lv_table_set_cell_type(sensor, 0, 1, 1);
   lv_table_set_cell_type(sensor, 1, 0, 1);
   lv_table_set_cell_type(sensor, 1, 1, 1);
-  lv_table_set_cell_type(sensor, 2, 0, 1);
-  lv_table_set_cell_type(sensor, 2, 1, 1);
 
   lv_obj_align(sensor, label, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
   lv_table_set_cell_align(sensor, 0, 0, LV_LABEL_ALIGN_LEFT);
   lv_table_set_cell_align(sensor, 0, 1, LV_LABEL_ALIGN_LEFT);
   lv_table_set_cell_align(sensor, 1, 0, LV_LABEL_ALIGN_LEFT);
   lv_table_set_cell_align(sensor, 1, 1, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(sensor, 2, 0, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(sensor, 2, 1, LV_LABEL_ALIGN_LEFT);
 
-  lv_table_set_cell_merge_right(sensor, 0, 0, true);
-  lv_table_set_cell_merge_right(sensor, 0, 1, true);
-
-  lv_table_set_cell_value(sensor, 0, 0, "Sensor");
-  lv_table_set_cell_value(sensor, 1, 0, "Status");
-  lv_table_set_cell_value(sensor, 2, 0, "Clock");
+  lv_table_set_cell_value(sensor, 0, 0, "Status");
+  lv_table_set_cell_value(sensor, 1, 0, "Clock");
 
   euler = lv_table_create(scr, NULL);
   lv_obj_add_style(euler, LV_TABLE_PART_BG, style);
