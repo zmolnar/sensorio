@@ -116,7 +116,7 @@ lv_obj_t *system_status_screen_create(lv_style_t *style)
   lv_table_set_cell_merge_right(battery, 0, 0, true);
   lv_table_set_cell_merge_right(battery, 0, 1, true);
 
-  lv_obj_align(battery, label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
+  lv_obj_align(battery, label, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
   lv_table_set_cell_align(battery, 0, 0, LV_LABEL_ALIGN_LEFT);
   lv_table_set_cell_align(battery, 0, 1, LV_LABEL_ALIGN_LEFT);
   lv_table_set_cell_align(battery, 1, 0, LV_LABEL_ALIGN_LEFT);
@@ -157,7 +157,7 @@ lv_obj_t *system_status_screen_create(lv_style_t *style)
   lv_table_set_cell_merge_right(board, 0, 0, true);
   lv_table_set_cell_merge_right(board, 0, 1, true);
 
-  lv_obj_align(board, battery, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
+  lv_obj_align(board, battery, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
   lv_table_set_cell_align(board, 0, 0, LV_LABEL_ALIGN_LEFT);
   lv_table_set_cell_align(board, 0, 1, LV_LABEL_ALIGN_LEFT);
   lv_table_set_cell_align(board, 1, 0, LV_LABEL_ALIGN_LEFT);
