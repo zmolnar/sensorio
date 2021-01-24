@@ -120,14 +120,20 @@ lv_obj_t *bps_data_screen_create(lv_style_t *style)
   lv_style_init(&lstyle);
   lv_style_set_text_font(&lstyle, LV_STATE_DEFAULT, &lv_font_montserrat_24);
   label = lv_label_create(scr, NULL);
-  lv_label_set_text(label, "Pressure Sensor");
+  lv_label_set_text(label, "BPS");
   lv_obj_add_style(label, LV_STATE_DEFAULT, style);
   lv_obj_add_style(label, LV_STATE_DEFAULT, &lstyle);
   lv_obj_align(label, scr, LV_ALIGN_IN_TOP_MID, 0, 0);
 
+  static lv_style_t tstyle;
+  lv_style_init(&tstyle);
+  lv_style_set_pad_all(&tstyle, LV_STATE_DEFAULT, 2);
+
   table = lv_table_create(scr, NULL);
   lv_obj_add_style(table, LV_TABLE_PART_BG, style);
+  lv_obj_add_style(table, LV_TABLE_PART_BG, &tstyle);
   lv_obj_add_style(table, LV_TABLE_PART_CELL1, style);
+  lv_obj_add_style(table, LV_TABLE_PART_CELL1, &tstyle);
   
   lv_table_set_col_cnt(table, 2);
   lv_table_set_row_cnt(table, 2);
@@ -140,7 +146,7 @@ lv_obj_t *bps_data_screen_create(lv_style_t *style)
   lv_table_set_cell_type(table, 1, 0, 1);
   lv_table_set_cell_type(table, 1, 1, 1);
 
-  lv_obj_align(table, label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
+  lv_obj_align(table, label, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
   lv_table_set_cell_align(table, 0, 0, LV_LABEL_ALIGN_LEFT);
   lv_table_set_cell_align(table, 0, 1, LV_LABEL_ALIGN_LEFT);
   lv_table_set_cell_align(table, 1, 0, LV_LABEL_ALIGN_LEFT);
@@ -154,7 +160,7 @@ lv_obj_t *bps_data_screen_create(lv_style_t *style)
   chart = lv_chart_create(scr, NULL);
   lv_obj_add_style(chart, LV_CHART_PART_BG, style);
   lv_obj_set_width(chart, lv_obj_get_width(scr));
-  lv_obj_align(chart, table, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
+  lv_obj_align(chart, table, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
   lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
 
   pseries = lv_chart_add_series(chart, LV_COLOR_BLACK);
