@@ -37,7 +37,7 @@ static lv_obj_t *gpsdata;
 static void event_handler(lv_obj_t *obj, lv_event_t event)
 {
   if (LV_EVENT_REFRESH == event) {
-    static uint32_t counter = 0;
+    static uint32_t counter = 10;
     if (10 <= ++counter) {
       counter = 0;
       GpsData_t data;
