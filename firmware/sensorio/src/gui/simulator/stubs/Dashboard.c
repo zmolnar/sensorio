@@ -88,10 +88,17 @@ void DbDataBpsSet(BpsData_t *p)
 
 void DbDataFilterOutputGet(FilterOutput_t *p)
 {
-  p->vario.averaged        = 2.95;
-  p->vario.instant         = 4.19;
+  static uint32_t offset;
+  if (1200 < offset) {
+    offset = 0;
+  } else {
+    offset += 30;
+  }
+
+  p->vario.averaged        = 12.95;
+  p->vario.instant         = -14.19;
   p->height.fieldElevation = -49;
-  p->height.nautical       = 287;
+  p->height.nautical       = 287 + offset;
   p->pressure              = 101325;
 }
 
