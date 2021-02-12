@@ -100,24 +100,21 @@ static void exit_msgbox_event_handler(lv_obj_t *obj, lv_event_t event)
   if (LV_EVENT_VALUE_CHANGED == event) {
     uint16_t id = lv_msgbox_get_active_btn(obj);
 
-#if 0
-    const char *btext = lv_msgbox_get_active_btn_text(obj);
-    printf("id:%d btext:%x\n", id, (uint32_t)btext);
-#endif
-
     if (0 == id) {
       lv_obj_clean(lv_scr_act());
       PowerStop();
     } else {
       lv_group_remove_all_objs(encgroup);
+      lv_group_set_editing(encgroup, false);
       lv_group_add_obj(encgroup, vario);
       lv_group_add_obj(encgroup, bpsdata);
       lv_group_add_obj(encgroup, imudata);
       lv_group_add_obj(encgroup, gpsdata);
       lv_group_add_obj(encgroup, sysstat);
-      lv_group_focus_obj(vario);
+      lv_group_focus_obj(lv_obj_get_parent(obj));
       task = lv_task_create(refresh_task, 100, LV_TASK_PRIO_LOW, NULL);
     }
+
     lv_obj_del(obj);
   }
 }
