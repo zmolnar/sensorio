@@ -47,9 +47,22 @@ void DbInit(void)
   printf("Simulator dashboard initialized\n");
 }
 
-void DbSaveConfig(void)
+void DbParamsLock(void)
 {
-  printf("Simulator config saved\n");
+}
+
+void DbParamsUnlock(void)
+{
+}
+
+void DbParamsGet(SysParams_t *p)
+{
+  p->location.utcOffset = 1;
+  p->screens.vario.chart_refresh_period = 500;
+}
+
+void DbParamsSet(SysParams_t *p)
+{
 }
 
 void DbDataGpsGet(GpsData_t *p)

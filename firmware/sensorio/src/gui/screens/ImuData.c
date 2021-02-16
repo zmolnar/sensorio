@@ -24,11 +24,12 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static lv_obj_t *label;
-static lv_obj_t *sensor;
-static lv_obj_t *euler;
-static lv_obj_t *gravity;
-static lv_obj_t *acceleration;
+static lv_obj_t * label;
+static lv_obj_t * sensor;
+static lv_obj_t * euler;
+static lv_obj_t * gravity;
+static lv_obj_t * acceleration;
+static lv_task_t *task;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -37,41 +38,58 @@ static lv_obj_t *acceleration;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
+static void refresh_task(lv_task_t *p)
+{
+  (void)p;
+
+  ImuData_t data;
+  DbDataImuGet(&data);
+
+  static const char *status[] = {
+      "Idle",
+      "Error",
+      "Periph. init.",
+      "Initializing",
+      "Selftest",
+      "Fusion",
+      "No fusion",
+  };
+
+  static const char *clkSource[] = {"Internal", "External"};
+
+  lv_table_set_cell_value(sensor, 0, 1, status[data.system.status]);
+  lv_table_set_cell_value(sensor, 1, 1, clkSource[data.system.clk]);
+
+  lv_table_set_cell_value_fmt(euler, 1, 0, "Y: %3.1f", data.euler.yaw);
+  lv_table_set_cell_value_fmt(euler, 1, 1, "P: %3.1f", data.euler.pitch);
+  lv_table_set_cell_value_fmt(euler, 1, 2, "R: %3.1f", data.euler.roll);
+
+  lv_table_set_cell_value_fmt(gravity, 1, 0, "X: %3.1f", data.gravity.x);
+  lv_table_set_cell_value_fmt(gravity, 1, 1, "Y: %3.1f", data.gravity.y);
+  lv_table_set_cell_value_fmt(gravity, 1, 2, "Z: %3.1f", data.gravity.z);
+
+  lv_table_set_cell_value_fmt(
+      acceleration, 1, 0, "X: %3.1f", data.acceleration.x);
+  lv_table_set_cell_value_fmt(
+      acceleration, 1, 1, "Y: %3.1f", data.acceleration.y);
+  lv_table_set_cell_value_fmt(
+      acceleration, 1, 2, "Z: %3.1f", data.acceleration.z);
+}
+
 static void event_handler(lv_obj_t *obj, lv_event_t event)
 {
-  if (LV_EVENT_REFRESH == event) {
-    ImuData_t data;
-    DbDataImuGet(&data);
-
-    static const char *status[] = {
-        "Idle",
-        "Error",
-        "Periph. init.",
-        "Initializing",
-        "Selftest",
-        "Fusion",
-        "No fusion",
-    };
-
-    static const char *clkSource[] = {"Internal", "External"};
-
-    lv_table_set_cell_value(sensor, 0, 1, status[data.system.status]);
-    lv_table_set_cell_value(sensor, 1, 1, clkSource[data.system.clk]);
-
-    lv_table_set_cell_value_fmt(euler, 1, 0, "Y: %3.1f", data.euler.yaw);
-    lv_table_set_cell_value_fmt(euler, 1, 1, "P: %3.1f", data.euler.pitch);
-    lv_table_set_cell_value_fmt(euler, 1, 2, "R: %3.1f", data.euler.roll);
-
-    lv_table_set_cell_value_fmt(gravity, 1, 0, "X: %3.1f", data.gravity.x);
-    lv_table_set_cell_value_fmt(gravity, 1, 1, "Y: %3.1f", data.gravity.y);
-    lv_table_set_cell_value_fmt(gravity, 1, 2, "Z: %3.1f", data.gravity.z);
-
-    lv_table_set_cell_value_fmt(
-        acceleration, 1, 0, "X: %3.1f", data.acceleration.x);
-    lv_table_set_cell_value_fmt(
-        acceleration, 1, 1, "Y: %3.1f", data.acceleration.y);
-    lv_table_set_cell_value_fmt(
-        acceleration, 1, 2, "Z: %3.1f", data.acceleration.z);
+  switch (event) {
+  case LV_EVENT_FOCUSED: {
+    task = lv_task_create(refresh_task, 100, LV_TASK_PRIO_LOW, NULL);
+    break;
+  }
+  case LV_EVENT_DEFOCUSED: {
+    lv_task_del(task);
+    break;
+  }
+  default: {
+    break;
+  }
   }
 }
 

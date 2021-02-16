@@ -30,8 +30,12 @@ static lv_obj_t *         label;
 static lv_obj_t *         table;
 static lv_obj_t *         chart;
 static lv_chart_series_t *pseries;
-static lv_coord_t         ymax = 0;
-static lv_coord_t         ymin = INT16_MAX;
+static lv_task_t *        task;
+
+static uint32_t   count  = 0;
+static uint32_t   offset = 0;
+static lv_coord_t ymax   = 0;
+static lv_coord_t ymin   = INT16_MAX;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -40,75 +44,86 @@ static lv_coord_t         ymin = INT16_MAX;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
+static void refresh_task(lv_task_t *p)
+{
+  (void)p;
+
+  BpsData_t data;
+  DbDataBpsGet(&data);
+
+  // Update temperature
+  char value[20];
+  lv_snprintf(
+      value, sizeof(value), "%04.02f C", (float)data.cooked.temp / 100.0);
+  lv_table_set_cell_value(table, 0, 1, value);
+
+  // Update pressure
+  lv_snprintf(
+      value, sizeof(value), "%04.02f mb", (float)data.cooked.pressure / 100.0);
+  lv_table_set_cell_value(table, 1, 1, value);
+
+  // Update static variables
+  if (count < lv_chart_get_point_count(chart)) {
+    count++;
+  }
+
+  if (0 == offset) {
+    offset = data.cooked.pressure - (INT16_MAX / 2);
+  }
+
+  // Add point to the data series
+  lv_coord_t point = (lv_coord_t)(data.cooked.pressure - offset);
+  lv_chart_set_next(chart, pseries, point);
+
+  // Search the minimum and maximum of the data series
+  lv_coord_t min = point;
+  lv_coord_t max = point;
+  for (uint16_t i = 0; i < count; ++i) {
+    lv_coord_t pi = pseries->points[i];
+    if (pi < min) {
+      min = pi;
+    }
+
+    if (max < pi) {
+      max = pi;
+    }
+  }
+
+  // Adjust the chart range if needed
+  if (((min - 2) != ymin) || ((max + 2) != ymax)) {
+    ymin = min - 2;
+    ymax = max + 2;
+    lv_chart_set_range(chart, ymin, ymax);
+  }
+
+  lv_chart_refresh(chart);
+}
+
 static void event_handler(lv_obj_t *obj, lv_event_t event)
 {
-  static uint32_t count  = 0;
-  static uint32_t offset = 0;
-
-  if (LV_EVENT_REFRESH == event) {
-    BpsData_t data;
-    DbDataBpsGet(&data);
-
-    // Update table cells
-    char value[20];
-    lv_snprintf(
-        value, sizeof(value), "%04.02f C", (float)data.cooked.temp / 100.0);
-    lv_table_set_cell_value(table, 0, 1, value);
-
-    lv_snprintf(value,
-                sizeof(value),
-                "%04.02f mb",
-                (float)data.cooked.pressure / 100.0);
-    lv_table_set_cell_value(table, 1, 1, value);
-
-    // Update static variables
-    if (count < lv_chart_get_point_count(chart)) {
-      count++;
-    }
-
-    if (0 == offset) {
-      offset = data.cooked.pressure - (INT16_MAX / 2);
-    }
-
-    // Add point to the data series
-    lv_coord_t point = (lv_coord_t)(data.cooked.pressure - offset);
-    lv_chart_set_next(chart, pseries, point);
-
-    // Search the minimum and maximum of the data series
-    lv_coord_t min = point;
-    lv_coord_t max = point;
-    for (uint16_t i = 0; i < count; ++i) {
-      lv_coord_t pi = pseries->points[i];
-      if (pi < min) {
-        min = pi;
-      }
-
-      if (max < pi) {
-        max = pi;
-      }
-    }
-
-    // Update the chart range if needed
-    if (((min - 2) != ymin) || ((max + 2) != ymax)) {
-      ymin = min - 2;
-      ymax = max + 2;
-      lv_chart_set_range(chart, ymin, ymax);
-    }
-
-    lv_chart_refresh(chart);
-
-  } else if (LV_EVENT_FOCUSED == event) {
+  switch (event) {
+  case LV_EVENT_FOCUSED: {
+    task = lv_task_create(refresh_task, 100, LV_TASK_PRIO_LOW, NULL);
+    break;
+  }
+  case LV_EVENT_DEFOCUSED: {
+    lv_task_del(task);
     count  = 0;
     offset = 0;
     ymax   = 0;
     ymin   = INT16_MAX;
     lv_chart_clear_series(chart, pseries);
     lv_chart_refresh(chart);
+    break;
+  }
+  default: {
+    break;
+  }
   }
 }
 
 /*****************************************************************************/
-/* DEFINITION OF GLOBAL FUNCTIONS                                            */
+/* DEFINITION OF GLOBAL FUNCTIONS */
 /*****************************************************************************/
 lv_obj_t *bps_data_screen_create(lv_style_t *style)
 {
@@ -134,10 +149,10 @@ lv_obj_t *bps_data_screen_create(lv_style_t *style)
   lv_obj_add_style(table, LV_TABLE_PART_BG, &tstyle);
   lv_obj_add_style(table, LV_TABLE_PART_CELL1, style);
   lv_obj_add_style(table, LV_TABLE_PART_CELL1, &tstyle);
-  
+
   lv_table_set_col_cnt(table, 2);
   lv_table_set_row_cnt(table, 2);
-  
+
   lv_table_set_col_width(table, 0, lv_obj_get_width(scr) * 0.55);
   lv_table_set_col_width(table, 1, lv_obj_get_width(scr) * 0.45);
 

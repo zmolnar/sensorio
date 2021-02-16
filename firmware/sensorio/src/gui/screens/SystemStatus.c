@@ -25,9 +25,10 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static lv_obj_t *label;
-static lv_obj_t *battery;
-static lv_obj_t *board;
+static lv_obj_t * label;
+static lv_obj_t * battery;
+static lv_obj_t * board;
+static lv_task_t *task;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -36,28 +37,43 @@ static lv_obj_t *board;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
+static void refresh_task(lv_task_t *t)
+{
+  Battery_t data;
+  DbDataBatteryGet(&data);
+
+  char buf[10];
+  lv_snprintf(buf, sizeof(buf), "%3.02f V", data.voltage);
+  lv_table_set_cell_value(battery, 1, 1, buf);
+  lv_snprintf(buf, sizeof(buf), "%d", data.percentage);
+  lv_table_set_cell_value(battery, 2, 1, buf);
+
+  const char *batStatus[] = {"Discharging", "Charging", "Charged", "Invalid"};
+  lv_table_set_cell_value(battery, 3, 1, batStatus[data.status]);
+
+  lv_snprintf(buf, sizeof(buf), "%d", data.value);
+  lv_table_set_cell_value(battery, 4, 1, buf);
+
+  Board_t bdata;
+  DbDataBoardGet(&bdata);
+
+  lv_table_set_cell_value(board, 1, 1, bdata.usbConnected ? "Yes" : "No");
+}
+
 static void event_handler(lv_obj_t *obj, lv_event_t event)
 {
-  if (LV_EVENT_REFRESH == event) {
-    Battery_t data;
-    DbDataBatteryGet(&data);
-
-    char buf[10];
-    lv_snprintf(buf, sizeof(buf), "%3.02f V", data.voltage);
-    lv_table_set_cell_value(battery, 1, 1, buf);
-    lv_snprintf(buf, sizeof(buf), "%d", data.percentage);
-    lv_table_set_cell_value(battery, 2, 1, buf);
-
-    const char *batStatus[] = {"Discharging", "Charging", "Charged", "Invalid"};
-    lv_table_set_cell_value(battery, 3, 1, batStatus[data.status]);
-
-    lv_snprintf(buf, sizeof(buf), "%d", data.value);
-    lv_table_set_cell_value(battery, 4, 1, buf);
-
-    Board_t bdata;
-    DbDataBoardGet(&bdata);
-
-    lv_table_set_cell_value(board, 1, 1, bdata.usbConnected ? "Yes" : "No");
+  switch (event) {
+  case LV_EVENT_FOCUSED: {
+    task = lv_task_create(refresh_task, 100, LV_TASK_PRIO_LOW, NULL);
+    break;
+  }
+  case LV_EVENT_DEFOCUSED: {
+    lv_task_del(task);
+    break;
+  }
+  default: {
+    break;
+  }
   }
 }
 

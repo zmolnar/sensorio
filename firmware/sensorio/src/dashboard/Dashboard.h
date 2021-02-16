@@ -24,6 +24,17 @@
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
 /*****************************************************************************/
+typedef struct SysParams_s {
+  struct {
+    int32_t utcOffset;
+  } location;
+  struct {
+    struct {
+      uint32_t chart_refresh_period;
+    } vario;
+  } screens;
+} SysParams_t;
+
 typedef struct GpsData_s {
   bool     locked;
   uint32_t altitude;
@@ -113,9 +124,9 @@ typedef enum {
 
 typedef struct Battery_s {
   BatteryStatus_t status;
-  double voltage;
-  uint32_t percentage;
-  uint32_t value;
+  double          voltage;
+  uint32_t        percentage;
+  uint32_t        value;
 } Battery_t;
 
 typedef struct Board_s {
@@ -135,7 +146,11 @@ extern "C"
 #endif
 
   void DbInit(void);
-  void DbSaveConfig(void);
+
+  void DbParamsLock(void);
+  void DbParamsUnlock(void);
+  void DbParamsGet(SysParams_t *p);
+  void DbParamsSet(SysParams_t *p);
 
   void DbDataGpsGet(GpsData_t *p);
   void DbDataGpsSet(GpsData_t *p);

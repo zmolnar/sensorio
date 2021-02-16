@@ -30,8 +30,9 @@ typedef struct Data_s {
 } Data_t;
 
 typedef struct Config_s {
-  uint32_t magic;
-  uint8_t  crc;
+  uint32_t    magic;
+  SysParams_t params;
+  uint8_t     crc;
 } Config_t;
 
 typedef struct Locks_s {
@@ -61,8 +62,10 @@ typedef struct Dashboard_s {
 static Dashboard_t db;
 
 static const Config_t defaultConfig = {
-    .magic = MAGIC,
-    .crc   = 0x00,
+    .magic  = MAGIC,
+    .params = {.location = {.utcOffset = 0},
+               .screens  = {.vario = {.chart_refresh_period = 1000}}},
+    .crc    = 0x00,
 };
 
 /*****************************************************************************/
@@ -90,6 +93,12 @@ static bool DbIsConfigValid(Config_t *cfg)
   bool    crcOk = (cfg->crc == crc);
 
   return magicOk && crcOk;
+}
+
+static void DbSaveConfig(void)
+{
+  EEPROM.writeBytes(CONFIG_ADDRESS, &db.config, sizeof(db.config));
+  EEPROM.commit();
 }
 
 static void DbLock(SemaphoreHandle_t &mutex)
@@ -120,6 +129,12 @@ void DbInit(void)
 
   if (DbIsConfigValid(&db.config)) {
     Serial.println("Config restored successfully");
+    Serial.println("Location:");
+    Serial.printf("  UTC offset: %d\n", db.config.params.location.utcOffset);
+    Serial.println("Screens");
+    Serial.println("  Variometer");
+    Serial.printf("    Chart refresh period: %d\n",
+                  db.config.params.screens.vario.chart_refresh_period);
   } else {
     Serial.println("Config corrupted, default config loaded");
     db.config = defaultConfig;
@@ -143,12 +158,26 @@ void DbInit(void)
   }
 }
 
-void DbSaveConfig(void)
+void DbParamsLock(void)
 {
   DbLock(db.locks.config);
-  EEPROM.writeBytes(CONFIG_ADDRESS, &db.config, sizeof(db.config));
-  EEPROM.commit();
+}
+
+void DbParamsUnlock(void)
+{
   DbUnlock(db.locks.config);
+}
+
+void DbParamsGet(SysParams_t *p)
+{
+  memcpy(p, &db.config.params, sizeof(SysParams_t));
+}
+
+void DbParamsSet(SysParams_t *p)
+{
+  memcpy(&db.config.params, p, sizeof(SysParams_t));
+  db.config.crc = crc8((uint8_t *)&db.config, sizeof(db.config) - 1);
+  DbSaveConfig();
 }
 
 void DbDataGpsGet(GpsData_t *p)
@@ -225,14 +254,14 @@ void DbDataBoardGet(Board_t *p)
 {
   DbLock(db.locks.board);
   memcpy(p, &db.data.board, sizeof(Board_t));
-  DbUnlock(db.locks.board);  
+  DbUnlock(db.locks.board);
 }
 
 void DbDataBoardSet(Board_t *p)
 {
   DbLock(db.locks.board);
   memcpy(&db.data.board, p, sizeof(Board_t));
-  DbUnlock(db.locks.board);    
+  DbUnlock(db.locks.board);
 }
 
 /****************************** END OF FILE **********************************/

@@ -53,9 +53,6 @@ lv_obj_t *imudata;
 lv_obj_t *gpsdata;
 lv_obj_t *sysstat;
 
-// Refresher task
-lv_task_t *task;
-
 // Default style for the screens
 static lv_style_t no_border_style;
 
@@ -69,11 +66,6 @@ static const char *exitMsgButtons[] = {"Yes", "Cancel", ""};
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
-static void refresh_task(lv_task_t *t)
-{
-  lv_event_send_refresh(lv_scr_act());
-}
-
 static void group_focus_cb(lv_group_t *g)
 {
   lv_obj_t *obj = lv_group_get_focused(g);
@@ -91,8 +83,6 @@ static void group_focus_cb(lv_group_t *g)
   } else {
     ;
   }
-
-  lv_event_send_refresh(lv_scr_act());
 }
 
 static void exit_msgbox_event_handler(lv_obj_t *obj, lv_event_t event)
@@ -112,7 +102,6 @@ static void exit_msgbox_event_handler(lv_obj_t *obj, lv_event_t event)
       lv_group_add_obj(encgroup, gpsdata);
       lv_group_add_obj(encgroup, sysstat);
       lv_group_focus_obj(lv_obj_get_parent(obj));
-      task = lv_task_create(refresh_task, 100, LV_TASK_PRIO_LOW, NULL);
     }
 
     lv_obj_del(obj);
@@ -157,8 +146,6 @@ void SensorioStartupFinished(void)
   lv_group_add_obj(encgroup, sysstat);
   lv_group_focus_obj(vario);
 
-  task = lv_task_create(refresh_task, 100, LV_TASK_PRIO_LOW, NULL);
-
   PowerStartupFinished();
 }
 
@@ -169,8 +156,6 @@ lv_group_t *SensorioGetEncoderGroup(void)
 
 void SensorioConfirmExit(void)
 {
-  lv_task_del(task);
-
   lv_obj_t *mbox = lv_msgbox_create(lv_scr_act(), NULL);
   lv_msgbox_set_text(mbox, "Do you want to exit?");
   lv_msgbox_add_btns(mbox, exitMsgButtons);

@@ -24,8 +24,9 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static lv_obj_t *label;
-static lv_obj_t *gpsdata;
+static lv_obj_t * label;
+static lv_obj_t * gpsdata;
+static lv_task_t *task;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -34,38 +35,51 @@ static lv_obj_t *gpsdata;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
+static void refresh_task(lv_task_t *p)
+{
+  (void)p;
+
+  GpsData_t data;
+  DbDataGpsGet(&data);
+
+  lv_table_set_cell_value_fmt(gpsdata, 0, 1, "%s", data.locked ? "Yes" : "No");
+  lv_table_set_cell_value_fmt(gpsdata, 1, 1, "%.03f m", data.altitude / 1000.0);
+  lv_table_set_cell_value_fmt(gpsdata, 2, 1, "%.03f", data.course / 1000.0);
+  lv_table_set_cell_value_fmt(gpsdata, 3, 1, "%d", data.latitude);
+  lv_table_set_cell_value_fmt(gpsdata, 4, 1, "%d", data.longitude);
+  lv_table_set_cell_value_fmt(gpsdata, 5, 1, "%d", data.numOfSatellites);
+  lv_table_set_cell_value_fmt(gpsdata, 6, 1, "%.03f m/s", data.speed / 1000.0);
+  lv_table_set_cell_value_fmt(gpsdata,
+                              7,
+                              1,
+                              "%02d/%02d/%04d",
+                              data.time.day,
+                              data.time.month,
+                              data.time.year);
+  lv_table_set_cell_value_fmt(gpsdata,
+                              8,
+                              1,
+                              "%02d:%02d:%02d",
+                              data.time.hour,
+                              data.time.minute,
+                              data.time.second);
+}
+
 static void event_handler(lv_obj_t *obj, lv_event_t event)
 {
-  if (LV_EVENT_REFRESH == event) {
-    static uint32_t counter = 10;
-    if (10 <= ++counter) {
-      counter = 0;
-      GpsData_t data;
-      DbDataGpsGet(&data);
-
-      lv_table_set_cell_value_fmt(
-          gpsdata, 0, 1, "%s", data.locked ? "Yes" : "No");
-      lv_table_set_cell_value_fmt(gpsdata, 1, 1, "%.03f m", data.altitude / 1000.0);
-      lv_table_set_cell_value_fmt(gpsdata, 2, 1, "%.03f", data.course / 1000.0);
-      lv_table_set_cell_value_fmt(gpsdata, 3, 1, "%d", data.latitude);
-      lv_table_set_cell_value_fmt(gpsdata, 4, 1, "%d", data.longitude);
-      lv_table_set_cell_value_fmt(gpsdata, 5, 1, "%d", data.numOfSatellites);
-      lv_table_set_cell_value_fmt(gpsdata, 6, 1, "%.03f m/s", data.speed / 1000.0);
-      lv_table_set_cell_value_fmt(gpsdata,
-                                  7,
-                                  1,
-                                  "%02d/%02d/%04d",
-                                  data.time.day,
-                                  data.time.month,
-                                  data.time.year);
-      lv_table_set_cell_value_fmt(gpsdata,
-                                  8,
-                                  1,
-                                  "%02d:%02d:%02d",
-                                  data.time.hour,
-                                  data.time.minute,
-                                  data.time.second);
-    }
+  switch (event) {
+  case LV_EVENT_FOCUSED: {
+    task = lv_task_create(refresh_task, 1000, LV_TASK_PRIO_LOW, NULL);
+    refresh_task(task);
+    break;
+  }
+  case LV_EVENT_DEFOCUSED: {
+    lv_task_del(task);
+    break;
+  }
+  default: {
+    break;
+  }
   }
 }
 
