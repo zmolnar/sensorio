@@ -32,7 +32,7 @@ typedef struct Data_s {
 typedef struct Config_s {
   uint32_t    magic;
   SysParams_t params;
-  uint8_t     crc;
+  uint32_t    crc;
 } Config_t;
 
 typedef struct Locks_s {
@@ -87,10 +87,12 @@ static uint8_t crc8(const uint8_t data[], size_t length)
 
 static bool DbIsConfigValid(Config_t *cfg)
 {
-  bool magicOk = (MAGIC == cfg->magic);
+  uint8_t *data   = (uint8_t *)cfg;
+  size_t   length = sizeof(*cfg) - sizeof(cfg->crc);
+  uint8_t  crc    = crc8(data, length);
 
-  uint8_t crc   = crc8((uint8_t *)cfg, sizeof(*cfg) - 1);
-  bool    crcOk = (cfg->crc == crc);
+  bool magicOk = (MAGIC == cfg->magic);
+  bool crcOk   = (cfg->crc == crc);
 
   return magicOk && crcOk;
 }
@@ -135,6 +137,8 @@ void DbInit(void)
     Serial.println("  Variometer");
     Serial.printf("    Chart refresh period: %d\n",
                   db.config.params.screens.vario.chart_refresh_period);
+    Serial.print("CRC: ");
+    Serial.println(db.config.crc);
   } else {
     Serial.println("Config corrupted, default config loaded");
     db.config = defaultConfig;
@@ -176,7 +180,10 @@ void DbParamsGet(SysParams_t *p)
 void DbParamsSet(SysParams_t *p)
 {
   memcpy(&db.config.params, p, sizeof(SysParams_t));
-  db.config.crc = crc8((uint8_t *)&db.config, sizeof(db.config) - 1);
+  uint8_t *data   = (uint8_t *)&db.config;
+  size_t   length = sizeof(db.config) - sizeof(db.config.crc);
+  db.config.crc   = crc8(data, length);
+
   DbSaveConfig();
 }
 

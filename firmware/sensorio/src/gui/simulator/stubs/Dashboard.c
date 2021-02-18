@@ -30,6 +30,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
+static SysParams_t default_config;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -45,6 +46,8 @@
 void DbInit(void)
 {
   printf("Simulator dashboard initialized\n");
+  default_config.location.utcOffset = 1;
+  default_config.screens.vario.chart_refresh_period = 1000;
 }
 
 void DbParamsLock(void)
@@ -57,12 +60,12 @@ void DbParamsUnlock(void)
 
 void DbParamsGet(SysParams_t *p)
 {
-  p->location.utcOffset = 1;
-  p->screens.vario.chart_refresh_period = 500;
+  memcpy(p, &default_config, sizeof(SysParams_t));
 }
 
 void DbParamsSet(SysParams_t *p)
 {
+  memcpy(&default_config, p, sizeof(SysParams_t));
 }
 
 void DbDataGpsGet(GpsData_t *p)

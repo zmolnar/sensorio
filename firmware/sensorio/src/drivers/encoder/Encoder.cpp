@@ -109,8 +109,6 @@ static void counterTick(TimerHandle_t xTimer)
     break;
   }
 
-  Serial.println(encoder.counter);
-
   // Update timer period
   TickType_t period;
   period = xTimerGetPeriod(encoder.timer);

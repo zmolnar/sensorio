@@ -7,8 +7,10 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "Variometer.h"
+#include "VariometerSettings.h"
 
 #include "dashboard/Dashboard.h"
+#include "gui/Sensorio.h"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -33,6 +35,8 @@ static uint32_t           chart_refresh_period;
 static lv_task_t *task;
 static lv_task_t *chart_task;
 
+static lv_obj_t *settings;
+
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
 /*****************************************************************************/
@@ -43,19 +47,6 @@ static lv_task_t *chart_task;
 static void chart_refresh(lv_task_t *p)
 {
   (void)p;
-  
-  SysParams_t params;
-  DbParamsLock();
-  DbParamsGet(&params);
-  DbParamsUnlock();
-
-  // TODO: restart thread when the period changes, rather than here.
-  if (chart_refresh_period != params.screens.vario.chart_refresh_period) {
-    chart_refresh_period = params.screens.vario.chart_refresh_period;
-    lv_task_del(chart_task);
-    chart_task = lv_task_create(
-        chart_refresh, chart_refresh_period, LV_TASK_PRIO_LOW, NULL);
-  }
 
   FilterOutput_t filter_data;
   DbDataFilterOutputGet(&filter_data);
@@ -150,15 +141,40 @@ static void refresh_task(lv_task_t *p)
       data_table, 3, 1, "%3d", filter_data.height.nautical);
 }
 
+static void reschedule_chart_refresh_task(void)
+{
+  SysParams_t params;
+  DbParamsLock();
+  DbParamsGet(&params);
+  DbParamsUnlock();
+
+  if (chart_refresh_period != params.screens.vario.chart_refresh_period) {
+    chart_refresh_period = params.screens.vario.chart_refresh_period;
+    if (chart_task) {
+      lv_task_del(chart_task);
+    }
+    chart_task = lv_task_create(
+        chart_refresh, chart_refresh_period, LV_TASK_PRIO_LOW, NULL);
+  }
+}
+
 static void event_handler(lv_obj_t *obj, lv_event_t event)
 {
   switch (event) {
   case LV_EVENT_FOCUSED: {
+    reschedule_chart_refresh_task();
     task = lv_task_create(refresh_task, 100, LV_TASK_PRIO_LOW, NULL);
     break;
   }
   case LV_EVENT_DEFOCUSED: {
     lv_task_del(task);
+    break;
+  }
+  case LV_EVENT_SHORT_CLICKED: {
+    SensorioClearEncoderGroup();
+    lv_group_add_obj(SensorioGetEncoderGroup(), settings);
+    lv_scr_load(settings);
+
     break;
   }
   default: {
@@ -172,6 +188,8 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
 /*****************************************************************************/
 lv_obj_t *variometer_screen_create(lv_style_t *style)
 {
+  settings = variometer_settings_screen_create(style);
+
   lv_obj_t *scr = lv_obj_create(NULL, NULL);
   lv_obj_add_style(scr, LV_STATE_DEFAULT, style);
   lv_obj_set_event_cb(scr, event_handler);
@@ -258,15 +276,6 @@ lv_obj_t *variometer_screen_create(lv_style_t *style)
   lv_chart_set_update_mode(height_chart, LV_CHART_UPDATE_MODE_SHIFT);
   lv_chart_set_point_count(height_chart, 100);
   lv_chart_set_div_line_count(height_chart, 0, 2);
-
-  SysParams_t params;
-  DbParamsLock();
-  DbParamsGet(&params);
-  DbParamsUnlock();
-
-  chart_refresh_period = params.screens.vario.chart_refresh_period;
-  chart_task           = lv_task_create(
-      chart_refresh, chart_refresh_period, LV_TASK_PRIO_LOW, NULL);
 
   return scr;
 }

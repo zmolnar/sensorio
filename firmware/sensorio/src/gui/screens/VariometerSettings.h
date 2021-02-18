@@ -1,10 +1,10 @@
 /**
- * @file Sensorio.h
+ * @file VariometerSettings.h
  * @brief
  */
 
-#ifndef SENSORIO_H
-#define SENSORIO_H
+#ifndef VARIOMETER_SETTINGS_H
+#define VARIOMETER_SETTINGS_H
 
 /*****************************************************************************/
 /* INCLUDES                                                                  */
@@ -26,9 +26,6 @@
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL VARIABLES                                           */
 /*****************************************************************************/
-#if defined(SIMULATOR)
-extern lv_group_t *encgroup;
-#endif
 
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
@@ -38,17 +35,12 @@ extern "C"
 {
 #endif
 
-  void        SensorioStart(void);
-  void        SensorioStartupFinished(void);
-  lv_group_t *SensorioGetEncoderGroup(void);
-  void        SensorioClearEncoderGroup(void);
-  void        SensorioLoadEncoderGroup(void);
-  void        SensorioConfirmExit(void);
+  lv_obj_t *variometer_settings_screen_create(lv_style_t *style);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* SENSORIO_H */
+#endif /* VARIOMETER_SETTINGS_H */
 
 /****************************** END OF FILE **********************************/

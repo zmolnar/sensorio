@@ -3,6 +3,7 @@
 #include "app_hal.h"
 
 #include "gui/Sensorio.h"
+#include "dashboard/Dashboard.h"
 
 int main(void)
 {
@@ -10,6 +11,7 @@ int main(void)
 
 	hal_setup();
 
+    DbInit();
 	SensorioStart();
 
 	hal_loop();

@@ -94,13 +94,7 @@ static void exit_msgbox_event_handler(lv_obj_t *obj, lv_event_t event)
       lv_obj_clean(lv_scr_act());
       PowerStop();
     } else {
-      lv_group_remove_all_objs(encgroup);
-      lv_group_set_editing(encgroup, false);
-      lv_group_add_obj(encgroup, vario);
-      lv_group_add_obj(encgroup, bpsdata);
-      lv_group_add_obj(encgroup, imudata);
-      lv_group_add_obj(encgroup, gpsdata);
-      lv_group_add_obj(encgroup, sysstat);
+      SensorioLoadEncoderGroup();
       lv_group_focus_obj(lv_obj_get_parent(obj));
     }
 
@@ -139,11 +133,7 @@ void SensorioStartupFinished(void)
   gpsdata = gps_data_screen_create(&no_border_style);
   sysstat = system_status_screen_create(&no_border_style);
 
-  lv_group_add_obj(encgroup, vario);
-  lv_group_add_obj(encgroup, bpsdata);
-  lv_group_add_obj(encgroup, imudata);
-  lv_group_add_obj(encgroup, gpsdata);
-  lv_group_add_obj(encgroup, sysstat);
+  SensorioLoadEncoderGroup();
   lv_group_focus_obj(vario);
 
   PowerStartupFinished();
@@ -152,6 +142,22 @@ void SensorioStartupFinished(void)
 lv_group_t *SensorioGetEncoderGroup(void)
 {
   return encgroup;
+}
+
+void SensorioClearEncoderGroup(void)
+{
+  lv_group_remove_all_objs(encgroup);
+  lv_group_set_editing(encgroup, false);
+}
+
+void SensorioLoadEncoderGroup(void)
+{
+  SensorioClearEncoderGroup();
+  lv_group_add_obj(encgroup, vario);
+  lv_group_add_obj(encgroup, bpsdata);
+  lv_group_add_obj(encgroup, imudata);
+  lv_group_add_obj(encgroup, gpsdata);
+  lv_group_add_obj(encgroup, sysstat);
 }
 
 void SensorioConfirmExit(void)
