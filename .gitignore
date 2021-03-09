@@ -3,3 +3,4 @@ firmware/sampler/.dep
 firmware/sampler/build
 firmware/sampler/segger
 firmware/blueprint-templates
+firmware/model/.vscode
