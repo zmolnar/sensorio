@@ -2,6 +2,7 @@
 
 #include "core/BatteryMonitorThread.h"
 #include "core/GpsManagerThread.h"
+#include "core/DataFilterThread.h"
 #include "core/ImuManagerThread.h"
 #include "core/LvglThread.h"
 #include "core/PressureReaderThread.h"
@@ -10,6 +11,7 @@
 
 typedef enum {
   PRIO_0_INVALID = 0,
+  PRIO_0_FILTER,
   PRIO_0_GPS,
   PRIO_0_IMU,
   PRIO_0_PRESS,
@@ -23,7 +25,7 @@ typedef enum {
 
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(460800);
   Serial.println();
   Serial.println();
   Serial.println("Sensorio started ...");
@@ -31,6 +33,16 @@ void setup()
   PowerStart();
   
   DbInit();
+
+#if 1
+  xTaskCreatePinnedToCore(DataFilterThread,
+                          "data filter",
+                          2048,
+                          NULL,
+                          PRIO_0_FILTER,
+                          NULL,
+                          0);
+#endif
 
 #if 1
   xTaskCreatePinnedToCore(PressureReaderThread,

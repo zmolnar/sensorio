@@ -65,7 +65,7 @@ bool BNO055::begin(void)
 bool BNO055::getDeviceStatus(BNO055::Status &status)
 {
   u8 code = 0;
-  error = convertError(bno055_get_sys_stat_code(&code));
+  error   = convertError(bno055_get_sys_stat_code(&code));
 
   if (OK == error) {
     status = static_cast<Status>(code);
@@ -91,7 +91,7 @@ bool BNO055::setOperationMode(OperationMode mode)
 bool BNO055::getClockSource(ClockSource &s)
 {
   u8 src = 0;
-  error = convertError(bno055_get_clk_src(&src));
+  error  = convertError(bno055_get_clk_src(&src));
 
   if (OK == error) {
     s = static_cast<ClockSource>(src);
@@ -186,6 +186,30 @@ bool BNO055::getGravity(Gravity_t &data)
 {
   error = convertError(bno055_convert_double_gravity_xyz_msq(&data));
   return OK == error;
+}
+
+bool BNO055::getAccCalibrationStatus(u8 &status)
+{
+  error = convertError(bno055_get_accel_calib_stat(&status));
+  return OK == error;  
+}
+
+bool BNO055::getGyroCalibrationStatus(u8 &status)
+{
+  error = convertError(bno055_get_gyro_calib_stat(&status));
+  return OK == error;  
+}
+
+bool BNO055::getMagCalibrationStatus(u8 &status)
+{
+  error = convertError(bno055_get_mag_calib_stat(&status));
+  return OK == error;  
+}
+
+bool BNO055::getSystemCalibrationStatus(u8 &status)
+{
+  error = convertError(bno055_get_sys_calib_stat(&status));
+  return OK == error;  
 }
 
 BNO055::Error BNO055::convertError(BNO055_RETURN_FUNCTION_TYPE e)

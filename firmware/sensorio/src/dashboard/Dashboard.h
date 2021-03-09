@@ -99,6 +99,12 @@ typedef struct ImuData_s {
     ImuClockSource_t  clk;
   } system;
   struct {
+    uint8_t acc;
+    uint8_t gyro;
+    uint8_t mag;
+    uint8_t sys;
+  } calibration;
+  struct {
     double yaw;
     double pitch;
     double roll;

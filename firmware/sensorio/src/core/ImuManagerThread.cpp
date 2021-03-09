@@ -200,15 +200,14 @@ void ImuManagerThread(void *p)
         data.acceleration.z = acc.z;
       }
 
-      // TODO calculate vertical acceleration
+      bno055.getAccCalibrationStatus(data.calibration.acc);
+      bno055.getGyroCalibrationStatus(data.calibration.gyro);
+      bno055.getMagCalibrationStatus(data.calibration.mag);
+      bno055.getSystemCalibrationStatus(data.calibration.sys);
 
       // TODO update calibration status
 
       DbDataImuSet(&data);
-
-#if 0
-        Serial.printf("%f/%f/%f\r\n", euler.h, euler.p, euler.r);
-#endif
 
     } else {
       Serial.println("IMU task notification failed");

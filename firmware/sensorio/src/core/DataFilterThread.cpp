@@ -1,26 +1,19 @@
 /**
- * @file PressureReaderThread.cpp
+ * @file DataFilterThread.cpp
  * @brief
  */
 
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
-#include "PressureReaderThread.h"
 #include "DataFilterThread.h"
-#include "ImuManagerThread.h"
-
 #include "dashboard/Dashboard.h"
-#include "drivers/ms5611/ms5611.h"
+
+#include <Arduino.h>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
-#define BPS_SDA  13
-#define BPS_SCL  14
-#define BPS_FREQ 400000
-
-#define SAMPLE_PERIOD_IN_MS 20
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
@@ -33,7 +26,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static TaskHandle_t bpsTask = NULL;
+TaskHandle_t filterTask;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -42,72 +35,33 @@ static TaskHandle_t bpsTask = NULL;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
-static void tick(TimerHandle_t xTimer)
-{
-  (void)xTimer;
-
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  vTaskNotifyGiveFromISR(bpsTask, &xHigherPriorityTaskWoken);
-  if (pdTRUE == xHigherPriorityTaskWoken) {
-    portYIELD_FROM_ISR();
-  }
-
-  vTaskNotifyGiveFromISR(imuTask, &xHigherPriorityTaskWoken);
-  if (pdTRUE == xHigherPriorityTaskWoken) {
-    portYIELD_FROM_ISR();
-  }
-}
 
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
-void PressureReaderThread(void *p)
+void DataFilterThread(void *p)
 {
-  bpsTask = xTaskGetCurrentTaskHandle();
-
-  TwoWire ms5611_twi = TwoWire(0);
-  MS5611  ms5611     = MS5611(ms5611_twi);
-
-  while (!ms5611.begin(BPS_SDA, BPS_SCL, BPS_FREQ)) {
-    Serial.print("MS5611 startup error\n");
-    delay(1000);
-  }
-
-  Serial.print("MS5611 is ready\n");
-
-  TimerHandle_t timerHandle;
-  timerHandle = xTimerCreate("data sampling timer",
-                             pdMS_TO_TICKS(SAMPLE_PERIOD_IN_MS),
-                             pdTRUE,
-                             0,
-                             tick);
-  if (pdPASS != xTimerStart(timerHandle, 0)) {
-    Serial.println("Failed to start data sampling timer");
-  }
+  filterTask = xTaskGetCurrentTaskHandle();
 
   while (1) {
     uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    if (1 == notification) {
-      bool result = ms5611.convert(MS5611::Osr::OSR_4096);
+    if (0 < notification) {
+      BpsData_t bps;
+      DbDataBpsGet(&bps);
 
-      if (result) {
-        BpsData_t data;
-        memset(&data, 0, sizeof(data));
+      ImuData_t imu;
+      DbDataImuGet(&imu);
 
-        data.raw.temp        = ms5611.getRawTemp();
-        data.raw.pressure    = ms5611.getRawPressure();
-        data.cooked.temp     = ms5611.getCompensatedTemp();
-        data.cooked.pressure = ms5611.getCompensatedPressure();
+      TickType_t time = xTaskGetTickCount();
 
-        DbDataBpsSet(&data);
-
-        xTaskNotifyGive(filterTask);
-
-      } else {
-        Serial.println("MS5611 conversion error");
-      }
-    } else {
-      Serial.println("BPS task notification failed");
+      Serial.printf(
+        "%d %d %d %d %d %d %.3f %.3f %.3f %.3f %.3f %.3f\r",
+        time, 
+        imu.calibration.acc, imu.calibration.gyro, imu.calibration.mag, 
+        imu.calibration.sys,
+        bps.cooked.pressure,
+        imu.gravity.x, imu.gravity.y, imu.gravity.z,
+        imu.acceleration.x, imu.acceleration.y, imu.acceleration.z);
     }
   }
 }

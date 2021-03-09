@@ -141,6 +141,10 @@ public:
   bool  getQuaternion(Quaternion_t &data);
   bool  getLinearAcceleration(LinearAccel_t &data);
   bool  getGravity(Gravity_t &data);
+  bool  getAccCalibrationStatus(u8 &status);
+  bool  getGyroCalibrationStatus(u8 &status);
+  bool  getMagCalibrationStatus(u8 &status);
+  bool  getSystemCalibrationStatus(u8 &status);
 
 private:
   bus_init_t init;
