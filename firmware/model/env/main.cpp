@@ -1,24 +1,18 @@
 /**
- * @file LvglThread.cpp
+ * @file main.cpp
  * @brief
  */
 
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
-#include "LvglThread.h"
+#include <iostream>
 
-#include <Arduino.h>
-
-#include "drivers/encoder/Encoder.h"
-#include "drivers/lcd/SharpLcd.h"
-#include "gui/Sensorio.h"
-#include "lvgl.h"
+#include "../../sensorio/src/kalmanfilter/matrix.h"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
-#define LVGL_TICK_IN_MS 5
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
@@ -31,9 +25,6 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static TaskHandle_t  lvglTask = NULL;
-static TimerHandle_t timerHandle;
-static bool          shutdownRequested = false;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -42,75 +33,85 @@ static bool          shutdownRequested = false;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
-static void tick(TimerHandle_t xTimer)
-{
-  (void)xTimer;
-
-  static uint32_t counter = 0;
-  counter += LVGL_TICK_IN_MS;
-
-  if (SHARP_LCD_VCOM_CHANGE_PERIOD_IN_MS <= counter) {
-    SharpLcdToggleVcom();
-    counter = 0;
-  }
-
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  vTaskNotifyGiveFromISR(lvglTask, &xHigherPriorityTaskWoken);
-  if (pdTRUE == xHigherPriorityTaskWoken) {
-    portYIELD_FROM_ISR();
-  }
-}
 
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
-void LvglThread(void *p)
+int main(int argc, char **argv)
 {
-  (void)p;
-  
-  // Initialize LVGL
-  lv_init();
+  Matrix a = Matrix(3, 3);
+  Matrix b = Matrix(3, 3);
 
-  // Initialize display driver
-  SharpLcdInit();
-  SharpLcdRegisterDriver();
-
-  // Start GUI application
-  SensorioStart();
-
-  lvglTask    = xTaskGetCurrentTaskHandle();
-  timerHandle = xTimerCreate(
-      "lvgl tick timer", pdMS_TO_TICKS(LVGL_TICK_IN_MS), pdTRUE, 0, tick);
-  if (pdPASS != xTimerStart(timerHandle, 0)) {
-    Serial.println("timer start failed");
-  }
-
-  while (1) {
-    uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-    if (0 < notification) {
-      lv_tick_inc(notification * LVGL_TICK_IN_MS);
-      lv_task_handler();
-      if (shutdownRequested) {
-        SensorioConfirmExit();
-        shutdownRequested = false;
-      }
-      SharpLcdSendVcomIfNeeded();
-    } else {
-      Serial.println("lvgl timeout");
+  for (size_t i = 0; i < a.rowCount(); ++i) {
+    for (size_t j = 0; j < a.columnCount(); ++j) {
+      a(i, j) = 1;
     }
   }
-}
 
-void LvglStartupFinished(void)
-{
-  EncoderInit();
-  EncoderRegisterDriver(SensorioGetEncoderGroup());
-}
+  std::cout << a;
 
-void LvglShutdownRequested(void)
-{
-  shutdownRequested = true;
+  int num = 0;
+  for (size_t i = 0; i < b.rowCount(); ++i) {
+    for (size_t j = 0; j < b.columnCount(); ++j) {
+      b(i, j) = ++num;
+    }
+  }
+
+  Matrix m = Matrix(3, 3);
+  m(0, 0)  = 6;
+  m(0, 1)  = 15;
+  m(0, 2)  = 55;
+
+  m(1, 0) = 15;
+  m(1, 1) = 55;
+  m(1, 2) = 225;
+
+  m(2, 0) = 55;
+  m(2, 1) = 225;
+  m(2, 2) = 979;
+
+  std::cout << "m" << std::endl << m << std::endl;
+  std::cout << "m.sqrt" << std::endl << m.sqrt() << std::endl;
+
+
+  // Matrix m = Matrix(4,4);
+  // m(0,0) = 5;
+  // m(0,1) = -2;
+  // m(0,2) = 2;
+  // m(0,3) = 7;
+
+  // m(1,0) = 1;
+  // m(1,1) = 0;
+  // m(1,2) = 0;
+  // m(1,3) = 3;
+
+  // m(2,0) = -3;
+  // m(2,1) = 1;
+  // m(2,2) = 5;
+  // m(2,3) = 0;
+
+  // m(3,0) = 3;
+  // m(3,1) = -1;
+  // m(3,2) = -9;
+  // m(3,3) = 4;
+
+  // std::cout << "Matrix m:";
+  // std::cout << m;
+  // std::cout << std::endl;
+
+  // std::cout << "m.T() = " << m.T() << std::endl;
+
+  // std::cout << "m.det() = " << m.det() << std::endl;
+
+  // std::cout << std::endl;
+  // std::cout << "m.adj()" << std::endl;
+  // std::cout << m.adj();
+
+  // std::cout << std::endl;
+  // std::cout << "m.inv()" << std::endl;
+  // std::cout << m.inv();
+
+  return 0;
 }
 
 /****************************** END OF FILE **********************************/

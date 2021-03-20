@@ -4,7 +4,7 @@ import math
 
 from filterpy.kalman import UnscentedKalmanFilter
 from filterpy.common import Q_discrete_white_noise
-from filterpy.kalman import JulierSigmaPoints
+from filterpy.kalman import MerweScaledSigmaPoints
 
 def load_dat_file(datfile):    
     press = []
@@ -53,7 +53,7 @@ def hx(x):
     return np.array([h, a])
 
 # Create UKF
-sigmas = JulierSigmaPoints(n=3, kappa=1)
+sigmas = MerweScaledSigmaPoints(n=3, alpha=.3, beta=2., kappa=.1)
 ukf = UnscentedKalmanFilter(dim_x=3, dim_z=2, dt=.02, hx=hx, fx=fx, points=sigmas)
 
 # Initial conditions
