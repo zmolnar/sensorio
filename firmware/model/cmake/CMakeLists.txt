@@ -5,7 +5,7 @@ project(UKF)
 
 # add the executable
 
-set(SOURCEFILES "../env/main.cpp")
+set(SOURCEFILES "../src/main.cpp")
 list(APPEND SOURCEFILES "../../sensorio/src/kalmanfilter/matrix.cpp")
 list(APPEND SOURCEFILES "../../sensorio/src/kalmanfilter/ukf.cpp")
 list(APPEND SOURCEFILES "../../sensorio/src/kalmanfilter/MerweScaledSigmaPoints.cpp")
