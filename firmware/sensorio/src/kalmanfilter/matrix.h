@@ -15,10 +15,6 @@
 
 #include "env.h"
 
-#if defined(PCSIM)
-#include <iostream>
-#endif
-
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
@@ -102,6 +98,7 @@ public:
 Matrix operator*(double c, Matrix &rhs);
 
 #if defined(PCSIM)
+#include <iostream>
 std::ostream &operator<<(std::ostream &os, const Matrix &m);
 #endif
 

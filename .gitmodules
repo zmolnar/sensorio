@@ -1,3 +1,6 @@
 [submodule "firmware/lvgl"]
 	path = firmware/lvgl
 	url = https://github.com/lvgl/lvgl.git
+[submodule "firmware/model/lib/googletest"]
+	path = firmware/model/lib/googletest
+	url = https://github.com/google/googletest.git

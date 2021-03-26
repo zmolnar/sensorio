@@ -188,8 +188,6 @@ double Matrix::operator()(size_t i, size_t j) const
   return items[i * columns + j];
 }
 
-#include <iostream>
-
 Matrix Matrix::operator+(const Matrix &rhs)
 {
   ASSERT(rows == rhs.rows);
@@ -202,8 +200,6 @@ Matrix Matrix::operator+(const Matrix &rhs)
       r(i, j) = (*this)(i, j) + rhs(i, j);
     }
   }
-
-  std::cout << "operator+ " << r << std::endl;
 
   return r;
 }
