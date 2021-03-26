@@ -11,12 +11,7 @@
 #include <cmath>
 #include <cstring>
 
-#if defined(PCSIM)
-#include <cassert>
-#define ASSERT assert
-#else
-#define ASSERT
-#endif
+#include "env.h"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -45,30 +40,162 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
-Matrix &Matrix::operator=(const Matrix &rhs)
+Vector::Vector(Matrix &m) :
+    matrix(m), rows(m.rows), columns(m.columns), index(0)
 {
-  ASSERT(this->rows == rhs.rows);
-  ASSERT(this->columns == rhs.columns);
+  ASSERT((1 == rows) || (1 == columns));
+}
 
-  memcpy(this->items, rhs.items, sizeof(this->items));
+Vector &Vector::operator=(const Vector &v)
+{
+  if (1 == rows) {
+    ASSERT(columns == (v.rows * v.columns));
+    for (size_t i = 0; i < columns; ++i) {
+      matrix(index, i) = v(i);
+    }
+  } else {
+    ASSERT(rows == (v.rows * v.columns));
+    for (size_t i = 0; i < columns; ++i) {
+      matrix(i, index) = v(i);
+    }
+  }
 
   return *this;
 }
 
-double &Matrix::operator()(size_t i, size_t j) const
+double &Vector::operator()(size_t i)
 {
-  ASSERT(i < this->rows);
-  ASSERT(j < this->columns);
+  return (*this)(i);
+}
+
+double Vector::operator()(size_t i) const
+{
+  if (1 == rows) {
+    ASSERT(i < columns);
+    return matrix(index, i);
+  } else {
+    ASSERT(i < rows);
+    return matrix(i, index);
+  }
+}
+
+Matrix Vector::operator+(const Vector &v)
+{
+  ASSERT((rows == v.rows) && (columns == v.columns));
+  Matrix result = Matrix(rows, columns);
+
+  if (1 == rows) {
+    for (size_t i = 0; i < columns; ++i) {
+      matrix(0, i) += v(i);
+    }
+  } else {
+    for (size_t i = 0; i < rows; ++i) {
+      matrix(i, 0) += v(i);
+    }
+  }
+
+  return result;
+}
+
+Matrix Vector::operator-(const Vector &v) const
+{
+  ASSERT((rows * columns) == (v.rows * v.columns));
+  Matrix result = Matrix(rows, columns);
+
+  if (1 == rows) {
+    for (size_t i = 0; i < columns; ++i) {
+      double thisi = (*this)(i);
+      double vi    = v(i);
+      result(0, i) = (*this)(i)-v(i);
+    }
+  } else {
+    for (size_t i = 0; i < rows; ++i) {
+      result(i, 0) = (*this)(i)-v(i);
+    }
+  }
+
+  return result;
+}
+
+double Vector::operator*(const Vector &v) const
+{
+  ASSERT((rows * columns) == (v.rows * v.columns));
+
+  double product = 0.0;
+  size_t length  = rows * columns;
+  for (size_t i = 0; i < length; ++i) {
+    product += (*this)(i)*v(i);
+  }
+
+  return product;
+}
+Matrix Vector::outer(const Vector &v) const
+{
+  size_t rowCount    = rows * columns;
+  size_t columnCount = v.rows * v.columns;
+  Matrix result      = Matrix(rowCount, columnCount);
+
+  for (size_t i = 0; i < result.rows; ++i) {
+    for (size_t j = 0; j < result.columns; ++j) {
+      result(i, j) = (*this)(i)*v(j);
+    }
+  }
+
+  return result;
+}
+
+Matrix::Matrix(const Matrix &m) :
+    itemCount(m.itemCount), rows(m.rows), columns(m.columns)
+{
+  if (m.items) {
+    items = (double *)malloc(itemCount * sizeof(double));
+    ASSERT(items);
+    memcpy(this->items, m.items, this->itemCount);
+  }
+}
+
+Matrix &Matrix::operator=(const Matrix &rhs)
+{
+  if (this != &rhs) {
+    if (itemCount != rhs.itemCount) {
+      free(items);
+      items = (double*)malloc(rhs.itemCount * sizeof(double));
+      ASSERT(items);
+    }
+
+    itemCount = rhs.itemCount;
+    rows      = rhs.rows;
+    columns   = rhs.columns;
+    memcpy(items, rhs.items, itemCount * sizeof(double));
+  }
+
+  return *this;
+}
+
+double &Matrix::operator()(size_t i, size_t j)
+{
+  ASSERT(i < rows);
+  ASSERT(j < columns);
 
   return items[i * columns + j];
 }
 
+double Matrix::operator()(size_t i, size_t j) const
+{
+  ASSERT(i < rows);
+  ASSERT(j < columns);
+
+  return items[i * columns + j];
+}
+
+#include <iostream>
+
 Matrix Matrix::operator+(const Matrix &rhs)
 {
-  ASSERT(this->rows == rhs.rows);
-  ASSERT(this->columns == rhs.columns);
+  ASSERT(rows == rhs.rows);
+  ASSERT(columns == rhs.columns);
 
-  Matrix r = Matrix(this->rows, this->columns);
+  Matrix r = Matrix(rows, columns);
 
   for (size_t i = 0; i < r.rows; ++i) {
     for (size_t j = 0; j < r.columns; ++j) {
@@ -76,39 +203,63 @@ Matrix Matrix::operator+(const Matrix &rhs)
     }
   }
 
+  std::cout << "operator+ " << r << std::endl;
+
   return r;
 }
 
 Matrix Matrix::operator*(const Matrix &rhs)
 {
-  ASSERT(this->columns == rhs.rows);
+  ASSERT(columns == rhs.rows);
 
-  Matrix r = Matrix(this->rows, rhs.columns);
+  Matrix prod = Matrix(rows, rhs.columns);
 
-  for (size_t i = 0; i < r.rowCount(); ++i) {
-    for (size_t j = 0; j < r.columnCount(); ++j) {
+  for (size_t i = 0; i < prod.rows; ++i) {
+    for (size_t j = 0; j < prod.columns; ++j) {
       double product = 0;
-      for (size_t x = 0; x < this->columnCount(); ++x) {
+      for (size_t x = 0; x < columns; ++x) {
         product += (*this)(i, x) * rhs(x, j);
       }
 
-      r(i, j) = product;
+      prod(i, j) = product;
     }
   }
 
-  return r;
+  return prod;
+}
+
+Matrix Matrix::operator*(const double c)
+{
+  Matrix prod = Matrix(rows, columns);
+
+  for (size_t i = 0; i < rows; ++i) {
+    for (size_t j = 0; j < columns; ++j) {
+      prod(i, j) = c * (*this)(i, j);
+    }
+  }
+
+  return prod;
+}
+
+Vector Matrix::row(size_t i)
+{
+  return Vector(*this, 1, columns, i);
+}
+Vector Matrix::column(size_t i)
+{
+  return Vector(*this, rows, 1, i);
 }
 
 double Matrix::det(void)
 {
   double D = 0.0;
 
-  if (1 == this->itemCount)
+  if (1 == itemCount)
     return items[0];
 
   int sign = 1;
 
-  for (size_t r = 0; r < this->rows; ++r) {
+  for (size_t r = 0; r < rows; ++r) {
     Matrix cof = this->cof(0, r);
     D += sign * (*this)(0, r) * cof.det();
 
@@ -120,12 +271,12 @@ double Matrix::det(void)
 
 Matrix Matrix::cof(size_t row, size_t column)
 {
-  Matrix cof = Matrix(this->rows - 1, this->columns - 1);
+  Matrix cof = Matrix(rows - 1, columns - 1);
 
   size_t ri = 0;
   size_t ci = 0;
-  for (size_t r = 0; r < this->rows; ++r) {
-    for (size_t c = 0; c < this->columns; ++c) {
+  for (size_t r = 0; r < rows; ++r) {
+    for (size_t c = 0; c < columns; ++c) {
       if ((r != row) && (c != column)) {
         cof(ri, ci) = (*this)(r, c);
         if (ci < (cof.columns - 1)) {
@@ -144,15 +295,15 @@ Matrix Matrix::cof(size_t row, size_t column)
 Matrix Matrix::adj(void)
 {
   // Note here, that the output must be transposed!
-  Matrix adj = Matrix(this->columns, this->rows);
+  Matrix adj = Matrix(columns, rows);
 
-  if (1 == this->itemCount) {
+  if (1 == itemCount) {
     adj(0, 0) = 1;
     return adj;
   }
 
-  for (size_t r = 0; r < this->rows; ++r) {
-    for (size_t c = 0; c < this->columns; ++c) {
+  for (size_t r = 0; r < rows; ++r) {
+    for (size_t c = 0; c < columns; ++c) {
       Matrix cof = this->cof(r, c);
       int    s   = ((r + c) % 2 == 0) ? 1 : -1;
       adj(c, r)  = (s)*cof.det();
@@ -164,14 +315,14 @@ Matrix Matrix::adj(void)
 
 Matrix Matrix::inv(void)
 {
-  ASSERT(this->rows == this->columns);
+  ASSERT(rows == columns);
 
   double det = this->det();
   ASSERT(det != 0);
 
   Matrix adj = this->adj();
 
-  Matrix inv = Matrix(this->rows, this->columns);
+  Matrix inv = Matrix(rows, columns);
 
   for (size_t i = 0; i < inv.rows; ++i)
     for (size_t j = 0; j < inv.columns; ++j)
@@ -182,10 +333,10 @@ Matrix Matrix::inv(void)
 
 Matrix Matrix::T(void)
 {
-  Matrix trsp = Matrix(this->columns, this->rows);
+  Matrix trsp = Matrix(columns, rows);
 
-  for (size_t r = 0; r < this->rows; ++r) {
-    for (size_t c = 0; c < this->columns; ++c) {
+  for (size_t r = 0; r < rows; ++r) {
+    for (size_t c = 0; c < columns; ++c) {
       trsp(c, r) = (*this)(r, c);
     }
   }
@@ -195,11 +346,11 @@ Matrix Matrix::T(void)
 
 Matrix Matrix::sqrt(void)
 {
-  ASSERT(this->rows == this->columns);
-  
-  Matrix lower = Matrix(this->rows, this->columns);
+  ASSERT(rows == columns);
 
-  for (size_t r = 0; r < this->rows; ++r) {
+  Matrix lower = Matrix(rows, columns);
+
+  for (size_t r = 0; r < rows; ++r) {
     // Off-diagonal elements
     for (size_t k = 0; k < r; ++k) {
       double value = (*this)(r, k);
@@ -218,18 +369,32 @@ Matrix Matrix::sqrt(void)
   return lower;
 }
 
+Matrix &Matrix::fill(double v)
+{
+  for (size_t i = 0; i < itemCount; ++i) {
+    items[i] = v;
+  }
+
+  return (*this);
+}
+
+Matrix operator*(double c, Matrix &rhs)
+{
+  return rhs * c;
+}
+
 #if defined(PCSIM)
 std::ostream &operator<<(std::ostream &os, const Matrix &m)
 {
   os << std::endl << "[";
 
-  for (size_t i = 0; i < m.rowCount(); ++i) {
+  for (size_t i = 0; i < m.rows; ++i) {
     if (0 < i)
       os << std::endl << " ";
 
-    for (size_t j = 0; j < m.columnCount(); ++j) {
+    for (size_t j = 0; j < m.columns; ++j) {
       os << m(i, j);
-      if (j < (m.columnCount() - 1))
+      if (j < (m.columns - 1))
         os << "\t";
     }
   }

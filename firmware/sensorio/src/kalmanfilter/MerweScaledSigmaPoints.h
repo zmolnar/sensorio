@@ -1,16 +1,15 @@
 /**
- * @file ukf.h
+ * @file MerweScaledSigmaPoints.h
  * @brief
  */
 
-#ifndef UKF_H
-#define UKF_H
+#ifndef MERWE_SCALED_SIAGMA_POINTS_H
+#define MERWE_SCALED_SIAGMA_POINTS_H
 
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "SigmaPoints.h"
-#include "matrix.h"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -23,54 +22,30 @@
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
 /*****************************************************************************/
-typedef Matrix (*fx_t)(const Vector &x, double dt);
-typedef Matrix (*hx_t)(const Vector &x);
-
-class UnscentedKalmanFilter {
+class MerweScaledSigmaPoints : public SigmaPoints {
 public:
-  const size_t dim_x;
-  const size_t dim_z;
-  const double dt;
-
-  Matrix x;       // State vector
-  Matrix P;       // Process state covariance matrix
-  Matrix x_prior; // State vector
-  Matrix P_prior; // Process state covariance matrix
-  Matrix Q;       // Process noise
-  Matrix R;       // Measurement covariance matrix
-
-  UnscentedKalmanFilter(size_t       dim_x,
-                        size_t       dim_z,
-                        double       dt,
-                        fx_t         fx,
-                        hx_t         hx,
-                        SigmaPoints &sigmas) :
-      dim_x(dim_x),
-      dim_z(dim_z),
-      dt(dt),
-      x(Matrix(dim_x, 1)),
-      P(Matrix(dim_x, dim_x)),
-      x_prior(Matrix(dim_x, 1)),
-      P_prior(Matrix(dim_x, dim_x)),
-      Q(Matrix(dim_x, dim_x)),
-      R(Matrix(dim_z, dim_z)),
-      fx(fx),
-      hx(hx),
-      sigmas(sigmas)
+  MerweScaledSigmaPoints(size_t n, double a, double b, double k) :
+      alpha(a),
+      beta(b),
+      kappa(k),
+      lambda(alpha * alpha * (n + kappa) - n),
+      SigmaPoints(n, 2 * n + 1)
+  {
+    computeWeights();
+  }
+  ~MerweScaledSigmaPoints()
   {
   }
 
-  ~UnscentedKalmanFilter(){};
-
-  void predict(void);
-  void update(Matrix &z);
+  size_t numOfSigmas(void);
+  Matrix generateSigmas(Matrix &x, Matrix &P);
+  void   computeWeights(void);
 
 private:
-  const fx_t   fx;
-  const hx_t   hx;
-  SigmaPoints &sigmas;
-
-  
+  const double alpha;
+  const double beta;
+  const double kappa;
+  const double lambda;
 };
 
 /*****************************************************************************/
@@ -81,6 +56,6 @@ private:
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
 
-#endif /* UKF_H */
+#endif /* MERWE_SCALED_SIAGMA_POINTS_H */
 
 /****************************** END OF FILE **********************************/

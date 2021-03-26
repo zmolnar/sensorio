@@ -4,6 +4,13 @@ cmake_minimum_required(VERSION 3.10)
 project(UKF)
 
 # add the executable
+
+set(SOURCEFILES "../env/main.cpp")
+list(APPEND SOURCEFILES "../../sensorio/src/kalmanfilter/matrix.cpp")
+list(APPEND SOURCEFILES "../../sensorio/src/kalmanfilter/ukf.cpp")
+list(APPEND SOURCEFILES "../../sensorio/src/kalmanfilter/MerweScaledSigmaPoints.cpp")
+
 set(CMAKE_BUILD_TYPE Debug)
 add_compile_definitions(PCSIM)
-add_executable(exe ../env/main.cpp ../../sensorio/src/kalmanfilter/matrix.cpp)
+
+add_executable(exe  ${SOURCEFILES})

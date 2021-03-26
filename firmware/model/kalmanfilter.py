@@ -52,9 +52,12 @@ def hx(x):
 
     return np.array([h, a])
 
+def res_fn(a, b):
+    return (a-b)
+
 # Create UKF
 sigmas = MerweScaledSigmaPoints(n=3, alpha=.3, beta=2., kappa=.1)
-ukf = UnscentedKalmanFilter(dim_x=3, dim_z=2, dt=.02, hx=hx, fx=fx, points=sigmas)
+ukf = UnscentedKalmanFilter(dim_x=3, dim_z=2, dt=.02, hx=hx, fx=fx, points=sigmas,residual_x=res_fn)
 
 # Initial conditions
 height = 44330 * (1 - pow ((raw_press[0] / 101325), 0.1902))
@@ -71,11 +74,12 @@ ukf.R = np.array([[4**2, 0],[0, .02**2]])
 
 # Process noise
 ukf.Q = Q_discrete_white_noise(3, dt=.02, var=0.03)
+print(ukf.Q)
 
 zs, hs, vs, accs = [], [], [], []
 
-for i in range(len(raw_press)):
-    meas = [raw_press[i], raw_acc[i]]
+for i in range(len(raw_press) - 1):
+    meas = [raw_press[i+1], raw_acc[i+1]]
     ukf.predict()
     ukf.update(meas)
     hs.append(ukf.x[0])

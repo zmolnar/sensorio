@@ -1,15 +1,15 @@
+
 /**
- * @file ukf.h
+ * @file SigmaPoints.h
  * @brief
  */
 
-#ifndef UKF_H
-#define UKF_H
+#ifndef SIGMA_POINTS_H
+#define SIGMA_POINTS_H
 
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
-#include "SigmaPoints.h"
 #include "matrix.h"
 
 /*****************************************************************************/
@@ -23,54 +23,22 @@
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
 /*****************************************************************************/
-typedef Matrix (*fx_t)(const Vector &x, double dt);
-typedef Matrix (*hx_t)(const Vector &x);
-
-class UnscentedKalmanFilter {
+class SigmaPoints {
 public:
-  const size_t dim_x;
-  const size_t dim_z;
-  const double dt;
-
-  Matrix x;       // State vector
-  Matrix P;       // Process state covariance matrix
-  Matrix x_prior; // State vector
-  Matrix P_prior; // Process state covariance matrix
-  Matrix Q;       // Process noise
-  Matrix R;       // Measurement covariance matrix
-
-  UnscentedKalmanFilter(size_t       dim_x,
-                        size_t       dim_z,
-                        double       dt,
-                        fx_t         fx,
-                        hx_t         hx,
-                        SigmaPoints &sigmas) :
-      dim_x(dim_x),
-      dim_z(dim_z),
-      dt(dt),
-      x(Matrix(dim_x, 1)),
-      P(Matrix(dim_x, dim_x)),
-      x_prior(Matrix(dim_x, 1)),
-      P_prior(Matrix(dim_x, dim_x)),
-      Q(Matrix(dim_x, dim_x)),
-      R(Matrix(dim_z, dim_z)),
-      fx(fx),
-      hx(hx),
-      sigmas(sigmas)
+  SigmaPoints(size_t n, size_t numOfSigmas) : 
+    n(n), Wm(numOfSigmas, 1), Wc(numOfSigmas, 1)
   {
   }
+  virtual ~SigmaPoints()
+  {
+  }
+  virtual size_t numOfSigmas(void)                    = 0;
+  virtual Matrix generateSigmas(Matrix &x, Matrix &P) = 0;
+  virtual void   computeWeights(void)                 = 0;
 
-  ~UnscentedKalmanFilter(){};
-
-  void predict(void);
-  void update(Matrix &z);
-
-private:
-  const fx_t   fx;
-  const hx_t   hx;
-  SigmaPoints &sigmas;
-
-  
+  const size_t n;
+  Matrix Wm;
+  Matrix Wc;
 };
 
 /*****************************************************************************/
@@ -81,6 +49,6 @@ private:
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
 
-#endif /* UKF_H */
+#endif /* SIGMA_POINTS_H */
 
 /****************************** END OF FILE **********************************/

@@ -1,15 +1,15 @@
 /**
- * @file ukf.cpp
+ * @file MerweScaledSiagmaPoints.cpp
  * @brief
  */
 
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
-#include "ukf.h"
+#include "MerweScaledSigmaPoints.h"
 #include "env.h"
 
-#include <iostream>
+#include <cassert>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -38,61 +38,59 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
-void UnscentedKalmanFilter::predict(void)
+size_t MerweScaledSigmaPoints::numOfSigmas(void)
 {
-  // Generate sigma points
-  Matrix sigmapoints = sigmas.generateSigmas(x, P);
-
-  // Compute the prior using the state transition function
-  Matrix f_sigmapoints = Matrix(sigmas.numOfSigmas(), dim_x);
-  f_sigmapoints.fill(0.0);
-
-  for(size_t i = 0; i < sigmas.numOfSigmas(); ++i) {
-    Vector si = sigmapoints.row(i);
-    Matrix f_si = fx(si, dt);
-    f_sigmapoints.row(i) = Vector(f_si);
-  }
-
-  // Unscented transformation
-  // The mean is the dot product of the sigma points and the weight.
-  for(size_t i = 0; i < dim_x; ++i) {
-    x_prior(i) = f_sigmapoints.column(i) * sigmas.Wm;
-  }
-
-  // Calculate the state covariance matrix
-  P_prior.fill(0.0);
-  for(size_t i = 0; i < f_sigmapoints.rows; ++i) {
-    Matrix y = f_sigmapoints.row(i) - x_prior;
-    Matrix outer = Vector(y).outer(y);
-
-    std::cout << "i" << std::endl << i << std::endl;
-    std::cout << "y" << std::endl << y << std::endl;
-    std::cout << "outer" << std::endl << outer << std::endl;
-    
-    Matrix Pi = outer * sigmas.Wc(i); 
-    std::cout << "Pi" << i << std::endl << Pi << std::endl;
-    P_prior = P_prior + Pi;
-
-    std::cout << "P" << i << std::endl << P_prior << std::endl;
-  }
-
-  std::cout << "P_prior" << std::endl << P_prior << std::endl;
-
-  // Add process noise
-  P_prior = P_prior + Q;
-
-  std::cout << "x" << std::endl << x << std::endl;
-  std::cout << "P" << std::endl << P << std::endl;
-  std::cout << "Q" << std::endl << Q << std::endl;
-  std::cout << "Wm" << std::endl << sigmas.Wm << std::endl;
-  std::cout << "Wc" << std::endl << sigmas.Wc << std::endl;
-  std::cout << "Sigmapoints" << std::endl << sigmapoints << std::endl;
-  std::cout << "f_Sigmapoints" << std::endl << f_sigmapoints << std::endl;
-  std::cout << "x_prior" << std::endl << x_prior << std::endl;
-  std::cout << "P_prior" << std::endl << P_prior << std::endl;
+  return 2 * n + 1;
 }
 
-void UnscentedKalmanFilter::update(Matrix &z)
+Matrix MerweScaledSigmaPoints::generateSigmas(Matrix &x, Matrix &P)
 {
+  // X must be a matrix(n, 1)
+  ASSERT(n == x.rows);
+  ASSERT(1 == x.columns);
+
+  // P must be an n dimensional square matrix
+  ASSERT(n == P.rows);
+  ASSERT(n == P.columns);
+
+  Matrix U = ((lambda + n) * P).sqrt();
+
+  // Create sigma points matrix whose rows contain the generated points.
+  Matrix sigmas = Matrix(this->numOfSigmas(), n);
+  sigmas.fill(0.0);
+
+  // The first row is the mean
+  for (size_t i = 0; i < n; ++i) {
+    sigmas(0, i) = x(i);
+  }
+
+  for (size_t k = 0; k < n; ++k) {
+    // Xi_1..n
+    for (size_t i = 0; i < n; ++i) {
+      sigmas(k + 1, i) = x(i) + U(i, k);
+    }
+
+    // Xi_n+1..2n
+    for (size_t i = 0; i < n; ++i) {
+      sigmas(n + k + 1, i) = x(i) - U(i, k);
+    }
+  }
+
+  return sigmas;
 }
+#include <iostream>
+void MerweScaledSigmaPoints::computeWeights(void)
+{
+  // Initialize weight matrix
+  double Wi = 0.5 / (n + lambda);
+  Wm.fill(Wi);
+  Wc.fill(Wi);
+
+  // Set weight for the mean[0]
+  Wm(0, 0) = lambda / (n + lambda); 
+
+  // Set weight for the covariance[0]
+  Wc(0, 0) = (lambda / (n + lambda)) + (1 - (alpha * alpha) + beta); 
+}
+
 /****************************** END OF FILE **********************************/
