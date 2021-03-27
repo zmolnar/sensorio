@@ -8,8 +8,8 @@
 /*****************************************************************************/
 #include <iostream>
 
-#include "../../sensorio/src/kalmanfilter/MerweScaledSigmaPoints.h"
-#include "../../sensorio/src/kalmanfilter/ukf.h"
+#include "MerweScaledSigmaPoints.h"
+#include "Ukf.h"
 
 #include <cassert>
 #include <cmath>

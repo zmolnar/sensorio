@@ -1,6 +1,6 @@
 
 #include <gtest/gtest.h>
-#include <matrix.h>
+#include <Matrix.h>
 
 class VectorTest : public ::testing::Test {
 public:
