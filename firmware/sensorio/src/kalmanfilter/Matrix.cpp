@@ -94,8 +94,8 @@ Matrix Vector::operator*(double c) const
   Matrix result = Matrix(rows, columns);
   Vector v(result);
 
-  for(size_t i = 0; i < length; ++i) {
-     v(i) = (*this)(i) * c;
+  for (size_t i = 0; i < length; ++i) {
+    v(i) = (*this)(i)*c;
   }
 
   return result;
@@ -272,6 +272,17 @@ Matrix Matrix::operator*(const double c) const
   }
 
   return prod;
+}
+
+bool Matrix::operator==(const Matrix &m) const
+{
+  bool result = false;
+
+  if ((rows == m.rows) && (columns == m.columns)) {
+    result = (0 == memcmp(items, m.items, itemCount * sizeof(double)));
+  }
+
+  return result;
 }
 
 Vector Matrix::row(size_t i)

@@ -119,6 +119,23 @@ TEST_F(MatrixTest, ScalarMultiplicationFromRight)
   }
 }
 
+TEST_F(MatrixTest, EqualityOperator_Self)
+{
+  EXPECT_TRUE(A == A);
+}
+
+TEST_F(MatrixTest, EqualityOperator_Match)
+{
+  Matrix C(A);
+
+  EXPECT_TRUE(A == C);
+}
+
+TEST_F(MatrixTest, EqualityOperator_NoMatch)
+{
+  EXPECT_FALSE(A == B);
+}
+
 TEST_F(MatrixTest, Determinant)
 {
   double M_values[] = {

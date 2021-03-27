@@ -88,6 +88,8 @@ public:
   Matrix  operator*(const Matrix &rhs) const;
   Matrix  operator*(const double c) const;
 
+  bool operator==(const Matrix &m) const;
+
   Vector row(size_t i);
   Vector column(size_t i);
 
