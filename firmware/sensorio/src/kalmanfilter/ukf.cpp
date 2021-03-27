@@ -56,7 +56,7 @@ void UnscentedKalmanFilter::predict(void)
   // Unscented transformation
   // The mean is the dot product of the sigma points and the weight.
   for(size_t i = 0; i < dim_x; ++i) {
-    x_prior(i) = f_sigmapoints.column(i) * sigmas.Wm;
+    x_prior(i) = f_sigmapoints.column(i).dot(sigmas.Wm);
   }
 
   // Calculate the state covariance matrix

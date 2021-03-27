@@ -9,9 +9,10 @@
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
 
 #include "env.h"
 
@@ -32,10 +33,11 @@ public:
   Matrix &matrix;
   size_t  rows;
   size_t  columns;
+  size_t  length;
   size_t  index;
 
   Vector(Matrix &m, size_t r, size_t c, size_t i) :
-      matrix(m), rows(r), columns(c), index(i)
+      matrix(m), rows(r), columns(c), length(r * c), index(i)
   {
     ASSERT((1 == rows) || (1 == columns));
   }
@@ -47,10 +49,10 @@ public:
   Vector &operator=(const Vector &v);
   double &operator()(size_t i);
   double  operator()(size_t i) const;
-  Matrix  operator+(const Vector &v);
+  Matrix  operator+(const Vector &v) const;
   Matrix  operator-(const Vector &v) const;
-  double  operator*(const Vector &v) const;
 
+  double dot(const Vector &v) const;
   Matrix outer(const Vector &v) const;
 };
 
@@ -66,6 +68,8 @@ public:
       itemCount(rows * columns), rows(rows), columns(columns)
   {
     items = (double *)malloc(itemCount * sizeof(double));
+    ASSERT(items);
+    memset(items, 0, itemCount * sizeof(double));
   }
 
   Matrix(const Matrix &m);
@@ -78,9 +82,10 @@ public:
   Matrix &operator=(const Matrix &rhs);
   double &operator()(size_t i, size_t j = 0);
   double  operator()(size_t i, size_t j = 0) const;
-  Matrix  operator+(const Matrix &rhs);
-  Matrix  operator*(const Matrix &rhs);
-  Matrix  operator*(const double c);
+  Matrix  operator+(const Matrix &rhs) const;
+  Matrix  operator-(const Matrix &rhs) const;
+  Matrix  operator*(const Matrix &rhs) const;
+  Matrix  operator*(const double c) const;
 
   Vector row(size_t i);
   Vector column(size_t i);
@@ -93,6 +98,7 @@ public:
   Matrix sqrt(void);
 
   Matrix &fill(double v);
+  Matrix &load(double array[], size_t length);
 };
 
 Matrix operator*(double c, Matrix &rhs);

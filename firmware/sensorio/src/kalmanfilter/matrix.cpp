@@ -41,7 +41,11 @@
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
 Vector::Vector(Matrix &m) :
-    matrix(m), rows(m.rows), columns(m.columns), index(0)
+    matrix(m),
+    rows(m.rows),
+    columns(m.columns),
+    length(m.rows * m.columns),
+    index(0)
 {
   ASSERT((1 == rows) || (1 == columns));
 }
@@ -49,23 +53,29 @@ Vector::Vector(Matrix &m) :
 Vector &Vector::operator=(const Vector &v)
 {
   if (1 == rows) {
-    ASSERT(columns == (v.rows * v.columns));
+    ASSERT(columns == (v.length));
     for (size_t i = 0; i < columns; ++i) {
       matrix(index, i) = v(i);
     }
   } else {
-    ASSERT(rows == (v.rows * v.columns));
-    for (size_t i = 0; i < columns; ++i) {
+    ASSERT(rows == (v.length));
+    for (size_t i = 0; i < rows; ++i) {
       matrix(i, index) = v(i);
     }
   }
 
-  return *this;
+  return (*this);
 }
 
 double &Vector::operator()(size_t i)
 {
-  return (*this)(i);
+  if (1 == rows) {
+    ASSERT(i < columns);
+    return matrix(index, i);
+  } else {
+    ASSERT(i < rows);
+    return matrix(i, index);
+  }
 }
 
 double Vector::operator()(size_t i) const
@@ -79,18 +89,19 @@ double Vector::operator()(size_t i) const
   }
 }
 
-Matrix Vector::operator+(const Vector &v)
+Matrix Vector::operator+(const Vector &v) const
 {
-  ASSERT((rows == v.rows) && (columns == v.columns));
+  ASSERT(length == v.length);
   Matrix result = Matrix(rows, columns);
+  result.fill(0.0);
 
   if (1 == rows) {
     for (size_t i = 0; i < columns; ++i) {
-      matrix(0, i) += v(i);
+      result(0, i) = (*this)(i) + v(i);
     }
   } else {
     for (size_t i = 0; i < rows; ++i) {
-      matrix(i, 0) += v(i);
+      result(i, 0) = (*this)(i) + v(i);
     }
   }
 
@@ -99,13 +110,11 @@ Matrix Vector::operator+(const Vector &v)
 
 Matrix Vector::operator-(const Vector &v) const
 {
-  ASSERT((rows * columns) == (v.rows * v.columns));
+  ASSERT(length == v.length);
   Matrix result = Matrix(rows, columns);
 
   if (1 == rows) {
     for (size_t i = 0; i < columns; ++i) {
-      double thisi = (*this)(i);
-      double vi    = v(i);
       result(0, i) = (*this)(i)-v(i);
     }
   } else {
@@ -117,7 +126,7 @@ Matrix Vector::operator-(const Vector &v) const
   return result;
 }
 
-double Vector::operator*(const Vector &v) const
+double Vector::dot(const Vector &v) const
 {
   ASSERT((rows * columns) == (v.rows * v.columns));
 
@@ -159,7 +168,7 @@ Matrix &Matrix::operator=(const Matrix &rhs)
   if (this != &rhs) {
     if (itemCount != rhs.itemCount) {
       free(items);
-      items = (double*)malloc(rhs.itemCount * sizeof(double));
+      items = (double *)malloc(rhs.itemCount * sizeof(double));
       ASSERT(items);
     }
 
@@ -188,7 +197,7 @@ double Matrix::operator()(size_t i, size_t j) const
   return items[i * columns + j];
 }
 
-Matrix Matrix::operator+(const Matrix &rhs)
+Matrix Matrix::operator+(const Matrix &rhs) const
 {
   ASSERT(rows == rhs.rows);
   ASSERT(columns == rhs.columns);
@@ -204,7 +213,23 @@ Matrix Matrix::operator+(const Matrix &rhs)
   return r;
 }
 
-Matrix Matrix::operator*(const Matrix &rhs)
+Matrix Matrix::operator-(const Matrix &rhs) const
+{
+  ASSERT(rows == rhs.rows);
+  ASSERT(columns == rhs.columns);
+
+  Matrix r = Matrix(rows, columns);
+
+  for (size_t i = 0; i < r.rows; ++i) {
+    for (size_t j = 0; j < r.columns; ++j) {
+      r(i, j) = (*this)(i, j) - rhs(i, j);
+    }
+  }
+
+  return r;
+}
+
+Matrix Matrix::operator*(const Matrix &rhs) const
 {
   ASSERT(columns == rhs.rows);
 
@@ -224,7 +249,7 @@ Matrix Matrix::operator*(const Matrix &rhs)
   return prod;
 }
 
-Matrix Matrix::operator*(const double c)
+Matrix Matrix::operator*(const double c) const
 {
   Matrix prod = Matrix(rows, columns);
 
@@ -370,6 +395,15 @@ Matrix &Matrix::fill(double v)
   for (size_t i = 0; i < itemCount; ++i) {
     items[i] = v;
   }
+
+  return (*this);
+}
+
+Matrix &Matrix::load(double array[], size_t length)
+{
+  ASSERT(itemCount == length);
+
+  memcpy(items, array, itemCount * sizeof(double));
 
   return (*this);
 }
