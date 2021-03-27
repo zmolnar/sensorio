@@ -49,6 +49,7 @@ public:
   Vector &operator=(const Vector &v);
   double &operator()(size_t i);
   double  operator()(size_t i) const;
+  Matrix  operator*(double c) const;
   Matrix  operator+(const Vector &v) const;
   Matrix  operator-(const Vector &v) const;
 

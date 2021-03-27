@@ -100,6 +100,23 @@ TEST_F(VectorTest, RowAssignment)
   }
 }
 
+TEST_F(VectorTest, ScalarMultiplication)
+{
+  double factor = 3.0;
+
+  Vector v = M.row(1);
+  double expected[] = {36, 111, -129,};
+
+  Matrix S = v * factor;
+
+  EXPECT_EQ(1, S.rows);
+  EXPECT_EQ(3, S.columns);
+
+  for(size_t i = 0; i < S.columns; ++i) {
+    EXPECT_DOUBLE_EQ(expected[i], S(0, i));
+  }
+}
+
 TEST_F(VectorTest, RowAddition)
 {
   double N_values[] = {
@@ -125,7 +142,7 @@ TEST_F(VectorTest, ColumnAddition)
 {
   double N_values[] = {
     1, 2, 3, 
-  };    
+  };
   Matrix N(3, 1);
   N.load(N_values, 3);
 
@@ -199,7 +216,7 @@ TEST_F(VectorTest, DotProduct)
   R.load(R_values, 3);
 
   double expected = 0.0;
-  for(size_t i = 0; i < sizeof(P_values)/sizeof(P_values[0]); ++i)
+  for(size_t i = 0; i < 3; ++i)
     expected += P_values[i] * R_values[i];
 
   double dotproduct = Vector(P).dot(R);

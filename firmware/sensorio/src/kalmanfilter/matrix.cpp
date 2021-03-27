@@ -89,6 +89,18 @@ double Vector::operator()(size_t i) const
   }
 }
 
+Matrix Vector::operator*(double c) const
+{
+  Matrix result = Matrix(rows, columns);
+  Vector v(result);
+
+  for(size_t i = 0; i < length; ++i) {
+     v(i) = (*this)(i) * c;
+  }
+
+  return result;
+}
+
 Matrix Vector::operator+(const Vector &v) const
 {
   ASSERT(length == v.length);
@@ -159,7 +171,7 @@ Matrix::Matrix(const Matrix &m) :
   if (m.items) {
     items = (double *)malloc(itemCount * sizeof(double));
     ASSERT(items);
-    memcpy(this->items, m.items, this->itemCount);
+    memcpy(this->items, m.items, this->itemCount * sizeof(double));
   }
 }
 
@@ -266,6 +278,7 @@ Vector Matrix::row(size_t i)
 {
   return Vector(*this, 1, columns, i);
 }
+
 Vector Matrix::column(size_t i)
 {
   return Vector(*this, rows, 1, i);

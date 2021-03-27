@@ -6,15 +6,18 @@ class MatrixTest : public ::testing::Test {
 public:
   Matrix A;
   Matrix B;
-  Matrix C;
 
-  MatrixTest() : A(3, 3), B(3, 3), C(2, 2)
+  MatrixTest() : A(3, 3), B(3, 3)
   {
   }
 
   virtual void SetUp()
   {
-    double A_values[] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
+    double A_values[] = {
+      1.0, 2.0, 3.0, 
+      4.0, 5.0, 6.0, 
+      7.0, 8.0, 9.0
+    };
     A.load(A_values, 9);
 
     B.fill(1.0);
@@ -24,6 +27,20 @@ public:
   {
   }
 };
+
+TEST_F(MatrixTest, Indexing)
+{
+  EXPECT_DOUBLE_EQ(5.0, A(1, 1));
+  
+  A(1, 1) = 99.0;
+  EXPECT_DOUBLE_EQ(99.0, A(1, 1));
+}
+
+TEST_F(MatrixTest, ConstIndexing)
+{
+  const Matrix &M = A;
+  EXPECT_DOUBLE_EQ(5.0, M(1, 1));
+}
 
 TEST_F(MatrixTest, Addition)
 {
@@ -74,22 +91,26 @@ TEST_F(MatrixTest, Multiplication)
   }
 }
 
-TEST_F(MatrixTest, ScalarMultiplication)
+TEST_F(MatrixTest, ScalarMultiplicationFromLeft)
 {
   double factor = 3.0;
   Matrix S(3, 3);
 
-  // From the right
-  S = A * factor;
+  S = factor * A;
   for (size_t i = 0; i < S.rows; ++i) {
     for (size_t j = 0; j < S.columns; ++j) {
       double expected = A(i, j) * factor;
       EXPECT_DOUBLE_EQ(expected, S(i, j));
     }
   }
+}
 
-  // From the left
-  S = factor * A;
+TEST_F(MatrixTest, ScalarMultiplicationFromRight)
+{
+  double factor = 3.0;
+  Matrix S(3, 3);
+
+  S = A * factor;
   for (size_t i = 0; i < S.rows; ++i) {
     for (size_t j = 0; j < S.columns; ++j) {
       double expected = A(i, j) * factor;
@@ -146,6 +167,7 @@ TEST_F(MatrixTest, Adjoint)
 
   Matrix M(4, 4);
   M.load(M_values, 16);
+
   Matrix Adj = M.adj();
 
   for (size_t i = 0; i < Adj.rows; ++i) {
@@ -270,5 +292,33 @@ TEST_F(MatrixTest, GetColumnVector)
 
   for (size_t i = 0; i < col1.length; ++i) {
     EXPECT_DOUBLE_EQ(M(i, 1), col1(i));
+  }
+}
+
+TEST_F(MatrixTest, Fill)
+{
+  A.fill(99.0);
+
+  for (size_t i = 0; i < A.rows; ++i) {
+    for (size_t j = 0; j < A.columns; ++j) {
+      EXPECT_DOUBLE_EQ(99.0, A(i, j));
+    }
+  }
+}
+
+TEST_F(MatrixTest, Load)
+{
+  double values[9] = {
+      4,  12, -16,
+     12,  37, -43,
+    -16, -43,  98,
+  };
+
+  A.load(values, 9);
+
+  for (size_t i = 0; i < A.rows; ++i) {
+    for (size_t j = 0; j < A.columns; ++j) {
+      EXPECT_DOUBLE_EQ(values[i * 3 + j], A(i, j));
+    }
   }
 }
