@@ -39,6 +39,10 @@ public:
   Matrix Q;       // Process noise
   Matrix R;       // Measurement covariance matrix
 
+  const fx_t   fx;
+  const hx_t   hx;
+  SigmaPoints &sigmas;
+  
   UnscentedKalmanFilter(size_t       dim_x,
                         size_t       dim_z,
                         double       dt,
@@ -48,12 +52,12 @@ public:
       dim_x(dim_x),
       dim_z(dim_z),
       dt(dt),
-      x(Matrix(dim_x, 1)),
-      P(Matrix(dim_x, dim_x)),
-      x_prior(Matrix(dim_x, 1)),
-      P_prior(Matrix(dim_x, dim_x)),
-      Q(Matrix(dim_x, dim_x)),
-      R(Matrix(dim_z, dim_z)),
+      x(dim_x, 1),
+      P(dim_x, dim_x),
+      x_prior(dim_x, 1),
+      P_prior(dim_x, dim_x),
+      Q(dim_x, dim_x),
+      R(dim_z, dim_z),
       fx(fx),
       hx(hx),
       sigmas(sigmas)
@@ -64,12 +68,6 @@ public:
 
   void predict(void);
   void update(Matrix &z);
-
-private:
-  const fx_t   fx;
-  const hx_t   hx;
-  SigmaPoints &sigmas;
-
   
 };
 

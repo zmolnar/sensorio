@@ -64,32 +64,12 @@ void UnscentedKalmanFilter::predict(void)
   for(size_t i = 0; i < f_sigmapoints.rows; ++i) {
     Matrix y = f_sigmapoints.row(i) - x_prior;
     Matrix outer = Vector(y).outer(y);
-
-    std::cout << "i" << std::endl << i << std::endl;
-    std::cout << "y" << std::endl << y << std::endl;
-    std::cout << "outer" << std::endl << outer << std::endl;
-    
-    Matrix Pi = outer * sigmas.Wc(i); 
-    std::cout << "Pi" << i << std::endl << Pi << std::endl;
+    Matrix Pi = outer * sigmas.Wc(i);
     P_prior = P_prior + Pi;
-
-    std::cout << "P" << i << std::endl << P_prior << std::endl;
   }
-
-  std::cout << "P_prior" << std::endl << P_prior << std::endl;
 
   // Add process noise
   P_prior = P_prior + Q;
-
-  std::cout << "x" << std::endl << x << std::endl;
-  std::cout << "P" << std::endl << P << std::endl;
-  std::cout << "Q" << std::endl << Q << std::endl;
-  std::cout << "Wm" << std::endl << sigmas.Wm << std::endl;
-  std::cout << "Wc" << std::endl << sigmas.Wc << std::endl;
-  std::cout << "Sigmapoints" << std::endl << sigmapoints << std::endl;
-  std::cout << "f_Sigmapoints" << std::endl << f_sigmapoints << std::endl;
-  std::cout << "x_prior" << std::endl << x_prior << std::endl;
-  std::cout << "P_prior" << std::endl << P_prior << std::endl;
 }
 
 void UnscentedKalmanFilter::update(Matrix &z)
