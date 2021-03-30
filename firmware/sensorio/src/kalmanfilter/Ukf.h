@@ -39,6 +39,8 @@ public:
   Matrix Q;       // Process noise
   Matrix R;       // Measurement covariance matrix
 
+  Matrix f_sigmas;
+  Matrix h_sigmas;
   const fx_t   fx;
   const hx_t   hx;
   SigmaPoints &sigmas;
@@ -58,6 +60,8 @@ public:
       P_prior(dim_x, dim_x),
       Q(dim_x, dim_x),
       R(dim_z, dim_z),
+      f_sigmas(sigmas.numOfSigmas(), dim_x),
+      h_sigmas(sigmas.numOfSigmas(), dim_x),
       fx(fx),
       hx(hx),
       sigmas(sigmas)
@@ -68,7 +72,7 @@ public:
 
   void predict(void);
   void update(Matrix &z);
-  
+  void transform(Matrix &x, Matrix &P, Matrix &s, Matrix &noise);
 };
 
 /*****************************************************************************/
