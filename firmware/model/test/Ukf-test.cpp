@@ -7,6 +7,8 @@
 // State transition function
 static Matrix fx(const Vector &x, double dt)
 {
+  assert(3 == x.length);
+
   Matrix xout = Matrix(3, 1);
 
   // Position     = a*dt2/2 + v*dt + x0
@@ -23,8 +25,7 @@ static Matrix fx(const Vector &x, double dt)
 // Measurement function
 static Matrix hx(const Vector &x)
 {
-  assert(3 == x.rows);
-  assert(1 == x.columns);
+  assert(3 == x.length);
 
   // Convert height to pressure at altitude using barometric formula
   double press = 101325 * pow((1 - 2.25577 * pow(10, -5) * x(0)), 5.25588);
@@ -104,6 +105,52 @@ TEST_F(UkfTest, Predict)
   for(size_t i = 0; i < 3; ++ i) {
     for(size_t j = 0; j < 3; ++j) {
       EXPECT_NEAR(P_expected[i*3+j], ukf.P_prior(i, j), 1e-07);
+    }
+  }
+}
+
+TEST_F(UkfTest, Update)
+{
+  double x_expected[] = {
+    107.793772,
+    -0.003463,
+    0.019599,
+  };
+
+  double P_expected[9] = {
+    1.016878e-01, 2.033063e-03, 6.00812e-06,
+    2.033063e-03, 9.996529e-01, 6.079953e-04,
+    6.008128e-06, 6.079953e-04, 3.039984e-02,
+  };
+
+  double K_expected[6] = {
+    -7.556103e-02, 2.032130e-05,
+    -0.00151062,   0.01998841,
+    -6.040049e-09, 9.996001e-01,
+  };
+
+  Matrix z(2, 1);
+  z(0, 0) = 100037;
+  z(1, 0) = 0.0196;
+
+  ukf.predict();
+  ukf.update(z);
+
+  for(size_t i = 0; i < 3; ++i) {
+    EXPECT_NEAR(x_expected[i], ukf.x(i, 0), 1e-02);
+  }
+
+  // Test state covariance matrix
+  for(size_t i = 0; i < 3; ++ i) {
+    for(size_t j = 0; j < 3; ++j) {
+      EXPECT_NEAR(P_expected[i*3+j], ukf.P(i, j), 1e-01);
+    }
+  }
+
+  // Test Kalman gain
+  for(size_t i = 0; i < 3; ++ i) {
+    for(size_t j = 0; j < 2; ++j) {
+      EXPECT_NEAR(K_expected[i*2+j], ukf.K(i, j), 1e-03);
     }
   }
 }

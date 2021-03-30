@@ -33,6 +33,21 @@ def load_dat_file(datfile):
 
     return press, acc
 
+
+def load_output_file(outfile):    
+    height = []
+    vario = []
+    acc = []
+
+    with open(outfile) as file:
+        for line in file.readlines():
+            values = line.split(' ')
+            height.append(float(values[0]))
+            vario.append(float(values[1]))
+            acc.append(float(values[2]))
+
+    return height, vario, acc
+
 # Load sensor data
 raw_press, raw_acc = load_dat_file('/home/zmolnar/vario_test.dat')
 
@@ -87,11 +102,25 @@ for i in range(len(raw_press) - 1):
     accs.append(ukf.x[2])
 
 fig, ax = plt.subplots(3,1) 
+fig.suptitle('Filterpy')
 ax[0].plot(hs, label='height')
 ax[1].plot(vs, label='speed')
 ax[2].plot(accs, label='acceleration')
 
+cppheight, cppvario, cppacc = load_output_file('/home/zmolnar/output.dat')
+
+fig2, ax2 = plt.subplots(3,1)
+fig2.suptitle('C++ implementation')
+ax2[0].plot(cppheight, label='height')
+ax2[1].plot(cppvario, label='speed')
+ax2[2].plot(cppacc, label='acc')
+
 ax[0].legend()
 ax[1].legend()
 ax[2].legend()
+
+ax2[0].legend()
+ax2[1].legend()
+ax2[2].legend()
+
 plt.show()

@@ -39,6 +39,9 @@ public:
   Matrix Q;       // Process noise
   Matrix R;       // Measurement covariance matrix
 
+  Matrix K;       // Kalman gain
+  Matrix S;       // System uncertainty
+
   Matrix f_sigmas;
   Matrix h_sigmas;
   const fx_t   fx;
@@ -60,8 +63,10 @@ public:
       P_prior(dim_x, dim_x),
       Q(dim_x, dim_x),
       R(dim_z, dim_z),
+      K(dim_x, dim_z),
+      S(dim_z, dim_z),
       f_sigmas(sigmas.numOfSigmas(), dim_x),
-      h_sigmas(sigmas.numOfSigmas(), dim_x),
+      h_sigmas(sigmas.numOfSigmas(), dim_z),
       fx(fx),
       hx(hx),
       sigmas(sigmas)

@@ -117,8 +117,7 @@ static Matrix fx(const Vector &x, double dt)
 // Measurement function
 static Matrix hx(const Vector &x)
 {
-  assert(dim_x == x.rows);
-  assert(1 == x.columns);
+  assert(dim_x == x.length);
 
   // Convert height to pressure at altitude using barometric formula
   double press = 101325 * pow((1 - 2.25577 * pow(10, -5) * x(0)), 5.25588);
@@ -167,7 +166,7 @@ int main(int argc, char **argv)
   ukf.Q(1, 0) = 1.2e-07, ukf.Q(1, 1) = 1.2e-05, ukf.Q(1, 2) = 6.0e-04;
   ukf.Q(2, 0) = 6.0e-06, ukf.Q(2, 1) = 6.0e-04, ukf.Q(2, 2) = 3.0e-02;
 
-  std::ofstream outfile("./output.dat");
+ std::ofstream outfile("./output.dat");
 
   for (size_t i = 1; i < sampleCount; ++i) {
     Matrix z = Matrix(2, 1);
