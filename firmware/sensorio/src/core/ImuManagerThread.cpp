@@ -205,8 +205,6 @@ void ImuManagerThread(void *p)
       bno055.getMagCalibrationStatus(data.calibration.mag);
       bno055.getSystemCalibrationStatus(data.calibration.sys);
 
-      // TODO update calibration status
-
       DbDataImuSet(&data);
 
     } else {

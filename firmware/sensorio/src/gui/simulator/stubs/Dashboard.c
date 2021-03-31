@@ -46,7 +46,7 @@ static SysParams_t default_config;
 void DbInit(void)
 {
   printf("Simulator dashboard initialized\n");
-  default_config.location.utcOffset = 1;
+  default_config.location.utcOffset                 = 1;
   default_config.screens.vario.chart_refresh_period = 1000;
 }
 
@@ -111,11 +111,9 @@ void DbDataFilterOutputGet(FilterOutput_t *p)
     offset += 30;
   }
 
-  p->vario.averaged        = 12.95;
-  p->vario.instant         = -14.19;
-  p->height.fieldElevation = -49;
-  p->height.nautical       = 287 + offset;
-  p->pressure              = 101325;
+  p->vario.averaged = 12.95;
+  p->vario.instant  = -14.19;
+  p->height         = 1014.6 + offset;
 }
 
 void DbDataFilterOutputSet(FilterOutput_t *p)
@@ -125,10 +123,10 @@ void DbDataFilterOutputSet(FilterOutput_t *p)
 void DbDataImuGet(ImuData_t *p)
 {
   memset(p, 0, sizeof(*p));
-  p->calibration.acc = 2;
-  p->calibration.mag = 3;
+  p->calibration.acc  = 2;
+  p->calibration.mag  = 3;
   p->calibration.gyro = 3;
-  p->calibration.sys = 2;
+  p->calibration.sys  = 2;
 }
 
 void DbDataImuSet(ImuData_t *p)

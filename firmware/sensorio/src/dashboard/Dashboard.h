@@ -69,11 +69,7 @@ typedef struct FilterOutput_s {
     double averaged;
     double instant;
   } vario;
-  struct {
-    uint32_t fieldElevation;
-    uint32_t nautical;
-  } height;
-  uint32_t pressure;
+  double height;
 } FilterOutput_t;
 
 typedef enum {

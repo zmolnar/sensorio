@@ -51,7 +51,7 @@ static void chart_refresh(lv_task_t *p)
   FilterOutput_t filter_data;
   DbDataFilterOutputGet(&filter_data);
 
-  lv_coord_t point = (lv_coord_t)filter_data.height.nautical;
+  lv_coord_t point = (lv_coord_t)filter_data.height;
   lv_chart_set_next(height_chart, height_history, point);
 
   static uint32_t point_count = 0;
@@ -132,13 +132,9 @@ static void refresh_task(lv_task_t *p)
 
   lv_table_set_cell_value_fmt(data_table, 1, 0, "%2.1f %s", vario, symbol);
 
-  // Set field elevation
-  lv_table_set_cell_value_fmt(
-      data_table, 3, 0, "%3d", filter_data.height.fieldElevation);
-
   // Set AMSL
   lv_table_set_cell_value_fmt(
-      data_table, 3, 1, "%3d", filter_data.height.nautical);
+      data_table, 3, 1, "%4.1f", filter_data.height);
 }
 
 static void reschedule_chart_refresh_task(void)
