@@ -125,6 +125,10 @@ void DbDataFilterOutputSet(FilterOutput_t *p)
 void DbDataImuGet(ImuData_t *p)
 {
   memset(p, 0, sizeof(*p));
+  p->calibration.acc = 2;
+  p->calibration.mag = 3;
+  p->calibration.gyro = 3;
+  p->calibration.sys = 2;
 }
 
 void DbDataImuSet(ImuData_t *p)

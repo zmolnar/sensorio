@@ -59,6 +59,10 @@ static void refresh_task(lv_task_t *p)
 
   lv_table_set_cell_value(sensor, 0, 1, status[data.system.status]);
   lv_table_set_cell_value(sensor, 1, 1, clkSource[data.system.clk]);
+  lv_table_set_cell_value_fmt(sensor, 2, 1, "%d", data.calibration.acc);
+  lv_table_set_cell_value_fmt(sensor, 3, 1, "%d", data.calibration.mag);
+  lv_table_set_cell_value_fmt(sensor, 4, 1, "%d", data.calibration.gyro);
+  lv_table_set_cell_value_fmt(sensor, 5, 1, "%d", data.calibration.sys);
 
   lv_table_set_cell_value_fmt(euler, 1, 0, "Y: %3.1f", data.euler.yaw);
   lv_table_set_cell_value_fmt(euler, 1, 1, "P: %3.1f", data.euler.pitch);
@@ -129,7 +133,7 @@ lv_obj_t *imu_data_screen_create(lv_style_t *style)
   lv_obj_add_style(sensor, LV_TABLE_PART_CELL2, &hstyle);
 
   lv_table_set_col_cnt(sensor, 2);
-  lv_table_set_row_cnt(sensor, 2);
+  lv_table_set_row_cnt(sensor, 6);
 
   lv_table_set_col_width(sensor, 0, lv_obj_get_width(scr) * 0.4);
   lv_table_set_col_width(sensor, 1, lv_obj_get_width(scr) * 0.6);
@@ -138,15 +142,35 @@ lv_obj_t *imu_data_screen_create(lv_style_t *style)
   lv_table_set_cell_type(sensor, 0, 1, 1);
   lv_table_set_cell_type(sensor, 1, 0, 1);
   lv_table_set_cell_type(sensor, 1, 1, 1);
+  lv_table_set_cell_type(sensor, 2, 0, 1);
+  lv_table_set_cell_type(sensor, 2, 1, 1);
+  lv_table_set_cell_type(sensor, 3, 0, 1);
+  lv_table_set_cell_type(sensor, 3, 1, 1);
+  lv_table_set_cell_type(sensor, 4, 0, 1);
+  lv_table_set_cell_type(sensor, 4, 1, 1);
+  lv_table_set_cell_type(sensor, 5, 0, 1);
+  lv_table_set_cell_type(sensor, 5, 1, 1);
 
   lv_obj_align(sensor, label, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
   lv_table_set_cell_align(sensor, 0, 0, LV_LABEL_ALIGN_LEFT);
   lv_table_set_cell_align(sensor, 0, 1, LV_LABEL_ALIGN_LEFT);
   lv_table_set_cell_align(sensor, 1, 0, LV_LABEL_ALIGN_LEFT);
   lv_table_set_cell_align(sensor, 1, 1, LV_LABEL_ALIGN_LEFT);
+  lv_table_set_cell_align(sensor, 2, 0, LV_LABEL_ALIGN_LEFT);
+  lv_table_set_cell_align(sensor, 2, 1, LV_LABEL_ALIGN_LEFT);
+  lv_table_set_cell_align(sensor, 3, 0, LV_LABEL_ALIGN_LEFT);
+  lv_table_set_cell_align(sensor, 3, 1, LV_LABEL_ALIGN_LEFT);
+  lv_table_set_cell_align(sensor, 4, 0, LV_LABEL_ALIGN_LEFT);
+  lv_table_set_cell_align(sensor, 4, 1, LV_LABEL_ALIGN_LEFT);
+  lv_table_set_cell_align(sensor, 5, 0, LV_LABEL_ALIGN_LEFT);
+  lv_table_set_cell_align(sensor, 5, 1, LV_LABEL_ALIGN_LEFT);
 
   lv_table_set_cell_value(sensor, 0, 0, "Status");
   lv_table_set_cell_value(sensor, 1, 0, "Clock");
+  lv_table_set_cell_value(sensor, 2, 0, "Acc");
+  lv_table_set_cell_value(sensor, 3, 0, "Mag");
+  lv_table_set_cell_value(sensor, 4, 0, "Gyro");
+  lv_table_set_cell_value(sensor, 5, 0, "Sys");
 
   euler = lv_table_create(scr, NULL);
   lv_obj_add_style(euler, LV_TABLE_PART_BG, style);
