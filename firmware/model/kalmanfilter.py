@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import sys
 
 from filterpy.kalman import UnscentedKalmanFilter
 from filterpy.common import Q_discrete_white_noise
@@ -14,15 +15,15 @@ def load_dat_file(datfile):
         for line in file.readlines():
             values = line.split(' ')
             # Get pressure
-            press.append(int(values[5]))
+            press.append(int(values[4]))
 
             # Get acceleration
-            gx = float(values[6])
-            gy = float(values[7])
-            gz = float(values[8])
-            ax = float(values[9])
-            ay = float(values[10])
-            az = float(values[11])
+            gx = float(values[5])
+            gy = float(values[6])
+            gz = float(values[7])
+            ax = float(values[8])
+            ay = float(values[9])
+            az = float(values[10])
             
             # Calculate the vertical component of the acceleration
             absg = math.sqrt(gx*gx + gy*gy + gz*gz)
@@ -49,7 +50,19 @@ def load_output_file(outfile):
     return height, vario, acc
 
 # Load sensor data
-raw_press, raw_acc = load_dat_file('/home/zmolnar/vario_test.dat')
+if (3 != len(sys.argv)):
+    print(sys.argv)
+    print('Wrong argument list')
+    exit()
+
+path = sys.argv[1]
+ifile = path + sys.argv[2]
+cppfile = path + 'out_' + sys.argv[2]
+
+print(ifile)
+print(cppfile)
+
+raw_press, raw_acc = load_dat_file(ifile)
 
 # State transition function
 def fx(x, dt):
@@ -107,7 +120,7 @@ ax[0].plot(hs, label='height')
 ax[1].plot(vs, label='speed')
 ax[2].plot(accs, label='acceleration')
 
-cppheight, cppvario, cppacc = load_output_file('/home/zmolnar/output.dat')
+cppheight, cppvario, cppacc = load_output_file(cppfile)
 
 fig2, ax2 = plt.subplots(3,1)
 fig2.suptitle('C++ implementation')
