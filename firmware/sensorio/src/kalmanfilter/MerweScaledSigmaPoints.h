@@ -25,11 +25,11 @@
 class MerweScaledSigmaPoints : public SigmaPoints {
 public:
   MerweScaledSigmaPoints(size_t n, double a, double b, double k) :
+      SigmaPoints(n, 2 * n + 1),
       alpha(a),
       beta(b),
       kappa(k),
-      lambda(alpha * alpha * (n + kappa) - n),
-      SigmaPoints(n, 2 * n + 1)
+      lambda(alpha * alpha * (n + kappa) - n)
   {
     computeWeights();
   }
