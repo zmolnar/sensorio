@@ -72,15 +72,15 @@ static void readDatFile(const std::string &fileName)
         numbers.push_back(number);
       }
 
-      assert(12 == numbers.size());
+      assert(11 == numbers.size());
 
-      double p  = ::atof(numbers.at(5).c_str());
-      double gx = ::atof(numbers.at(6).c_str());
-      double gy = ::atof(numbers.at(7).c_str());
-      double gz = ::atof(numbers.at(8).c_str());
-      double ax = ::atof(numbers.at(9).c_str());
-      double ay = ::atof(numbers.at(10).c_str());
-      double az = ::atof(numbers.at(11).c_str());
+      double p  = ::atof(numbers.at(4).c_str());
+      double gx = ::atof(numbers.at(5).c_str());
+      double gy = ::atof(numbers.at(6).c_str());
+      double gz = ::atof(numbers.at(7).c_str());
+      double ax = ::atof(numbers.at(8).c_str());
+      double ay = ::atof(numbers.at(9).c_str());
+      double az = ::atof(numbers.at(10).c_str());
 
       // Calculate vertical component of the acceleration
       double absg = sqrt(gx * gx + gy * gy + gz * gz);
@@ -133,10 +133,25 @@ static Matrix hx(const Vector &x)
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
+  if (3 != argc) {
+    std::cout << "Parameter missing" << std::endl;
+  }
+
+  std::string path(argv[1]);
+  if ('/' == path.back()) {
+    path.pop_back();
+  }
+
+  std::string ifile(path + "/" + argv[2]);
+  std::string ofile(path + "/" + "out_" + argv[2]);
+
+  std::cout << "Input file  : " << ifile << std::endl;
+  std::cout << "Output file : " << ofile << std::endl;
+
   // Load sensor data from text file
-  readDatFile("/home/zmolnar/vario_test.dat");
+  readDatFile(ifile);
 
   MerweScaledSigmaPoints sigmas = MerweScaledSigmaPoints(dim_x, alpha, beta, kappa);
   UnscentedKalmanFilter  ukf    = UnscentedKalmanFilter(dim_x, dim_z, dt, fx, hx, sigmas);
@@ -166,7 +181,8 @@ int main(int argc, char **argv)
   ukf.Q(1, 0) = 1.2e-07, ukf.Q(1, 1) = 1.2e-05, ukf.Q(1, 2) = 6.0e-04;
   ukf.Q(2, 0) = 6.0e-06, ukf.Q(2, 1) = 6.0e-04, ukf.Q(2, 2) = 3.0e-02;
 
- std::ofstream outfile("./output.dat");
+
+  std::ofstream outfile(ofile);
 
   for (size_t i = 1; i < sampleCount; ++i) {
     Matrix z = Matrix(2, 1);
