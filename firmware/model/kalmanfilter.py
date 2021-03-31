@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import sys
+import os
 
 from filterpy.kalman import UnscentedKalmanFilter
 from filterpy.common import Q_discrete_white_noise
@@ -106,6 +107,9 @@ print(ukf.Q)
 
 zs, hs, vs, accs = [], [], [], []
 
+#
+# Run FilterPy UKF implementation as a reference
+#
 for i in range(len(raw_press) - 1):
     meas = [raw_press[i+1], raw_acc[i+1]]
     ukf.predict()
@@ -120,8 +124,22 @@ ax[0].plot(hs, label='height')
 ax[1].plot(vs, label='speed')
 ax[2].plot(accs, label='acceleration')
 
+#
+# Run Kalman filter C++ implementation
+#
+simulator  = "build/src/sensorio-cppmodel_run" + " "
+simulator += sys.argv[1] + " "
+simulator += sys.argv[2] 
+os.system(simulator)
+
+#
+# Read the output file
+#
 cppheight, cppvario, cppacc = load_output_file(cppfile)
 
+#
+# Plot simulation output
+#
 fig2, ax2 = plt.subplots(3,1)
 fig2.suptitle('C++ implementation')
 ax2[0].plot(cppheight, label='height')
