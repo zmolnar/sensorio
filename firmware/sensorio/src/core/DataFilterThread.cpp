@@ -216,30 +216,30 @@ void DataFilterThread(void *p)
 
       DbDataFilterOutputSet(&out);
 
-      Serial.print(z(1));
-      Serial.print(" ");
-      Serial.print(ukf.x(0));
-      Serial.print(" ");
-      Serial.print(ukf.x(1));
-      Serial.print(" ");
-      Serial.println(ukf.x(2));
+      // Serial.print(z(1));
+      // Serial.print(" ");
+      // Serial.print(ukf.x(0));
+      // Serial.print(" ");
+      // Serial.print(ukf.x(1));
+      // Serial.print(" ");
+      // Serial.print(ukf.x(2));
       // Serial.print(" ");
       // Serial.print(z(1));
       // Serial.print(" ");
-      // Serial.print(bps.cooked.pressure);
-      // Serial.print(" ");
-      // Serial.print(imu.gravity.x);
-      // Serial.print(" ");
-      // Serial.print(imu.gravity.y);
-      // Serial.print(" ");
-      // Serial.print(imu.gravity.z);
-      // Serial.print(" ");
-      // Serial.print(imu.acceleration.x);
-      // Serial.print(" ");
-      // Serial.print(imu.acceleration.y);
-      // Serial.print(" ");
-      // Serial.print(imu.acceleration.z);
-      // Serial.println();
+      Serial.print(bps.cooked.pressure);
+      Serial.print(" ");
+      Serial.print(imu.gravity.x);
+      Serial.print(" ");
+      Serial.print(imu.gravity.y);
+      Serial.print(" ");
+      Serial.print(imu.gravity.z);
+      Serial.print(" ");
+      Serial.print(imu.acceleration.x);
+      Serial.print(" ");
+      Serial.print(imu.acceleration.y);
+      Serial.print(" ");
+      Serial.print(imu.acceleration.z);
+      Serial.println();
     }
   }
 }

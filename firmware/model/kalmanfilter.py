@@ -6,6 +6,7 @@ import sys
 import os
 
 from datfile import datfile
+from filter import Filter
 
 from filterpy.kalman import UnscentedKalmanFilter
 from filterpy.common import Q_discrete_white_noise
@@ -34,59 +35,47 @@ if (2 != len(sys.argv)):
     exit()
 
 input = datfile(sys.argv[1])
-input.pindex = 4
-input.gxindex = 5
-input.gyindex = 6
-input.gzindex = 7
-input.axindex = 8
-input.ayindex = 9
-input.azindex = 10
+input.pindex = 0
+input.gxindex = 1
+input.gyindex = 2
+input.gzindex = 3
+input.axindex = 4
+input.ayindex = 5
+input.azindex = 6
 
 input.load()
 raw_p, raw_a = input.process()
 
-#
-# Create UKF
-#
-sigmas = MerweScaledSigmaPoints(n=3, alpha=.3, beta=2., kappa=.1)
-ukf = UnscentedKalmanFilter(dim_x=3, dim_z=2, dt=.02, hx=hx, fx=fx, points=sigmas)
+p_std1 = 3.74
+a_std1 = .4 
+filter1 = Filter(fx, hx)
+filter1.initialize(raw_p[0], raw_a[0], p_std1, a_std1)
+heights1, varios1, accs1 = filter1.run(raw_p, raw_a)
 
-# Initial conditions
-height = 44330 * (1 - pow ((raw_p[0] / 101325), 0.1902))
-ukf.x = np.array([height, 0, raw_a[0]])
+p_std2 = 3.74
+a_std2 = .8 
+filter2 = Filter(fx, hx)
+filter2.initialize(raw_p[0], raw_a[0], p_std2, a_std2)
+heights2, varios2, accs2 = filter2.run(raw_p, raw_a)
 
-# Process state covariance matrix
-ukf.P *= np.array([[1,0,0],[0,1,0],[0,0,1]])
-
-# Measurement covariance matrix
-# Measured pressure std is 3.74
-# Measured acc std is 0.02
-p_std = 3.74
-a_std = .8
-ukf.R = np.array([[p_std**2, 0],[0, a_std**2]])
-
-# Process noise
-ukf.Q = Q_discrete_white_noise(3, dt=.02, var=0.03)
-
-heights, varios, accs = [], [], []
-
-#
-# Run FilterPy UKF implementation as a reference
-#
-for i in range(input.sampleCount - 1):
-    meas = [raw_p[i+1], raw_a[i+1]]
-    ukf.predict()
-    ukf.update(meas)
-
-    heights.append(ukf.x[0])
-    varios.append(ukf.x[1])
-    accs.append(ukf.x[2])
+p_std3 = 3.74
+a_std3 = 1.2 
+filter3 = Filter(fx, hx)
+filter3.initialize(raw_p[0], raw_a[0], p_std3, a_std3)
+heights3, varios3, accs3 = filter3.run(raw_p, raw_a)
 
 fig, ax = plt.subplots(3,1) 
 fig.suptitle('Filterpy')
-ax[0].plot(heights, label='height')
-ax[1].plot(varios, label='speed')
-ax[2].plot(accs, label='acceleration')
+ax[0].plot(heights1, label=f'std = {filter1.a_std}')
+ax[0].plot(heights2, label=f'std = {filter2.a_std}')
+ax[0].plot(heights3, label=f'std = {filter3.a_std}')
+ax[1].plot(varios1, label=f'std = {filter1.a_std}')
+ax[1].plot(varios2, label=f'std = {filter2.a_std}')
+ax[1].plot(varios3, label=f'std = {filter3.a_std}')
+ax[2].plot(accs1, label=f'std = {filter1.a_std}')
+ax[2].plot(accs2, label=f'std = {filter2.a_std}')
+ax[2].plot(accs3, label=f'std = {filter3.a_std}')
+ax[2].plot(raw_a, label='raw')
 ax[0].legend()
 ax[1].legend()
 ax[2].legend()
