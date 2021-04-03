@@ -119,7 +119,8 @@ static void refresh_task(lv_task_t *p)
   DbDataFilterOutputGet(&filter_data);
 
   // Set vario
-  double      vario = filter_data.vario.instant;
+  double vario = filter_data.vario.instant;
+  vario        = ((int32_t)(vario * 10.0)) / 10.0;
   const char *symbol;
 
   if (vario < 0.6) {
@@ -133,8 +134,7 @@ static void refresh_task(lv_task_t *p)
   lv_table_set_cell_value_fmt(data_table, 1, 0, "%2.1f %s", vario, symbol);
 
   // Set AMSL
-  lv_table_set_cell_value_fmt(
-      data_table, 3, 1, "%4.1f", filter_data.height);
+  lv_table_set_cell_value_fmt(data_table, 3, 1, "%4.1f", filter_data.height);
 }
 
 static void reschedule_chart_refresh_task(void)

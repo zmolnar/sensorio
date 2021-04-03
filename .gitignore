@@ -4,5 +4,6 @@ firmware/sampler/build
 firmware/sampler/segger
 firmware/blueprint-templates
 firmware/model/.vscode
+firmware/model/data
 firmware/sensorio/.vscode
 firmware/.vscode

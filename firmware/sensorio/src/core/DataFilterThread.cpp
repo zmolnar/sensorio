@@ -76,21 +76,38 @@ static Matrix hx(const Vector &x)
   return zout;
 }
 
+double x_pos_1g = 9.7634;
+double x_neg_1g = -9.5352;
+double y_pos_1g = 9.5581;
+double y_neg_1g = -9.7759;
+double z_pos_1g = 9.8541;
+double z_neg_1g = -9.5001;
+
+double ref_pos_1g = 9.8;
+double ref_neg_1g = -9.8;
+
+double x_scale = (ref_pos_1g - ref_neg_1g) / (x_pos_1g - x_neg_1g);
+double y_scale = (ref_pos_1g - ref_neg_1g) / (y_pos_1g - y_neg_1g);
+double z_scale = (ref_pos_1g - ref_neg_1g) / (z_pos_1g - z_neg_1g);
+
 double calculateVerticalAcceleration(ImuData_t &imu)
 {
-  double &gx = imu.gravity.x;
-  double &gy = imu.gravity.y;
-  double &gz = imu.gravity.z;
-  double &ax = imu.acceleration.x;
-  double &ay = imu.acceleration.y;
-  double &az = imu.acceleration.z;
+  double gx = imu.gravity.x;
+  double gy = imu.gravity.y;
+  double gz = imu.gravity.z;
 
   double absg = sqrt((gx * gx) + (gy * gy) + (gz * gz));
-  double skag = (gx * ax) + (gy * ay) + (gz * az);
-  double acc  = skag / absg;
 
-  // if (((-0.05) < acc) && (acc < 0.05))
-    // acc = 0.0;
+  double ax = imu.acceleration.x / 1000 * absg;
+  double ay = imu.acceleration.y / 1000 * absg;
+  double az = imu.acceleration.z / 1000 * absg;
+
+  ax = x_scale * (ax - x_neg_1g) + ref_neg_1g;
+  ay = y_scale * (ay - y_neg_1g) + ref_neg_1g;
+  az = z_scale * (az - z_neg_1g) + ref_neg_1g;
+
+  double skag = (gx * ax) + (gy * ay) + (gz * az);
+  double acc  = skag / absg - absg;
 
   return acc;
 }
@@ -124,10 +141,15 @@ void DataFilterThread(void *p)
       DbDataImuGet(&imu);
 
       ready = (IMU_SYS_RUNNING_FUSION == imu.system.status);
+      ready &= (3 == imu.calibration.acc);
+      ready &= (3 == imu.calibration.mag);
+      ready &= (3 == imu.calibration.gyro);
+      ready &= (3 == imu.calibration.sys);
     }
   } while (!ready);
 
   // Set initial conditions
+  ready = false;
   do {
     uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     if (0 < notification) {
@@ -151,7 +173,7 @@ void DataFilterThread(void *p)
 
   // Set measurement covariance matrix (based on previous measurement)
   const double p_std = 3.74;
-  const double a_std = 0.02;
+  const double a_std = 0.9; // 0.8 was the best so far
 
   ukf.R(0, 0) = (p_std * p_std), ukf.R(0, 1) = 0.0;
   ukf.R(1, 0) = 0.0, ukf.R(1, 1) = (a_std * a_std);
@@ -180,7 +202,7 @@ void DataFilterThread(void *p)
       z(1) = calculateVerticalAcceleration(imu);
 
       // Update delta time
-      //double dt = calculateDt();
+      // double dt = calculateDt();
 
       // Run epoche
       ukf.predict();
@@ -194,28 +216,30 @@ void DataFilterThread(void *p)
 
       DbDataFilterOutputSet(&out);
 
+      Serial.print(z(1));
+      Serial.print(" ");
       Serial.print(ukf.x(0));
       Serial.print(" ");
       Serial.print(ukf.x(1));
       Serial.print(" ");
-      Serial.print(ukf.x(2));
-      Serial.print(" ");
-      Serial.print(z(1));
-      Serial.print(" ");
-      Serial.print(bps.cooked.pressure);
-      Serial.print(" ");
-      Serial.print(imu.gravity.x);
-      Serial.print(" ");
-      Serial.print(imu.gravity.y);
-      Serial.print(" ");
-      Serial.print(imu.gravity.z);
-      Serial.print(" ");
-      Serial.print(imu.acceleration.x);
-      Serial.print(" ");
-      Serial.print(imu.acceleration.y);
-      Serial.print(" ");
-      Serial.print(imu.acceleration.z);
-      Serial.println();
+      Serial.println(ukf.x(2));
+      // Serial.print(" ");
+      // Serial.print(z(1));
+      // Serial.print(" ");
+      // Serial.print(bps.cooked.pressure);
+      // Serial.print(" ");
+      // Serial.print(imu.gravity.x);
+      // Serial.print(" ");
+      // Serial.print(imu.gravity.y);
+      // Serial.print(" ");
+      // Serial.print(imu.gravity.z);
+      // Serial.print(" ");
+      // Serial.print(imu.acceleration.x);
+      // Serial.print(" ");
+      // Serial.print(imu.acceleration.y);
+      // Serial.print(" ");
+      // Serial.print(imu.acceleration.z);
+      // Serial.println();
     }
   }
 }

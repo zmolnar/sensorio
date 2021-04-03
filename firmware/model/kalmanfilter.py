@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import stats
 import matplotlib.pyplot as plt
 import math
 import sys
@@ -8,30 +9,56 @@ from filterpy.kalman import UnscentedKalmanFilter
 from filterpy.common import Q_discrete_white_noise
 from filterpy.kalman import MerweScaledSigmaPoints
 
+x_pos_1g = 9.7634
+x_neg_1g = -9.5352
+y_pos_1g = 9.5581
+y_neg_1g = -9.7759
+z_pos_1g = 9.8541
+z_neg_1g = -9.5001
+
+ref_pos_1g = 9.8
+ref_neg_1g = -9.8
+
+x_scale = (ref_pos_1g - ref_neg_1g) / (x_pos_1g - x_neg_1g)
+y_scale = (ref_pos_1g - ref_neg_1g) / (y_pos_1g - y_neg_1g)
+z_scale = (ref_pos_1g - ref_neg_1g) / (z_pos_1g - z_neg_1g)
+
 def load_dat_file(datfile):    
     press = []
     acc = []
 
     with open(datfile) as file:
         for line in file.readlines():
-            values = line.split(' ')
-            # Get pressure
-            press.append(int(values[4]))
+            if (3 < len(line)):
+                values = line.split(' ')
+                # Get pressure
+                press.append(int(values[4]))
 
-            # Get acceleration
-            gx = float(values[5])
-            gy = float(values[6])
-            gz = float(values[7])
-            ax = float(values[8])
-            ay = float(values[9])
-            az = float(values[10])
-            
-            # Calculate the vertical component of the acceleration
-            absg = math.sqrt(gx*gx + gy*gy + gz*gz)
-            skag = gx*ax + gy*ay + gz*az
-            # measured offset of the sensor is 0.029512
-            a = skag/absg - 0.029512
-            acc.append(a)
+                # Get acceleration
+                gx = float(values[5])
+                gy = float(values[6])
+                gz = float(values[7])
+
+                g = math.sqrt(gx*gx + gy*gy + gz*gz)
+
+                ax = float(values[8]) / 1000 * g
+                ay = float(values[9]) / 1000 * g
+                az = float(values[10]) / 1000 * g
+
+                ax = x_scale * (ax - x_neg_1g) + ref_neg_1g
+                ay = y_scale * (ay - y_neg_1g) + ref_neg_1g
+                az = z_scale * (az - z_neg_1g) + ref_neg_1g
+
+
+                # # Calculate the vertical component of the acceleration
+                absg = math.sqrt(gx*gx + gy*gy + gz*gz)
+                skag = gx*ax + gy*ay + gz*az
+                # # measured offset of the sensor is 0.029512
+                a = skag/absg - g
+
+                print(g, gx, gy, gz, ax, ay, az, a)
+
+                acc.append(a)
 
     return press, acc
 
@@ -99,7 +126,7 @@ ukf.P *= np.array([[1,0,0],[0,1,0],[0,0,1]])
 # Measurement covariance matrix
 # Measured pressure std is 3.74
 # Measured acc std is 0.02
-ukf.R = np.array([[4**2, 0],[0, .02**2]])
+ukf.R = np.array([[4**2, 0],[0, .4**2]])
 
 # Process noise
 ukf.Q = Q_discrete_white_noise(3, dt=.02, var=0.03)
@@ -118,12 +145,19 @@ for i in range(len(raw_press) - 1):
     vs.append(ukf.x[1])
     accs.append(ukf.x[2])
 
-fig, ax = plt.subplots(3,1) 
+fig, ax = plt.subplots(4,1) 
 fig.suptitle('Filterpy')
 ax[0].plot(hs, label='height')
 ax[1].plot(vs, label='speed')
 ax[2].plot(accs, label='acceleration')
+ax[0].legend()
+ax[1].legend()
+ax[2].legend()
 
+
+print(f'Acceleration mean: {np.mean(raw_acc)} std: {stats.tstd(raw_acc)}')
+
+'''
 #
 # Run Kalman filter C++ implementation
 #
@@ -136,7 +170,6 @@ os.system(simulator)
 # Read the output file
 #
 cppheight, cppvario, cppacc = load_output_file(cppfile)
-
 #
 # Plot simulation output
 #
@@ -146,12 +179,10 @@ ax2[0].plot(cppheight, label='height')
 ax2[1].plot(cppvario, label='speed')
 ax2[2].plot(cppacc, label='acc')
 
-ax[0].legend()
-ax[1].legend()
-ax[2].legend()
 
 ax2[0].legend()
 ax2[1].legend()
 ax2[2].legend()
+'''
 
 plt.show()
