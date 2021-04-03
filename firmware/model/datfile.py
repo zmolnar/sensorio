@@ -47,40 +47,42 @@ class datfile:
             for line in file.readlines():
                 if (3 < len(line)):
                     values = line.split(' ')
-                    # Get pressure
                     self.p.append(int(values[self.pindex]))
-
-                    # Get gravity vector
-                    gx = float(values[self.gxindex])
-                    gy = float(values[self.gyindex])
-                    gz = float(values[self.gzindex])
-
-                    g = math.sqrt(gx*gx + gy*gy + gz*gz)
-
-                    # Calculate linear acceleration 
-                    ax = float(values[self.axindex]) / 1000 * g
-                    ay = float(values[self.ayindex]) / 1000 * g
-                    az = float(values[self.azindex]) / 1000 * g
-
-                    ax = self.x_scale * (ax - self.x_neg_1g) + self.ref_neg_1g
-                    ay = self.y_scale * (ay - self.y_neg_1g) + self.ref_neg_1g
-                    az = self.z_scale * (az - self.z_neg_1g) + self.ref_neg_1g
-
-                    # Calculate the vertical component of the acceleration
-                    absg = math.sqrt(gx*gx + gy*gy + gz*gz)
-                    skag = gx*ax + gy*ay + gz*az
-                    a = skag/absg - g
-
-                    self.gx.append(gx)
-                    self.gy.append(gy)
-                    self.gz.append(gz)
-                    self.ax.append(ax)
-                    self.ay.append(ay)
-                    self.az.append(az)
-                    self.g.append(g)
-                    self.a.append(a)
+                    self.gx.append(float(values[self.gxindex]))
+                    self.gy.append(float(values[self.gyindex]))
+                    self.gz.append(float(values[self.gzindex]))
+                    self.ax.append(float(values[self.axindex]))
+                    self.ay.append(float(values[self.ayindex]))
+                    self.az.append(float(values[self.azindex]))
 
                     self.sampleCount += 1
+
+    def process(self):
+        raw_p, raw_a = [], []
+
+        for i in range(self.sampleCount):
+            gx = self.gx[i]
+            gy = self.gy[i]
+            gz = self.gz[i]
+
+            absg = math.sqrt(gx*gx + gy*gy + gz*gz)
+
+            ax = self.ax[i] / 1000 * absg
+            ay = self.ay[i] / 1000 * absg
+            az = self.az[i] / 1000 * absg
+
+            ax = self.x_scale * (ax - self.x_neg_1g) + self.ref_neg_1g
+            ay = self.y_scale * (ay - self.y_neg_1g) + self.ref_neg_1g
+            az = self.z_scale * (az - self.z_neg_1g) + self.ref_neg_1g
+
+            # Calculate the vertical component of the acceleration
+            skag = gx*ax + gy*ay + gz*az
+            a = skag/absg - absg
+
+            raw_p.append(self.p[i])
+            raw_a.append(a)
+
+        return raw_p, raw_a
 
     def __repr__(self):
         str = f'Sample count: {self.sampleCount}'
@@ -88,8 +90,8 @@ class datfile:
 
     def print(self):
         for i in range(self.sampleCount):
-            str  = f'{self.g[i]} {self.gx[i]} {self.gy[i]} {self.gz[i]}'
+            str  = f'{self.gx[i]} {self.gy[i]} {self.gz[i]}'
             str += ' '
-            str += f'{self.a[i]} {self.ax[i]} {self.ay[i]} {self.az[i]}'
+            str += f'{self.ax[i]} {self.ay[i]} {self.az[i]}'
 
             print(str)
