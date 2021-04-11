@@ -112,7 +112,9 @@ void GpsManagerThread(void *p)
         delay(1);
       }
       while (gpsSerial.available()) {
+        
         char c = gpsSerial.read();
+        
         if (nmea.process(c) && isValid) {
           GpsData_t data;
           memset(&data, 0, sizeof(data));
@@ -121,12 +123,12 @@ void GpsManagerThread(void *p)
           nmea.getAltitude(alt);
 
           data.locked          = HIGH == digitalRead(GPS_3DFIX);
-          data.altitude        = (uint32_t)alt;
-          data.course          = nmea.getCourse();
-          data.latitude        = nmea.getLatitude();
-          data.longitude       = nmea.getLongitude();
+          data.altitude        = (uint32_t)alt;           
+          data.course          = nmea.getCourse();        
+          data.latitude        = nmea.getLatitude();      
+          data.longitude       = nmea.getLongitude();     
           data.numOfSatellites = nmea.getNumSatellites();
-          data.speed           = nmea.getSpeed();
+          data.speed           = nmea.getSpeed() * 0.001852;
           data.time.year       = nmea.getYear();
           data.time.month      = nmea.getMonth();
           data.time.day        = nmea.getDay();

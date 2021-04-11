@@ -45,10 +45,10 @@ static void refresh_task(lv_task_t *p)
   lv_table_set_cell_value_fmt(gpsdata, 0, 1, "%s", data.locked ? "Yes" : "No");
   lv_table_set_cell_value_fmt(gpsdata, 1, 1, "%.03f m", data.altitude / 1000.0);
   lv_table_set_cell_value_fmt(gpsdata, 2, 1, "%.03f", data.course / 1000.0);
-  lv_table_set_cell_value_fmt(gpsdata, 3, 1, "%d", data.latitude);
-  lv_table_set_cell_value_fmt(gpsdata, 4, 1, "%d", data.longitude);
+  lv_table_set_cell_value_fmt(gpsdata, 3, 1, "%f", data.latitude / 1000000.0);
+  lv_table_set_cell_value_fmt(gpsdata, 4, 1, "%f", data.longitude / 1000000.0);
   lv_table_set_cell_value_fmt(gpsdata, 5, 1, "%d", data.numOfSatellites);
-  lv_table_set_cell_value_fmt(gpsdata, 6, 1, "%.03f m/s", data.speed / 1000.0);
+  lv_table_set_cell_value_fmt(gpsdata, 6, 1, "%.03f km/h", data.speed);
   lv_table_set_cell_value_fmt(gpsdata,
                               7,
                               1,
