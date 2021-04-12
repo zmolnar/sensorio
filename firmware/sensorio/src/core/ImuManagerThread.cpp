@@ -193,15 +193,8 @@ void ImuManagerThread(void *p)
         data.gravity.z = gravity.z;
       }
 
-      // BNO055::LinearAccel_t acc;
-      // if (bno055.getLinearAcceleration(acc)) {
-      //   data.acceleration.x = acc.x;
-      //   data.acceleration.y = acc.y;
-      //   data.acceleration.z = acc.z;
-      // }
-
-      BNO055::Accel_t acc;
-      if (bno055.getAcceleration(acc)) {
+      BNO055::LinearAccel_t acc;
+      if (bno055.getLinearAcceleration(acc)) {
         data.acceleration.x = acc.x;
         data.acceleration.y = acc.y;
         data.acceleration.z = acc.z;

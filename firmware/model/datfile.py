@@ -23,25 +23,6 @@ class datfile:
         self.azindex = 0
         self.pindex = 0
 
-        # Calibration points
-        self.x_pos_1g = 9.7634
-        self.x_neg_1g = -9.5352
-        self.y_pos_1g = 9.5581
-        self.y_neg_1g = -9.7759
-        self.z_pos_1g = 9.8541
-        self.z_neg_1g = -9.5001
-
-        # Calibration reference
-        self.ref_pos_1g = 9.8
-        self.ref_neg_1g = -9.8
-
-        #
-        # Calculated scaling factor based on calibration
-        #
-        self.x_scale = (self.ref_pos_1g - self.ref_neg_1g) / (self.x_pos_1g - self.x_neg_1g)
-        self.y_scale = (self.ref_pos_1g - self.ref_neg_1g) / (self.y_pos_1g - self.y_neg_1g)
-        self.z_scale = (self.ref_pos_1g - self.ref_neg_1g) / (self.z_pos_1g - self.z_neg_1g)
-
     def load(self):
         with open(self.ifile) as file:
             for line in file.readlines():
@@ -67,17 +48,13 @@ class datfile:
 
             absg = math.sqrt(gx*gx + gy*gy + gz*gz)
 
-            ax = self.ax[i] / 1000 * absg
-            ay = self.ay[i] / 1000 * absg
-            az = self.az[i] / 1000 * absg
-
-            ax = self.x_scale * (ax - self.x_neg_1g) + self.ref_neg_1g
-            ay = self.y_scale * (ay - self.y_neg_1g) + self.ref_neg_1g
-            az = self.z_scale * (az - self.z_neg_1g) + self.ref_neg_1g
+            ax = self.ax[i]
+            ay = self.ay[i]
+            az = self.az[i]
 
             # Calculate the vertical component of the acceleration
             skag = gx*ax + gy*ay + gz*az
-            a = skag/absg - absg
+            a = skag/absg
 
             raw_p.append(self.p[i])
             raw_a.append(a)
