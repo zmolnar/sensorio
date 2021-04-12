@@ -30,9 +30,10 @@ typedef struct Data_s {
 } Data_t;
 
 typedef struct Config_s {
-  uint32_t    magic;
-  SysParams_t params;
-  uint32_t    crc;
+  uint32_t         magic;
+  SysParams_t      params;
+  ImuCalibration_t imuCalibration;
+  uint32_t         crc;
 } Config_t;
 
 typedef struct Locks_s {
@@ -62,10 +63,11 @@ typedef struct Dashboard_s {
 static Dashboard_t db;
 
 static const Config_t defaultConfig = {
-    .magic  = MAGIC,
-    .params = {.location = {.utcOffset = 0},
+    .magic          = MAGIC,
+    .params         = {.location = {.utcOffset = 0},
                .screens  = {.vario = {.chart_refresh_period = 1000}}},
-    .crc    = 0x00,
+    .imuCalibration = {.data = {0}, .crc = 0xff},
+    .crc            = 0x00,
 };
 
 /*****************************************************************************/
@@ -99,6 +101,12 @@ static bool DbIsConfigValid(Config_t *cfg)
 
 static void DbSaveConfig(void)
 {
+  // Recalculate CRC
+  uint8_t *data   = (uint8_t *)&db.config;
+  size_t   length = sizeof(db.config) - sizeof(db.config.crc);
+  db.config.crc   = crc8(data, length);
+
+  // Write to EEPROM
   EEPROM.writeBytes(CONFIG_ADDRESS, &db.config, sizeof(db.config));
   EEPROM.commit();
 }
@@ -131,6 +139,12 @@ void DbInit(void)
 
   if (DbIsConfigValid(&db.config)) {
     Serial.println("Config restored successfully");
+    Serial.print("IMU calibration was ");
+    if (DbIsImuCalibrationAvailable()) {
+      Serial.println("found");
+    } else {
+      Serial.println("not found");
+    }
     Serial.println("Location:");
     Serial.printf("  UTC offset: %d\n", db.config.params.location.utcOffset);
     Serial.println("Screens");
@@ -180,9 +194,37 @@ void DbParamsGet(SysParams_t *p)
 void DbParamsSet(SysParams_t *p)
 {
   memcpy(&db.config.params, p, sizeof(SysParams_t));
-  uint8_t *data   = (uint8_t *)&db.config;
-  size_t   length = sizeof(db.config) - sizeof(db.config.crc);
-  db.config.crc   = crc8(data, length);
+
+  DbSaveConfig();
+}
+
+bool DbIsImuCalibrationAvailable(void)
+{
+  DbParamsLock();
+
+  uint8_t *data   = db.config.imuCalibration.data;
+  size_t   length = BNO055_CALIB_LENGTH;
+  uint8_t  crc    = crc8(data, length);
+
+  bool crcOk = (db.config.imuCalibration.crc == crc);
+
+  DbParamsUnlock();
+
+  return crcOk;
+}
+
+void DbImuCalibrationGet(uint8_t (**calib)[BNO055_CALIB_LENGTH])
+{
+  *calib = &db.config.imuCalibration.data;
+}
+
+void DbImuCalibrationSet(const uint8_t (*calib)[BNO055_CALIB_LENGTH])
+{
+  uint8_t *data   = db.config.imuCalibration.data;
+  size_t   length = BNO055_CALIB_LENGTH;
+
+  memcpy(data, *calib, length);
+  db.config.imuCalibration.crc = crc8(data, length);
 
   DbSaveConfig();
 }

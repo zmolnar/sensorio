@@ -13,6 +13,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <drivers/bno055/bno055_calibration.h>
+
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
@@ -117,6 +119,11 @@ typedef struct ImuData_s {
   } acceleration;
 } ImuData_t;
 
+typedef struct ImuCalibration_s {
+  uint8_t data[BNO055_CALIB_LENGTH];
+  uint8_t crc;
+} ImuCalibration_t;
+
 typedef enum {
   BAT_DISCHARGING,
   BAT_CHARGING,
@@ -153,6 +160,9 @@ extern "C"
   void DbParamsUnlock(void);
   void DbParamsGet(SysParams_t *p);
   void DbParamsSet(SysParams_t *p);
+  bool DbIsImuCalibrationAvailable(void);
+  void DbImuCalibrationGet(uint8_t (**calib)[BNO055_CALIB_LENGTH]);
+  void DbImuCalibrationSet(const uint8_t (*calib)[BNO055_CALIB_LENGTH]);
 
   void DbDataGpsGet(GpsData_t *p);
   void DbDataGpsSet(GpsData_t *p);

@@ -14,11 +14,14 @@ extern "C"
 #include "bst/bst_bno055.h"
 }
 
+#include "bno055_calibration.h"
+
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
 #define BNO055_ADDRESS_COM3_LOW  0x28
 #define BNO055_ADDRESS_COM3_HIGH 0x29
+#define BNO055_CALIB_LENGTH      22U
 
 /*****************************************************************************/
 /* MACRO DEFINITIONS                                                         */

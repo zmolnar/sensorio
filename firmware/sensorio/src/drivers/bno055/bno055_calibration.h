@@ -1,0 +1,7 @@
+
+#ifndef BNO055_CALIBRATION_H
+#define BNO055_CALIBRATION_H
+
+#define BNO055_CALIB_LENGTH 22U
+
+#endif
