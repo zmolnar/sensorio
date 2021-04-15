@@ -191,26 +191,63 @@ bool BNO055::getGravity(Gravity_t &data)
 bool BNO055::getAccCalibrationStatus(u8 &status)
 {
   error = convertError(bno055_get_accel_calib_stat(&status));
-  return OK == error;  
+  return OK == error;
 }
 
 bool BNO055::getGyroCalibrationStatus(u8 &status)
 {
   error = convertError(bno055_get_gyro_calib_stat(&status));
-  return OK == error;  
+  return OK == error;
 }
 
 bool BNO055::getMagCalibrationStatus(u8 &status)
 {
   error = convertError(bno055_get_mag_calib_stat(&status));
-  return OK == error;  
+  return OK == error;
 }
 
 bool BNO055::getSystemCalibrationStatus(u8 &status)
 {
   error = convertError(bno055_get_sys_calib_stat(&status));
-  return OK == error;  
+  return OK == error;
 }
+
+bool BNO055::setAccOffset(AccelOffset_t &offset)
+{
+  error = convertError(bno055_write_accel_offset(&offset));
+  return OK == error;
+}
+
+bool BNO055::getAccOffset(AccelOffset_t &offset)
+{
+  error = convertError(bno055_read_accel_offset(&offset));
+  return OK == error;
+}
+
+bool BNO055::setGyroOffset(GyroOffset_t &offset)
+{
+  error = convertError(bno055_write_gyro_offset(&offset));
+  return OK == error;
+}
+
+bool BNO055::getGyroOffset(GyroOffset_t &offset)
+{
+  error = convertError(bno055_read_gyro_offset(&offset));
+  return OK == error;
+}
+
+bool BNO055::setMagOffset(MagOffset_t &offset)
+{
+  error = convertError(bno055_write_mag_offset(&offset));
+  return OK == error;
+}
+
+bool BNO055::getMagOffset(MagOffset_t &offset)
+{
+  error = convertError(bno055_read_mag_offset(&offset));
+  return OK == error;
+}
+
 
 BNO055::Error BNO055::convertError(BNO055_RETURN_FUNCTION_TYPE e)
 {

@@ -189,7 +189,7 @@ void DataFilterThread(void *p)
       out.vario.averaged = 0;
 
       DbDataFilterOutputSet(&out);
-
+#if 0
       // Serial.print(z(1));
       // Serial.print(" ");
       // Serial.print(ukf.x(0));
@@ -214,6 +214,7 @@ void DataFilterThread(void *p)
       Serial.print(" ");
       Serial.print(imu.acceleration.z);
       Serial.println();
+#endif      
     }
   }
 }

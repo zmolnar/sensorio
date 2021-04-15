@@ -14,8 +14,6 @@ extern "C"
 #include "bst/bst_bno055.h"
 }
 
-#include "bno055_calibration.h"
-
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
@@ -113,6 +111,9 @@ public:
   typedef struct bno055_quaternion_t          Quaternion_t;
   typedef struct bno055_linear_accel_double_t LinearAccel_t;
   typedef struct bno055_gravity_double_t      Gravity_t;
+  typedef struct bno055_accel_offset_t        AccelOffset_t;
+  typedef struct bno055_gyro_offset_t         GyroOffset_t;
+  typedef struct bno055_mag_offset_t          MagOffset_t;
 
   BNO055(bus_init_t  init,
          bus_read_t  rd,
@@ -148,6 +149,12 @@ public:
   bool  getGyroCalibrationStatus(u8 &status);
   bool  getMagCalibrationStatus(u8 &status);
   bool  getSystemCalibrationStatus(u8 &status);
+  bool  setAccOffset(AccelOffset_t &offset);
+  bool  getAccOffset(AccelOffset_t &offset);
+  bool  setGyroOffset(GyroOffset_t &offset);
+  bool  getGyroOffset(GyroOffset_t &offset);
+  bool  setMagOffset(MagOffset_t &offset);
+  bool  getMagOffset(MagOffset_t &offset);
 
 private:
   bus_init_t init;

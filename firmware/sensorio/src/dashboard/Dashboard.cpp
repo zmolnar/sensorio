@@ -30,10 +30,13 @@ typedef struct Data_s {
 } Data_t;
 
 typedef struct Config_s {
-  uint32_t         magic;
-  SysParams_t      params;
-  ImuCalibration_t imuCalibration;
-  uint32_t         crc;
+  uint32_t    magic;
+  SysParams_t params;
+  struct {
+    ImuOffset_t offset;
+    uint32_t    crc;
+  } calibration;
+  uint32_t crc;
 } Config_t;
 
 typedef struct Locks_s {
@@ -63,11 +66,11 @@ typedef struct Dashboard_s {
 static Dashboard_t db;
 
 static const Config_t defaultConfig = {
-    .magic          = MAGIC,
-    .params         = {.location = {.utcOffset = 0},
+    .magic       = MAGIC,
+    .params      = {.location = {.utcOffset = 0},
                .screens  = {.vario = {.chart_refresh_period = 1000}}},
-    .imuCalibration = {.data = {0}, .crc = 0xff},
-    .crc            = 0x00,
+    .calibration = {.offset = {0}, .crc = 0xff},
+    .crc         = 0x00,
 };
 
 /*****************************************************************************/
@@ -87,7 +90,7 @@ static uint8_t crc8(const uint8_t data[], size_t length)
   return crc;
 }
 
-static bool DbIsConfigValid(Config_t *cfg)
+static bool DbConfigIsValid(Config_t *cfg)
 {
   uint8_t *data   = (uint8_t *)cfg;
   size_t   length = sizeof(*cfg) - sizeof(cfg->crc);
@@ -137,14 +140,8 @@ void DbInit(void)
   EEPROM.begin(EEPROM_SIZE);
   EEPROM.readBytes(CONFIG_ADDRESS, &db.config, sizeof(db.config));
 
-  if (DbIsConfigValid(&db.config)) {
+  if (DbConfigIsValid(&db.config)) {
     Serial.println("Config restored successfully");
-    Serial.print("IMU calibration was ");
-    if (DbIsImuCalibrationAvailable()) {
-      Serial.println("found");
-    } else {
-      Serial.println("not found");
-    }
     Serial.println("Location:");
     Serial.printf("  UTC offset: %d\n", db.config.params.location.utcOffset);
     Serial.println("Screens");
@@ -159,21 +156,25 @@ void DbInit(void)
   }
 
   db.locks.config  = xSemaphoreCreateMutex();
+  configASSERT(NULL != db.locks.config);
+
   db.locks.gps     = xSemaphoreCreateMutex();
+  configASSERT(NULL != db.locks.gps);
+
   db.locks.bps     = xSemaphoreCreateMutex();
+  configASSERT(NULL != db.locks.bps);
+
   db.locks.filter  = xSemaphoreCreateMutex();
+  configASSERT(NULL != db.locks.filter);
+
   db.locks.imu     = xSemaphoreCreateMutex();
+  configASSERT(NULL != db.locks.imu);
+
   db.locks.battery = xSemaphoreCreateMutex();
+  configASSERT(NULL != db.locks.battery);
+
   db.locks.board   = xSemaphoreCreateMutex();
-
-  if ((NULL == db.locks.config) || (NULL == db.locks.gps) ||
-      (NULL == db.locks.bps) || (NULL == db.locks.filter) ||
-      (NULL == db.locks.imu) || (NULL == db.locks.battery) ||
-      (NULL == db.locks.board)) {
-    Serial.println("CreateMutex failed");
-
-    // TODO write log
-  }
+  configASSERT(NULL != db.locks.board);
 }
 
 void DbParamsLock(void)
@@ -198,35 +199,49 @@ void DbParamsSet(SysParams_t *p)
   DbSaveConfig();
 }
 
-bool DbIsImuCalibrationAvailable(void)
+bool DbCalibrationIsValid(void)
 {
-  DbParamsLock();
+  DbLock(db.locks.config);
 
-  uint8_t *data   = db.config.imuCalibration.data;
-  size_t   length = BNO055_CALIB_LENGTH;
+  uint8_t *data   = (uint8_t*)&db.config.calibration.offset;
+  size_t   length = sizeof(db.config.calibration.offset);
   uint8_t  crc    = crc8(data, length);
 
-  bool crcOk = (db.config.imuCalibration.crc == crc);
+  bool crcOk = (db.config.calibration.crc == crc);
 
-  DbParamsUnlock();
+  DbUnlock(db.locks.config);
 
   return crcOk;
 }
 
-void DbImuCalibrationGet(uint8_t (**calib)[BNO055_CALIB_LENGTH])
+void DbCalibrationGet(ImuOffset_t *offset)
 {
-  *calib = &db.config.imuCalibration.data;
+  DbLock(db.locks.config);
+  
+  uint8_t *dst = (uint8_t*)offset;
+  uint8_t *src = (uint8_t *)&db.config.calibration.offset;
+  size_t length = sizeof(ImuOffset_t);
+  
+  memcpy(dst, src, length);
+
+  DbUnlock(db.locks.config);
 }
 
-void DbImuCalibrationSet(const uint8_t (*calib)[BNO055_CALIB_LENGTH])
+void DbCalibrationSet(ImuOffset_t *offset)
 {
-  uint8_t *data   = db.config.imuCalibration.data;
-  size_t   length = BNO055_CALIB_LENGTH;
+  DbLock(db.locks.config);
 
-  memcpy(data, *calib, length);
-  db.config.imuCalibration.crc = crc8(data, length);
+  uint8_t *dst = (uint8_t *)&db.config.calibration.offset;
+  uint8_t *src = (uint8_t *)offset;
+  size_t  length = sizeof(ImuOffset_t);
+
+  memcpy(dst, src, length);
+
+  db.config.calibration.crc = crc8(dst, length);
 
   DbSaveConfig();
+
+  DbUnlock(db.locks.config);
 }
 
 void DbDataGpsGet(GpsData_t *p)
