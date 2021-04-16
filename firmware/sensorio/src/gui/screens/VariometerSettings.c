@@ -35,6 +35,8 @@ static lv_obj_t *label;
 static lv_obj_t *period_label;
 static lv_obj_t *period_slider;
 static lv_obj_t *period_text;
+static lv_obj_t *qnh_label;
+static lv_obj_t *qnh_spinbox;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -71,6 +73,7 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
   switch (event) {
   case LV_EVENT_FOCUSED: {
     lv_group_add_obj(group, period_slider);
+    lv_group_add_obj(group, qnh_spinbox);
     break;
   }
   case LV_EVENT_DEFOCUSED: {
@@ -100,6 +103,20 @@ static void slider_event_handler(lv_obj_t *slider, lv_event_t event)
 {
   if (event == LV_EVENT_VALUE_CHANGED) {
     lv_label_set_text_fmt(period_text, "%u", lv_slider_get_value(slider));
+  }
+}
+
+static void lv_spinbox_increment_event_cb(lv_obj_t *btn, lv_event_t e)
+{
+  if (e == LV_EVENT_SHORT_CLICKED || e == LV_EVENT_LONG_PRESSED_REPEAT) {
+    lv_spinbox_increment(qnh_spinbox);
+  }
+}
+
+static void lv_spinbox_decrement_event_cb(lv_obj_t *btn, lv_event_t e)
+{
+  if (e == LV_EVENT_SHORT_CLICKED || e == LV_EVENT_LONG_PRESSED_REPEAT) {
+    lv_spinbox_decrement(qnh_spinbox);
   }
 }
 
@@ -143,6 +160,32 @@ lv_obj_t *variometer_settings_screen_create(lv_style_t *style)
   lv_label_set_text_fmt(period_text, "%d", period);
   lv_obj_set_auto_realign(period_text, true);
   lv_obj_align(period_text, period_slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
+
+  qnh_label = lv_label_create(scr, NULL);
+  lv_label_set_text(qnh_label, "Pressure at sea level");
+  lv_obj_align(qnh_label, period_slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 50);
+
+  qnh_spinbox = lv_spinbox_create(scr, NULL);
+  lv_spinbox_set_range(qnh_spinbox, 95000, 105000);
+  lv_spinbox_set_digit_format(qnh_spinbox, 6, 4);
+  lv_spinbox_step_prev(qnh_spinbox);
+  lv_obj_set_width(qnh_spinbox, 100);
+  lv_obj_align(qnh_spinbox, qnh_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
+
+  lv_coord_t h   = lv_obj_get_height(qnh_spinbox);
+  lv_obj_t * btn = lv_btn_create(scr, NULL);
+  lv_obj_set_size(btn, h, h);
+  lv_obj_align(btn, qnh_spinbox, LV_ALIGN_OUT_RIGHT_MID, 5, 0);
+  lv_theme_apply(btn, LV_THEME_SPINBOX_BTN);
+  lv_obj_set_style_local_value_str(
+      btn, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, LV_SYMBOL_PLUS);
+  lv_obj_set_event_cb(btn, lv_spinbox_increment_event_cb);
+
+  btn = lv_btn_create(scr, btn);
+  lv_obj_align(btn, qnh_spinbox, LV_ALIGN_OUT_LEFT_MID, -5, 0);
+  lv_obj_set_event_cb(btn, lv_spinbox_decrement_event_cb);
+  lv_obj_set_style_local_value_str(
+      btn, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, LV_SYMBOL_MINUS);
 
   group = SensorioGetEncoderGroup();
 
