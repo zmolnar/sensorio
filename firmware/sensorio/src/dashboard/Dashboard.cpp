@@ -21,12 +21,13 @@
 /* TYPE DEFINITIONS                                                          */
 /*****************************************************************************/
 typedef struct Data_s {
-  GpsData_t      gps;
-  BpsData_t      bps;
-  FilterOutput_t filter;
-  ImuData_t      imu;
-  Battery_t      battery;
-  Board_t        board;
+  GpsData_t          gps;
+  BpsData_t          bps;
+  FilterParameters_t filterParams;
+  FilterOutput_t     filter;
+  ImuData_t          imu;
+  Battery_t          battery;
+  Board_t            board;
 } Data_t;
 
 typedef struct Config_s {
@@ -43,6 +44,7 @@ typedef struct Locks_s {
   SemaphoreHandle_t config;
   SemaphoreHandle_t gps;
   SemaphoreHandle_t bps;
+  SemaphoreHandle_t filterParams;
   SemaphoreHandle_t filter;
   SemaphoreHandle_t imu;
   SemaphoreHandle_t battery;
@@ -155,25 +157,28 @@ void DbInit(void)
     db.config = defaultConfig;
   }
 
-  db.locks.config  = xSemaphoreCreateMutex();
+  db.locks.config = xSemaphoreCreateMutex();
   configASSERT(NULL != db.locks.config);
 
-  db.locks.gps     = xSemaphoreCreateMutex();
+  db.locks.gps = xSemaphoreCreateMutex();
   configASSERT(NULL != db.locks.gps);
 
-  db.locks.bps     = xSemaphoreCreateMutex();
+  db.locks.bps = xSemaphoreCreateMutex();
   configASSERT(NULL != db.locks.bps);
 
-  db.locks.filter  = xSemaphoreCreateMutex();
+  db.locks.filterParams = xSemaphoreCreateMutex();
+  configASSERT(NULL != db.locks.filterParams);
+
+  db.locks.filter = xSemaphoreCreateMutex();
   configASSERT(NULL != db.locks.filter);
 
-  db.locks.imu     = xSemaphoreCreateMutex();
+  db.locks.imu = xSemaphoreCreateMutex();
   configASSERT(NULL != db.locks.imu);
 
   db.locks.battery = xSemaphoreCreateMutex();
   configASSERT(NULL != db.locks.battery);
 
-  db.locks.board   = xSemaphoreCreateMutex();
+  db.locks.board = xSemaphoreCreateMutex();
   configASSERT(NULL != db.locks.board);
 }
 
@@ -203,7 +208,7 @@ bool DbCalibrationIsValid(void)
 {
   DbLock(db.locks.config);
 
-  uint8_t *data   = (uint8_t*)&db.config.calibration.offset;
+  uint8_t *data   = (uint8_t *)&db.config.calibration.offset;
   size_t   length = sizeof(db.config.calibration.offset);
   uint8_t  crc    = crc8(data, length);
 
@@ -217,11 +222,11 @@ bool DbCalibrationIsValid(void)
 void DbCalibrationGet(ImuOffset_t *offset)
 {
   DbLock(db.locks.config);
-  
-  uint8_t *dst = (uint8_t*)offset;
-  uint8_t *src = (uint8_t *)&db.config.calibration.offset;
-  size_t length = sizeof(ImuOffset_t);
-  
+
+  uint8_t *dst    = (uint8_t *)offset;
+  uint8_t *src    = (uint8_t *)&db.config.calibration.offset;
+  size_t   length = sizeof(ImuOffset_t);
+
   memcpy(dst, src, length);
 
   DbUnlock(db.locks.config);
@@ -231,9 +236,9 @@ void DbCalibrationSet(ImuOffset_t *offset)
 {
   DbLock(db.locks.config);
 
-  uint8_t *dst = (uint8_t *)&db.config.calibration.offset;
-  uint8_t *src = (uint8_t *)offset;
-  size_t  length = sizeof(ImuOffset_t);
+  uint8_t *dst    = (uint8_t *)&db.config.calibration.offset;
+  uint8_t *src    = (uint8_t *)offset;
+  size_t   length = sizeof(ImuOffset_t);
 
   memcpy(dst, src, length);
 
@@ -270,6 +275,20 @@ void DbDataBpsSet(BpsData_t *p)
   DbLock(db.locks.bps);
   memcpy(&db.data.bps, p, sizeof(BpsData_t));
   DbUnlock(db.locks.bps);
+}
+
+void DbDataFilterParametersGet(FilterParameters_t *p)
+{
+  DbLock(db.locks.filterParams);
+  memcpy(p, &db.data.filterParams, sizeof(FilterParameters_t));
+  DbUnlock(db.locks.filterParams);
+}
+
+void DbDataFilterParametersSet(FilterParameters_t *p)
+{
+  DbLock(db.locks.filterParams);
+  memcpy(&db.data.filterParams, p, sizeof(FilterParameters_t));
+  DbUnlock(db.locks.filterParams);
 }
 
 void DbDataFilterOutputGet(FilterOutput_t *p)

@@ -64,6 +64,10 @@ typedef struct BpsData_s {
   } cooked;
 } BpsData_t;
 
+typedef struct FilterParameters_s {
+  uint32_t pressureAtSeaLevel;
+} FilterParameters_t;
+
 typedef struct FilterOutput_s {
   struct {
     double averaged;
@@ -182,6 +186,9 @@ extern "C"
 
   void DbDataBpsGet(BpsData_t *p);
   void DbDataBpsSet(BpsData_t *p);
+
+  void DbDataFilterParametersGet(FilterParameters_t *p);
+  void DbDataFilterParametersSet(FilterParameters_t *p);
 
   void DbDataFilterOutputGet(FilterOutput_t *p);
   void DbDataFilterOutputSet(FilterOutput_t *p);
