@@ -17,18 +17,18 @@ def load_dat_file(datfile):
             if (3 < len(line)):
                 values = line.split(' ')
                 # Get pressure
-                press.append(int(values[4]))
+                press.append(int(values[0]))
 
                 # Get acceleration
-                gx = float(values[5])
-                gy = float(values[6])
-                gz = float(values[7])
+                gx = float(values[1])
+                gy = float(values[2])
+                gz = float(values[3])
 
                 g = math.sqrt(gx*gx +gy*gy + gz*gz)
                 
-                ax = float(values[8]) / 1000 * g
-                ay = float(values[9]) / 1000 * g
-                az = float(values[10]) / 1000 * g
+                ax = float(values[4]) / 1000 * g
+                ay = float(values[5]) / 1000 * g
+                az = float(values[6]) / 1000 * g
                 
                 # # Calculate the vertical component of the acceleration
                 # absg = math.sqrt(gx*gx + gy*gy + gz*gz)
