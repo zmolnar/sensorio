@@ -123,18 +123,17 @@ static void refresh_task(lv_task_t *p)
   vario        = ((int32_t)(vario * 10.0)) / 10.0;
   const char *symbol;
 
-  if (vario < 0.6) {
+  if (vario < -0.2) {
     symbol = LV_SYMBOL_DOWN;
-  } else if (0.1 < vario) {
+  } else if (0.2 < vario) {
     symbol = LV_SYMBOL_UP;
   } else {
-    symbol = "";
+    symbol = LV_SYMBOL_MINUS;
   }
 
   lv_table_set_cell_value_fmt(data_table, 1, 0, "%2.1f %s", vario, symbol);
-
-  // Set AMSL
-  lv_table_set_cell_value_fmt(data_table, 3, 1, "%4.1f", filter_data.height);
+  lv_table_set_cell_value_fmt(data_table, 3, 0, "%d", (int)gps_data.speed);
+  lv_table_set_cell_value_fmt(data_table, 3, 1, "%d", (int)filter_data.height);
 }
 
 static void reschedule_chart_refresh_task(void)
@@ -229,8 +228,8 @@ lv_obj_t *variometer_screen_create(lv_style_t *style)
   lv_table_set_col_cnt(data_table, 2);
   lv_table_set_row_cnt(data_table, 4);
 
-  lv_table_set_col_width(data_table, 0, lv_obj_get_width(scr) * 0.5);
-  lv_table_set_col_width(data_table, 1, lv_obj_get_width(scr) * 0.5);
+  lv_table_set_col_width(data_table, 0, lv_obj_get_width(scr) * 0.54);
+  lv_table_set_col_width(data_table, 1, lv_obj_get_width(scr) * 0.45);
 
   lv_table_set_cell_type(data_table, 0, 0, 2);
   lv_table_set_cell_type(data_table, 0, 1, 2);
@@ -253,7 +252,7 @@ lv_obj_t *variometer_screen_create(lv_style_t *style)
   lv_table_set_cell_align(data_table, 3, 0, LV_LABEL_ALIGN_CENTER);
   lv_table_set_cell_align(data_table, 3, 1, LV_LABEL_ALIGN_CENTER);
 
-  lv_table_set_cell_value(data_table, 2, 0, "Field elev.");
+  lv_table_set_cell_value(data_table, 2, 0, "Speed (km/h)");
   lv_table_set_cell_value(data_table, 2, 1, "AMSL (m)");
 
   static lv_style_t chart_style;
