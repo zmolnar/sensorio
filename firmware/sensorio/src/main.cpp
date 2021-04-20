@@ -3,6 +3,7 @@
 #include "core/BatteryMonitorThread.h"
 #include "core/GpsManagerThread.h"
 #include "core/DataFilterThread.h"
+#include "core/DataLoggerThread.h"
 #include "core/ImuManagerThread.h"
 #include "core/LvglThread.h"
 #include "core/PressureReaderThread.h"
@@ -12,6 +13,7 @@
 typedef enum {
   PRIO_0_INVALID = 0,
   PRIO_0_FILTER,
+  PRIO_0_LOGGER,
   PRIO_0_GPS,
   PRIO_0_IMU,
   PRIO_0_PRESS,
@@ -40,6 +42,16 @@ void setup()
                           2048,
                           NULL,
                           PRIO_0_FILTER,
+                          NULL,
+                          0);
+#endif
+
+#if 1
+  xTaskCreatePinnedToCore(DataLoggerThread,
+                          "data logger",
+                          2048,
+                          NULL,
+                          PRIO_0_LOGGER,
                           NULL,
                           0);
 #endif
