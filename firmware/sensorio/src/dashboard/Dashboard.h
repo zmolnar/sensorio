@@ -65,7 +65,7 @@ typedef struct BpsData_s {
 } BpsData_t;
 
 typedef struct FilterParameters_s {
-  uint32_t pressureAtSeaLevel;
+  double pressureAtSeaLevel;
 } FilterParameters_t;
 
 typedef struct FilterOutput_s {
