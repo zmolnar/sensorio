@@ -26,7 +26,7 @@
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL VARIABLES                                           */
 /*****************************************************************************/
-extern TaskHandle_t filterTask;
+extern SemaphoreHandle_t filterDataReady;
 
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */

@@ -34,7 +34,7 @@
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
 static TaskHandle_t      bpsTask = NULL;
-static SemaphoreHandle_t semaphore;
+static SemaphoreHandle_t pressureDataRead;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -48,7 +48,7 @@ static void tick(TimerHandle_t xTimer)
   (void)xTimer;
 
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  xSemaphoreGiveFromISR(semaphore, &xHigherPriorityTaskWoken);
+  xSemaphoreGiveFromISR(pressureDataRead, &xHigherPriorityTaskWoken);
   if (pdTRUE == xHigherPriorityTaskWoken) {
     portYIELD_FROM_ISR();
   }
@@ -64,8 +64,8 @@ static void tick(TimerHandle_t xTimer)
 /*****************************************************************************/
 void PressureReaderThread(void *p)
 {
-  bpsTask   = xTaskGetCurrentTaskHandle();
-  semaphore = xSemaphoreCreateBinary();
+  bpsTask          = xTaskGetCurrentTaskHandle();
+  pressureDataRead = xSemaphoreCreateBinary();
 
   TwoWire ms5611_twi = TwoWire(0);
   MS5611  ms5611     = MS5611(ms5611_twi);
@@ -88,7 +88,7 @@ void PressureReaderThread(void *p)
   }
 
   while (1) {
-    xSemaphoreTake(semaphore, portMAX_DELAY);
+    xSemaphoreTake(pressureDataRead, portMAX_DELAY);
 
     bool result = ms5611.convert(MS5611::Osr::OSR_4096);
 
@@ -103,7 +103,7 @@ void PressureReaderThread(void *p)
 
       DbDataBpsSet(&data);
 
-      xTaskNotifyGive(filterTask);
+      xSemaphoreGive(filterDataReady);
 
     } else {
       Serial.println("MS5611 conversion error");

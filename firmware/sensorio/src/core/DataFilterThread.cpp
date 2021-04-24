@@ -29,7 +29,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-TaskHandle_t filterTask;
+SemaphoreHandle_t filterDataReady;
 
 static const size_t dim_x = 3;
 static const size_t dim_z = 2;
@@ -100,7 +100,7 @@ double calculateVerticalAcceleration(ImuData_t &imu)
 /*****************************************************************************/
 void DataFilterThread(void *p)
 {
-  filterTask = xTaskGetCurrentTaskHandle();
+  filterDataReady = xSemaphoreCreateBinary();
 
   MerweScaledSigmaPoints sigmas(dim_x, alpha, beta, kappa);
   UnscentedKalmanFilter  ukf(dim_x, dim_z, dt, fx, hx, sigmas);
@@ -108,35 +108,33 @@ void DataFilterThread(void *p)
   // Wait for the sensors to start up properly
   bool ready = false;
   do {
-    uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    if (0 < notification) {
-      ImuData_t imu;
-      DbDataImuGet(&imu);
+    xSemaphoreTake(filterDataReady, portMAX_DELAY);
+    ImuData_t imu;
+    DbDataImuGet(&imu);
 
-      ready = (IMU_SYS_RUNNING_FUSION == imu.system.status);
-      ready &= (3 == imu.calibration.acc);
-      ready &= (3 == imu.calibration.mag);
-      ready &= (3 == imu.calibration.gyro);
-      ready &= (3 == imu.calibration.sys);
-    }
+    ready = (IMU_SYS_RUNNING_FUSION == imu.system.status);
+    ready &= (3 == imu.calibration.acc);
+    ready &= (3 == imu.calibration.mag);
+    ready &= (3 == imu.calibration.gyro);
+    ready &= (3 == imu.calibration.sys);
+
   } while (!ready);
 
   // Set initial conditions
   ready = false;
   do {
-    uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    if (0 < notification) {
-      BpsData_t bps;
-      DbDataBpsGet(&bps);
+    xSemaphoreTake(filterDataReady, portMAX_DELAY);
+    BpsData_t bps;
+    DbDataBpsGet(&bps);
 
-      double p0     = bps.cooked.pressure;
-      double height = 44330 * (1 - pow(p0 / 101325.0, 0.1902));
-      ukf.x(0)      = height; // Initial height
-      ukf.x(1)      = 0.0;    // Initial speed
-      ukf.x(2)      = 0.0;    // Initial acceleration
+    double p0     = bps.cooked.pressure;
+    double height = 44330 * (1 - pow(p0 / 101325.0, 0.1902));
+    ukf.x(0)      = height; // Initial height
+    ukf.x(1)      = 0.0;    // Initial speed
+    ukf.x(2)      = 0.0;    // Initial acceleration
 
-      ready = true;
-    }
+    ready = true;
+
   } while (!ready);
 
   // Initialize process state covariance matrix
@@ -161,45 +159,43 @@ void DataFilterThread(void *p)
   Serial.println("Kalman filter started");
 
   while (1) {
-    uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    xSemaphoreTake(filterDataReady, portMAX_DELAY);
+    TickType_t timeStamp = xTaskGetTickCount();
 
-    if (0 < notification) {
-      TickType_t timeStamp = xTaskGetTickCount();
+    BpsData_t bps;
+    DbDataBpsGet(&bps);
 
-      BpsData_t bps;
-      DbDataBpsGet(&bps);
+    ImuData_t imu;
+    DbDataImuGet(&imu);
 
-      ImuData_t imu;
-      DbDataImuGet(&imu);
+    // Update measurement vector
+    z(0) = bps.cooked.pressure;
+    z(1) = calculateVerticalAcceleration(imu);
 
-      // Update measurement vector
-      z(0) = bps.cooked.pressure;
-      z(1) = calculateVerticalAcceleration(imu);
+    // Run epoche
+    ukf.predict();
+    ukf.update(z);
 
-      // Run epoche
-      ukf.predict();
-      ukf.update(z);
+    // Update the results in the database
+    FilterOutput_t out;
+    out.height         = ukf.x(0);
+    out.vario.instant  = ukf.x(1);
+    out.vario.averaged = 0;
 
-      // Update the results in the database
-      FilterOutput_t out;
-      out.height         = ukf.x(0);
-      out.vario.instant  = ukf.x(1);
-      out.vario.averaged = 0;
+    DbDataFilterOutputSet(&out);
 
-      DbDataFilterOutputSet(&out);
-
-      LogAppend("%d %d %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %5.1f %3.2f %3.2f\n",
-                (int)timeStamp,
-                (int)bps.cooked.pressure,
-                imu.gravity.x,
-                imu.gravity.y,
-                imu.gravity.z,
-                imu.acceleration.x,
-                imu.acceleration.y,
-                imu.acceleration.z,
-                ukf.x(0),
-                ukf.x(1),
-                ukf.x(2));
+    LogAppend("%d %d %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %5.1f %3.2f %3.2f\n",
+              (int)timeStamp,
+              (int)bps.cooked.pressure,
+              imu.gravity.x,
+              imu.gravity.y,
+              imu.gravity.z,
+              imu.acceleration.x,
+              imu.acceleration.y,
+              imu.acceleration.z,
+              ukf.x(0),
+              ukf.x(1),
+              ukf.x(2));
 
 #if 0
       Serial.print(ukf.x(0));
@@ -225,7 +221,6 @@ void DataFilterThread(void *p)
       Serial.print(imu.acceleration.z);
       Serial.println();
 #endif
-    }
   }
 }
 
