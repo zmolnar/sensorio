@@ -43,7 +43,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static SPIClass      lcd_spi = SPIClass();
+static SPIClass      lcd_spi = SPIClass(VSPI);
 static lv_disp_buf_t disp_buf;
 static lv_color_t    frame_buffer[SHARP_LCD_PIXEL_COUNT / 8];
 

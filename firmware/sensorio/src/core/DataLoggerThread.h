@@ -31,6 +31,8 @@
 /*****************************************************************************/
 void DataLoggerThread(void *p);
 
+void LogAppend(const char *fmt, ...);
+
 #endif /* DATA_LOGGER_THREAD_H */
 
 /****************************** END OF FILE **********************************/

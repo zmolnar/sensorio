@@ -7,6 +7,7 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "DataFilterThread.h"
+#include "DataLoggerThread.h"
 #include "dashboard/Dashboard.h"
 #include "kalmanfilter/MerweScaledSigmaPoints.h"
 #include "kalmanfilter/Ukf.h"
@@ -88,7 +89,6 @@ double calculateVerticalAcceleration(ImuData_t &imu)
   double ay = imu.acceleration.y;
   double az = imu.acceleration.z;
 
-
   double skag = (gx * ax) + (gy * ay) + (gz * az);
   double acc  = skag / absg;
 
@@ -146,7 +146,7 @@ void DataFilterThread(void *p)
 
   // Set measurement covariance matrix (based on previous measurement)
   const double p_std = 3.74;
-  const double a_std = 0.2; 
+  const double a_std = 0.2;
 
   ukf.R(0, 0) = (p_std * p_std), ukf.R(0, 1) = 0.0;
   ukf.R(1, 0) = 0.0, ukf.R(1, 1) = (a_std * a_std);
@@ -158,13 +158,13 @@ void DataFilterThread(void *p)
 
   Matrix z(dim_z, 1);
 
-  Serial.println("Kalman filter startup finished");
+  Serial.println("Kalman filter started");
 
   while (1) {
     uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     if (0 < notification) {
-      TickType_t start = xTaskGetTickCount();
+      TickType_t timeStamp = xTaskGetTickCount();
 
       BpsData_t bps;
       DbDataBpsGet(&bps);
@@ -180,8 +180,6 @@ void DataFilterThread(void *p)
       ukf.predict();
       ukf.update(z);
 
-      TickType_t end = xTaskGetTickCount();
-
       // Update the results in the database
       FilterOutput_t out;
       out.height         = ukf.x(0);
@@ -189,15 +187,27 @@ void DataFilterThread(void *p)
       out.vario.averaged = 0;
 
       DbDataFilterOutputSet(&out);
+
+      LogAppend("%d %d %3.2f %3.2f %3.2f %3.2f %3.2f %3.2f %5.1f %3.2f %3.2f\n",
+                (int)timeStamp,
+                (int)bps.cooked.pressure,
+                imu.gravity.x,
+                imu.gravity.y,
+                imu.gravity.z,
+                imu.acceleration.x,
+                imu.acceleration.y,
+                imu.acceleration.z,
+                ukf.x(0),
+                ukf.x(1),
+                ukf.x(2));
+
 #if 0
-      // Serial.print(z(1));
-      // Serial.print(" ");
-      // Serial.print(ukf.x(0));
-      // Serial.print(" ");
-      // Serial.print(ukf.x(1));
-      // Serial.print(" ");
-      // Serial.print(ukf.x(2));
-      // Serial.print(" ");
+      Serial.print(ukf.x(0));
+      Serial.print(" ");
+      Serial.print(ukf.x(1));
+      Serial.print(" ");
+      Serial.print(ukf.x(2));
+      Serial.print(" ");
       Serial.print(end - start);
       Serial.print(" ");
       Serial.print(bps.cooked.pressure);
@@ -214,7 +224,7 @@ void DataFilterThread(void *p)
       Serial.print(" ");
       Serial.print(imu.acceleration.z);
       Serial.println();
-#endif      
+#endif
     }
   }
 }

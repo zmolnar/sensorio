@@ -33,7 +33,8 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static TaskHandle_t bpsTask = NULL;
+static TaskHandle_t      bpsTask = NULL;
+static SemaphoreHandle_t semaphore;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -47,7 +48,7 @@ static void tick(TimerHandle_t xTimer)
   (void)xTimer;
 
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  vTaskNotifyGiveFromISR(bpsTask, &xHigherPriorityTaskWoken);
+  xSemaphoreGiveFromISR(semaphore, &xHigherPriorityTaskWoken);
   if (pdTRUE == xHigherPriorityTaskWoken) {
     portYIELD_FROM_ISR();
   }
@@ -63,7 +64,8 @@ static void tick(TimerHandle_t xTimer)
 /*****************************************************************************/
 void PressureReaderThread(void *p)
 {
-  bpsTask = xTaskGetCurrentTaskHandle();
+  bpsTask   = xTaskGetCurrentTaskHandle();
+  semaphore = xSemaphoreCreateBinary();
 
   TwoWire ms5611_twi = TwoWire(0);
   MS5611  ms5611     = MS5611(ms5611_twi);
@@ -86,28 +88,25 @@ void PressureReaderThread(void *p)
   }
 
   while (1) {
-    uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    if (1 == notification) {
-      bool result = ms5611.convert(MS5611::Osr::OSR_4096);
+    xSemaphoreTake(semaphore, portMAX_DELAY);
 
-      if (result) {
-        BpsData_t data;
-        memset(&data, 0, sizeof(data));
+    bool result = ms5611.convert(MS5611::Osr::OSR_4096);
 
-        data.raw.temp        = ms5611.getRawTemp();
-        data.raw.pressure    = ms5611.getRawPressure();
-        data.cooked.temp     = ms5611.getCompensatedTemp();
-        data.cooked.pressure = ms5611.getCompensatedPressure();
+    if (result) {
+      BpsData_t data;
+      memset(&data, 0, sizeof(data));
 
-        DbDataBpsSet(&data);
+      data.raw.temp        = ms5611.getRawTemp();
+      data.raw.pressure    = ms5611.getRawPressure();
+      data.cooked.temp     = ms5611.getCompensatedTemp();
+      data.cooked.pressure = ms5611.getCompensatedPressure();
 
-        xTaskNotifyGive(filterTask);
+      DbDataBpsSet(&data);
 
-      } else {
-        Serial.println("MS5611 conversion error");
-      }
+      xTaskNotifyGive(filterTask);
+
     } else {
-      Serial.println("BPS task notification failed");
+      Serial.println("MS5611 conversion error");
     }
   }
 }
