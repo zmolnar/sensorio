@@ -31,7 +31,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-TaskHandle_t imuTask = NULL;
+SemaphoreHandle_t readImu;
 
 static TwoWire bno055_twi = TwoWire(1);
 
@@ -139,7 +139,7 @@ static bool sendCalibrationToDevice(BNO055 &imu, ImuOffset_t &offset)
 /*****************************************************************************/
 void ImuManagerThread(void *p)
 {
-  imuTask = xTaskGetCurrentTaskHandle();
+  readImu = xSemaphoreCreateBinary();
 
   BNO055 bno055 = BNO055(i2c_init, i2c_bus_read, i2c_bus_write, delay);
 
@@ -152,11 +152,11 @@ void ImuManagerThread(void *p)
 
   success = bno055.setClockSource(BNO055::ClockSource::EXT);
   configASSERT(success);
-  
+
   delay(1000);
 
   BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
-  success = bno055.getClockSource(clk);
+  success                 = bno055.getClockSource(clk);
   configASSERT(success);
 
   // Restore calibration constants
@@ -180,157 +180,154 @@ void ImuManagerThread(void *p)
   delay(30);
 
   while (1) {
-    uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    if (0 < notification) {
-      ImuData_t data;
-      memset(&data, 0, sizeof(data));
+    xSemaphoreTake(readImu, portMAX_DELAY);
 
-      BNO055::Status status = BNO055::Status::SYS_UNKNOWN;
-      bno055.getDeviceStatus(status);
-      switch (status) {
-      case BNO055::Status::SYS_IDLE:
-        data.system.status = IMU_SYS_IDLE;
-        break;
-      case BNO055::Status::SYS_ERROR:
-        data.system.status = IMU_SYS_ERROR;
-        break;
-      case BNO055::Status::SYS_PERIPHERAL_INIT:
-        data.system.status = IMU_SYS_PERIPHERAL_INIT;
-        break;
-      case BNO055::Status::SYS_INITIALIZING:
-        data.system.status = IMU_SYS_INITIALIZING;
-        break;
-      case BNO055::Status::SYS_RUNNING_SELFTEST:
-        data.system.status = IMU_SYS_RUNNING_SELFTEST;
-        break;
-      case BNO055::Status::SYS_RUNNING_FUSION:
-        data.system.status = IMU_SYS_RUNNING_FUSION;
-        break;
-      case BNO055::Status::SYS_RUNNING_NO_FUSION:
-        data.system.status = IMU_SYS_RUNNING_NO_FUSION;
-        break;
-      default:
-        data.system.status = IMU_SYS_UNKNOWN;
-        break;
+    ImuData_t data;
+    memset(&data, 0, sizeof(data));
+
+    BNO055::Status status = BNO055::Status::SYS_UNKNOWN;
+    bno055.getDeviceStatus(status);
+    switch (status) {
+    case BNO055::Status::SYS_IDLE:
+      data.system.status = IMU_SYS_IDLE;
+      break;
+    case BNO055::Status::SYS_ERROR:
+      data.system.status = IMU_SYS_ERROR;
+      break;
+    case BNO055::Status::SYS_PERIPHERAL_INIT:
+      data.system.status = IMU_SYS_PERIPHERAL_INIT;
+      break;
+    case BNO055::Status::SYS_INITIALIZING:
+      data.system.status = IMU_SYS_INITIALIZING;
+      break;
+    case BNO055::Status::SYS_RUNNING_SELFTEST:
+      data.system.status = IMU_SYS_RUNNING_SELFTEST;
+      break;
+    case BNO055::Status::SYS_RUNNING_FUSION:
+      data.system.status = IMU_SYS_RUNNING_FUSION;
+      break;
+    case BNO055::Status::SYS_RUNNING_NO_FUSION:
+      data.system.status = IMU_SYS_RUNNING_NO_FUSION;
+      break;
+    default:
+      data.system.status = IMU_SYS_UNKNOWN;
+      break;
+    }
+
+    BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
+    bno055.getClockSource(clk);
+    switch (clk) {
+    case BNO055::ClockSource::INT:
+      data.system.clk = IMU_CLK_INTERNAL;
+      break;
+    case BNO055::ClockSource::EXT:
+      data.system.clk = IMU_CLK_EXTERNAL;
+      break;
+    default:
+      data.system.clk = IMU_CLK_UNKNOWN;
+    }
+
+    BNO055::Euler_t euler;
+    if (bno055.getEulerAngles(euler, BNO055::Unit::DEG)) {
+      data.euler.yaw   = euler.h;
+      data.euler.pitch = euler.p;
+      data.euler.roll  = euler.r;
+    }
+
+    BNO055::Gravity_t gravity;
+    if (bno055.getGravity(gravity)) {
+      data.gravity.x = gravity.x;
+      data.gravity.y = gravity.y;
+      data.gravity.z = gravity.z;
+    }
+
+    BNO055::LinearAccel_t acc;
+    if (bno055.getLinearAcceleration(acc)) {
+      data.acceleration.x = acc.x;
+      data.acceleration.y = acc.y;
+      data.acceleration.z = acc.z;
+    }
+
+    bno055.getAccCalibrationStatus(data.calibration.acc);
+    bno055.getGyroCalibrationStatus(data.calibration.gyro);
+    bno055.getMagCalibrationStatus(data.calibration.mag);
+    bno055.getSystemCalibrationStatus(data.calibration.sys);
+
+    DbDataImuSet(&data);
+
+    if (calibrationNeeded) {
+      if ((3 == data.calibration.acc) && (3 == data.calibration.gyro) &&
+          (3 == data.calibration.mag) && (3 == data.calibration.sys)) {
+        BNO055::AccelOffset_t accoffset;
+        BNO055::GyroOffset_t  gyrooffset;
+        BNO055::MagOffset_t   magoffset;
+
+        success = bno055.setOperationMode(BNO055::OperationMode::CONFIG);
+        configASSERT(success);
+
+        // Refer to page 22 of the datasheet.
+        delay(10);
+
+        bool success;
+        success = bno055.getAccOffset(accoffset);
+        Serial.print("Acc offset x:");
+        Serial.print(accoffset.x);
+        Serial.print(" y:");
+        Serial.print(accoffset.y);
+        Serial.print(" z:");
+        Serial.print(accoffset.z);
+        Serial.print(" r:");
+        Serial.print(accoffset.r);
+        Serial.println();
+        configASSERT(success);
+
+        success = bno055.getGyroOffset(gyrooffset);
+        Serial.print("Gyro offset x:");
+        Serial.print(gyrooffset.x);
+        Serial.print(" y:");
+        Serial.print(gyrooffset.y);
+        Serial.print(" z:");
+        Serial.print(gyrooffset.z);
+        Serial.println();
+        configASSERT(success);
+
+        success = bno055.getMagOffset(magoffset);
+        Serial.print("Mag offset x:");
+        Serial.print(magoffset.x);
+        Serial.print(" y:");
+        Serial.print(magoffset.y);
+        Serial.print(" z:");
+        Serial.print(magoffset.z);
+        Serial.print(" r:");
+        Serial.print(magoffset.r);
+        Serial.println();
+        configASSERT(success);
+
+        ImuOffset_t offset;
+        offset.acc.x  = accoffset.x;
+        offset.acc.y  = accoffset.y;
+        offset.acc.z  = accoffset.z;
+        offset.acc.r  = accoffset.r;
+        offset.gyro.x = gyrooffset.x;
+        offset.gyro.y = gyrooffset.y;
+        offset.gyro.z = gyrooffset.z;
+        offset.mag.x  = magoffset.x;
+        offset.mag.y  = magoffset.y;
+        offset.mag.z  = magoffset.z;
+        offset.mag.r  = magoffset.r;
+
+        DbCalibrationSet(&offset);
+        configASSERT(DbCalibrationIsValid());
+
+        calibrationNeeded = false;
+
+        Serial.println("Sensor offsets saved to EEPROM");
+        success = bno055.setOperationMode(BNO055::OperationMode::NDOF);
+        configASSERT(success);
+
+        // Refer to page 22 of the datasheet.
+        delay(30);
       }
-
-      BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
-      bno055.getClockSource(clk);
-      switch (clk) {
-      case BNO055::ClockSource::INT:
-        data.system.clk = IMU_CLK_INTERNAL;
-        break;
-      case BNO055::ClockSource::EXT:
-        data.system.clk = IMU_CLK_EXTERNAL;
-        break;
-      default:
-        data.system.clk = IMU_CLK_UNKNOWN;
-      }
-
-      BNO055::Euler_t euler;
-      if (bno055.getEulerAngles(euler, BNO055::Unit::DEG)) {
-        data.euler.yaw   = euler.h;
-        data.euler.pitch = euler.p;
-        data.euler.roll  = euler.r;
-      }
-
-      BNO055::Gravity_t gravity;
-      if (bno055.getGravity(gravity)) {
-        data.gravity.x = gravity.x;
-        data.gravity.y = gravity.y;
-        data.gravity.z = gravity.z;
-      }
-
-      BNO055::LinearAccel_t acc;
-      if (bno055.getLinearAcceleration(acc)) {
-        data.acceleration.x = acc.x;
-        data.acceleration.y = acc.y;
-        data.acceleration.z = acc.z;
-      }
-
-      bno055.getAccCalibrationStatus(data.calibration.acc);
-      bno055.getGyroCalibrationStatus(data.calibration.gyro);
-      bno055.getMagCalibrationStatus(data.calibration.mag);
-      bno055.getSystemCalibrationStatus(data.calibration.sys);
-
-      DbDataImuSet(&data);
-
-      if (calibrationNeeded) {
-        if ((3 == data.calibration.acc) && (3 == data.calibration.gyro) &&
-            (3 == data.calibration.mag) && (3 == data.calibration.sys)) {
-          BNO055::AccelOffset_t accoffset;
-          BNO055::GyroOffset_t  gyrooffset;
-          BNO055::MagOffset_t   magoffset;
-
-          success = bno055.setOperationMode(BNO055::OperationMode::CONFIG);
-          configASSERT(success);
-
-          // Refer to page 22 of the datasheet.
-          delay(10);
-
-          bool success;
-          success = bno055.getAccOffset(accoffset);
-          Serial.print("Acc offset x:");
-          Serial.print(accoffset.x);
-          Serial.print(" y:");
-          Serial.print(accoffset.y);
-          Serial.print(" z:");
-          Serial.print(accoffset.z);
-          Serial.print(" r:");
-          Serial.print(accoffset.r);
-          Serial.println();
-          configASSERT(success);
-
-          success = bno055.getGyroOffset(gyrooffset);
-          Serial.print("Gyro offset x:");
-          Serial.print(gyrooffset.x);
-          Serial.print(" y:");
-          Serial.print(gyrooffset.y);
-          Serial.print(" z:");
-          Serial.print(gyrooffset.z);
-          Serial.println();
-          configASSERT(success);
-
-          success = bno055.getMagOffset(magoffset);
-          Serial.print("Mag offset x:");
-          Serial.print(magoffset.x);
-          Serial.print(" y:");
-          Serial.print(magoffset.y);
-          Serial.print(" z:");
-          Serial.print(magoffset.z);
-          Serial.print(" r:");
-          Serial.print(magoffset.r);
-          Serial.println();
-          configASSERT(success);
-
-          ImuOffset_t offset;
-          offset.acc.x  = accoffset.x;
-          offset.acc.y  = accoffset.y;
-          offset.acc.z  = accoffset.z;
-          offset.acc.r  = accoffset.r;
-          offset.gyro.x = gyrooffset.x;
-          offset.gyro.y = gyrooffset.y;
-          offset.gyro.z = gyrooffset.z;
-          offset.mag.x  = magoffset.x;
-          offset.mag.y  = magoffset.y;
-          offset.mag.z  = magoffset.z;
-          offset.mag.r  = magoffset.r;
-
-          DbCalibrationSet(&offset);
-          configASSERT(DbCalibrationIsValid());
-
-          calibrationNeeded = false;
-
-          Serial.println("Sensor offsets saved to EEPROM");
-          success = bno055.setOperationMode(BNO055::OperationMode::NDOF);
-          configASSERT(success);
-
-          // Refer to page 22 of the datasheet.
-          delay(30);
-        }
-      }
-    } else {
-      Serial.println("IMU task notification failed");
     }
   }
 }

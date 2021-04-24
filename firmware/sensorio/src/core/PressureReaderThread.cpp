@@ -33,8 +33,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static TaskHandle_t      bpsTask = NULL;
-static SemaphoreHandle_t pressureDataRead;
+static SemaphoreHandle_t readPressure;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -48,12 +47,12 @@ static void tick(TimerHandle_t xTimer)
   (void)xTimer;
 
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  xSemaphoreGiveFromISR(pressureDataRead, &xHigherPriorityTaskWoken);
+  xSemaphoreGiveFromISR(readPressure, &xHigherPriorityTaskWoken);
   if (pdTRUE == xHigherPriorityTaskWoken) {
     portYIELD_FROM_ISR();
   }
 
-  vTaskNotifyGiveFromISR(imuTask, &xHigherPriorityTaskWoken);
+  xSemaphoreGiveFromISR(readImu, &xHigherPriorityTaskWoken);
   if (pdTRUE == xHigherPriorityTaskWoken) {
     portYIELD_FROM_ISR();
   }
@@ -64,8 +63,7 @@ static void tick(TimerHandle_t xTimer)
 /*****************************************************************************/
 void PressureReaderThread(void *p)
 {
-  bpsTask          = xTaskGetCurrentTaskHandle();
-  pressureDataRead = xSemaphoreCreateBinary();
+  readPressure = xSemaphoreCreateBinary();
 
   TwoWire ms5611_twi = TwoWire(0);
   MS5611  ms5611     = MS5611(ms5611_twi);
@@ -88,7 +86,7 @@ void PressureReaderThread(void *p)
   }
 
   while (1) {
-    xSemaphoreTake(pressureDataRead, portMAX_DELAY);
+    xSemaphoreTake(readPressure, portMAX_DELAY);
 
     bool result = ms5611.convert(MS5611::Osr::OSR_4096);
 
