@@ -12,17 +12,17 @@
 
 typedef enum {
   PRIO_0_INVALID = 0,
-  PRIO_0_PRESS,
-  PRIO_0_IMU,
+  PRIO_0_BATTMON,
+  PRIO_0_LOGGER,
   PRIO_0_GPS,
   PRIO_0_FILTER,
-  PRIO_0_LOGGER,
-  PRIO_0_BATTMON,
+  PRIO_0_IMU,
+  PRIO_0_PRESS,
 } ThreadPrio_Core0_t;
 
 typedef enum {
   PRIO_1_INVALID = 0,
-  PRIO_1_LVGL,
+  PRIO_1_LVGL = 10,
 } ThreadPrio_Core1_t;
 
 void setup()

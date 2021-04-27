@@ -20,7 +20,7 @@
 #define BPS_SCL  14
 #define BPS_FREQ 400000
 
-#define SAMPLE_PERIOD_IN_MS 20
+#define SAMPLE_PERIOD_IN_US 25000
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
@@ -33,7 +33,9 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static SemaphoreHandle_t readPressure;
+static SemaphoreHandle_t readBps;
+
+static hw_timer_t *timer;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -42,12 +44,10 @@ static SemaphoreHandle_t readPressure;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
-static void tick(TimerHandle_t xTimer)
+static void tick(void)
 {
-  (void)xTimer;
-
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  xSemaphoreGiveFromISR(readPressure, &xHigherPriorityTaskWoken);
+  xSemaphoreGiveFromISR(readBps, &xHigherPriorityTaskWoken);
   if (pdTRUE == xHigherPriorityTaskWoken) {
     portYIELD_FROM_ISR();
   }
@@ -63,7 +63,7 @@ static void tick(TimerHandle_t xTimer)
 /*****************************************************************************/
 void PressureReaderThread(void *p)
 {
-  readPressure = xSemaphoreCreateBinary();
+  readBps = xSemaphoreCreateBinary();
 
   TwoWire ms5611_twi = TwoWire(0);
   MS5611  ms5611     = MS5611(ms5611_twi);
@@ -75,18 +75,15 @@ void PressureReaderThread(void *p)
 
   Serial.print("MS5611 is ready\n");
 
-  TimerHandle_t timerHandle;
-  timerHandle = xTimerCreate("data sampling timer",
-                             pdMS_TO_TICKS(SAMPLE_PERIOD_IN_MS),
-                             pdTRUE,
-                             0,
-                             tick);
-  if (pdPASS != xTimerStart(timerHandle, 0)) {
-    Serial.println("Failed to start data sampling timer");
-  }
+  timer = timerBegin(3, 80, true);
+  timerAttachInterrupt(timer, tick, true);
+  timerAlarmWrite(timer, SAMPLE_PERIOD_IN_US, true);
+  timerAlarmEnable(timer);
+
 
   while (1) {
-    xSemaphoreTake(readPressure, portMAX_DELAY);
+
+    xSemaphoreTake(readBps, portMAX_DELAY);
 
     bool result = ms5611.convert(MS5611::Osr::OSR_4096);
 

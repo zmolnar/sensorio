@@ -30,7 +30,6 @@ class UnscentedKalmanFilter {
 public:
   const size_t dim_x;
   const size_t dim_z;
-  const double dt;
 
   Matrix x;       // State vector
   Matrix P;       // Process state covariance matrix
@@ -50,13 +49,11 @@ public:
   
   UnscentedKalmanFilter(size_t       dim_x,
                         size_t       dim_z,
-                        double       dt,
                         fx_t         fx,
                         hx_t         hx,
                         SigmaPoints &sigmas) :
       dim_x(dim_x),
       dim_z(dim_z),
-      dt(dt),
       x(dim_x, 1),
       P(dim_x, dim_x),
       x_prior(dim_x, 1),
@@ -75,7 +72,7 @@ public:
 
   ~UnscentedKalmanFilter(){};
 
-  void predict(void);
+  void predict(double dt);
   void update(Matrix &z);
   void transform(Matrix &x, Matrix &P, Matrix &s, Matrix &noise);
 };

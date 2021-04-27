@@ -38,7 +38,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
-void UnscentedKalmanFilter::predict(void)
+void UnscentedKalmanFilter::predict(double dt)
 {
   // Generate sigma points
   Matrix sigmapoints = sigmas.generateSigmas(x, P);
