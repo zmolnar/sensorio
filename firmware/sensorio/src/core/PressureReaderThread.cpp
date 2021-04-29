@@ -68,12 +68,19 @@ void PressureReaderThread(void *p)
   TwoWire ms5611_twi = TwoWire(0);
   MS5611  ms5611     = MS5611(ms5611_twi);
 
-  while (!ms5611.begin(BPS_SDA, BPS_SCL, BPS_FREQ)) {
-    Serial.print("MS5611 startup error\n");
-    delay(1000);
+  bool success = false;
+  for (uint32_t i = 0; (!success) && (i < 5); ++i) {
+    success = ms5611.begin(BPS_SDA, BPS_SCL, BPS_FREQ);
+    if (!success) {
+      Serial.print("MS5611 startup failed ");
+      Serial.println(i);
+      delay(1000);
+    } else {
+      Serial.println("MS5611 is ready");
+    }
   }
-
-  Serial.print("MS5611 is ready\n");
+ 
+  configASSERT(success);
 
   timer = timerBegin(3, 80, true);
   timerAttachInterrupt(timer, tick, true);

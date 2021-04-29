@@ -144,19 +144,26 @@ void ImuManagerThread(void *p)
   BNO055 bno055 = BNO055(i2c_init, i2c_bus_read, i2c_bus_write, delay);
 
   // Initialize the sensor
-  bool success = bno055.begin();
-  configASSERT(success);
+  bool success = false;
+  for (uint32_t i = 0; (!success) && (i < 5); ++i) {
+    success = bno055.begin();
+    success = success && bno055.setPowerMode(BNO055::PowerMode::NORMAL);
+    success = success && bno055.setClockSource(BNO055::ClockSource::EXT);
+    if (success) {
+      delay(1000);
+    }
+    BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
+    success                 = success && bno055.getClockSource(clk);
+    success                 = success && (BNO055::ClockSource::EXT == clk);
 
-  success = bno055.setPowerMode(BNO055::PowerMode::NORMAL);
-  configASSERT(success);
-
-  success = bno055.setClockSource(BNO055::ClockSource::EXT);
-  configASSERT(success);
-
-  delay(1000);
-
-  BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
-  success                 = bno055.getClockSource(clk);
+    if (success) {
+      Serial.println("BNO055 startup succeeded");
+    } else {
+      Serial.print("BNO055 startup failed ");
+      Serial.println(i);
+      delay(1000);
+    }
+  }
   configASSERT(success);
 
   // Restore calibration constants
