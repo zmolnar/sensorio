@@ -1,10 +1,10 @@
 /**
- * @file DataLoggerThread.h
+ * @file BeepControlThread.h
  * @brief
  */
 
-#ifndef DATA_LOGGER_THREAD_H
-#define DATA_LOGGER_THREAD_H
+#ifndef BEEP_CONTROL_THREAD_H
+#define BEEP_CONTROL_THREAD_H
 
 /*****************************************************************************/
 /* INCLUDES                                                                  */
@@ -29,21 +29,12 @@
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+void BeepControlThread(void *p);
 
-void DataLoggerThread(void *p);
+void BeepControlThreadInit(void);
 
-void LogAppend(const char *fmt, ...);
+void BeepControlUpdate(void);
 
-void LogWaitToFinish(void);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* DATA_LOGGER_THREAD_H */
+#endif /* BEEP_CONTROL_THREAD_H */
 
 /****************************** END OF FILE **********************************/

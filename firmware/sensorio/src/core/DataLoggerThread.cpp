@@ -185,6 +185,7 @@ public:
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
 static Logger logger;
+static SemaphoreHandle_t sdlock;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -363,11 +364,29 @@ const char *getLogfileName(void)
   return logfile;
 }
 
+static void lockSdCard(void)
+{
+  BaseType_t res;
+    do {
+      res = xSemaphoreTake(sdlock, portMAX_DELAY);
+    } while (pdTRUE != res);
+}
+
+static void unlockSdCard(void)
+{
+  BaseType_t res;
+    do {
+      res = xSemaphoreGive(sdlock);
+    } while (pdTRUE != res);
+}
+
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
 void DataLoggerThread(void *p)
 {
+  sdlock = xSemaphoreCreateMutex();
+
   SPIClass sdcSpi(HSPI);
   sdcSpi.begin(2, 5, 0, 15);
 
@@ -381,6 +400,9 @@ void DataLoggerThread(void *p)
     BaseType_t result = xQueueReceive(logger.queue, &msg, portMAX_DELAY);
 
     if (pdTRUE == result) {
+
+      lockSdCard();
+
       Buffer *buf = msg;
 
       if (buf) {
@@ -404,6 +426,9 @@ void DataLoggerThread(void *p)
           buf->unlock();
         }
       }
+
+      unlockSdCard();
+
     } else {
       Serial.println("Failed to read message queue");
     }
@@ -416,6 +441,12 @@ void LogAppend(const char *fmt, ...)
   va_start(args, fmt);
   logger.write(fmt, args);
   va_end(args);
+}
+
+void LogWaitToFinish(void)
+{
+  // Lock the mutex and don't release it, because it's gonna power down soon.
+  lockSdCard();
 }
 
 /****************************** END OF FILE **********************************/

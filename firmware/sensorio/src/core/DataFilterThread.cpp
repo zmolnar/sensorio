@@ -6,6 +6,7 @@
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
+#include "BeepControlThread.h"
 #include "DataFilterThread.h"
 #include "DataLoggerThread.h"
 #include "dashboard/Dashboard.h"
@@ -216,6 +217,7 @@ void DataFilterThread(void *p)
     out.vario.averaged = 0;
 
     DbDataFilterOutputSet(&out);
+    BeepControlUpdate();
 
     LogAppend("%d %d "
               "%d "

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 
 #include "core/BatteryMonitorThread.h"
+#include "core/BeepControlThread.h"
 #include "core/GpsManagerThread.h"
 #include "core/DataFilterThread.h"
 #include "core/DataLoggerThread.h"
@@ -14,6 +15,7 @@ typedef enum {
   PRIO_0_INVALID = 0,
   PRIO_0_BATTMON,
   PRIO_0_LOGGER,
+  PRIO_0_BEEPER,
   PRIO_0_GPS,
   PRIO_0_FILTER,
   PRIO_0_IMU,
@@ -35,6 +37,8 @@ void setup()
   PowerStart();
   
   DbInit();
+  
+  BeepControlThreadInit();
 
 #if 1
   xTaskCreatePinnedToCore(DataFilterThread,
@@ -62,6 +66,16 @@ void setup()
                           2048,
                           NULL,
                           PRIO_0_PRESS,
+                          NULL,
+                          0);
+#endif
+
+#if 1
+  xTaskCreatePinnedToCore(BeepControlThread,
+                          "beeper",
+                          2048,
+                          NULL,
+                          PRIO_0_BEEPER,
                           NULL,
                           0);
 #endif

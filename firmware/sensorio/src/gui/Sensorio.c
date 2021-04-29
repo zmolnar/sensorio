@@ -9,6 +9,7 @@
 #include "Sensorio.h"
 #include "Power.h"
 #include "dashboard/Dashboard.h"
+#include "core/DataLoggerThread.h"
 
 #if defined(SIMULATOR)
 #include <stdio.h>
@@ -92,6 +93,7 @@ static void exit_msgbox_event_handler(lv_obj_t *obj, lv_event_t event)
 
     if (0 == id) {
       lv_obj_clean(lv_scr_act());
+      LogWaitToFinish();
       PowerStop();
     } else {
       SensorioLoadEncoderGroup();
