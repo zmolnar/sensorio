@@ -50,22 +50,44 @@ void DbInit(void)
   default_config.screens.vario.chart_refresh_period = 1000;
 }
 
-void DbParamsLock(void)
-{
-}
-
-void DbParamsUnlock(void)
-{
-}
-
-void DbParamsGet(SysParams_t *p)
+void DbCfgSysParamsGet(SysParams_t *p)
 {
   memcpy(p, &default_config, sizeof(SysParams_t));
 }
 
-void DbParamsSet(SysParams_t *p)
+void DbCfgSysParamsSet(SysParams_t *p)
 {
   memcpy(&default_config, p, sizeof(SysParams_t));
+}
+
+bool DbCfgImuCalibrationIsValid(void)
+{
+  return true;
+}
+
+void DbCfgImuCalibrationGet(ImuOffset_t *offset)
+{
+  memset(offset, 0, sizeof(ImuOffset_t));
+}
+
+void DbCfgImuCalibrationSet(ImuOffset_t *offset)
+{
+}
+
+static VolumeLevel_t volume = VOL_MEDIUM;
+
+void DbCfgBeepSettingsGet(BeepSettings_t *beep)
+{
+  beep->volume = volume;
+}
+
+void DbCfgBeepSettingsSet(BeepSettings_t *beep)
+{
+  volume = beep->volume;
+}
+
+void DbCfgSaveToEeprom(void)
+{
 }
 
 void DbDataGpsGet(GpsData_t *p)

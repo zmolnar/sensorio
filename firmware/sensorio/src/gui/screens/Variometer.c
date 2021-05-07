@@ -139,9 +139,7 @@ static void refresh_task(lv_task_t *p)
 static void reschedule_chart_refresh_task(void)
 {
   SysParams_t params;
-  DbParamsLock();
-  DbParamsGet(&params);
-  DbParamsUnlock();
+  DbCfgSysParamsGet(&params);
 
   if (chart_refresh_period != params.screens.vario.chart_refresh_period) {
     chart_refresh_period = params.screens.vario.chart_refresh_period;

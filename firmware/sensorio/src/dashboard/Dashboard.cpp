@@ -37,7 +37,8 @@ typedef struct Config_s {
     ImuOffset_t offset;
     uint32_t    crc;
   } calibration;
-  uint32_t crc;
+  BeepSettings_t beep;
+  uint32_t       crc;
 } Config_t;
 
 typedef struct Locks_s {
@@ -72,6 +73,7 @@ static const Config_t defaultConfig = {
     .params      = {.location = {.utcOffset = 0},
                .screens  = {.vario = {.chart_refresh_period = 1000}}},
     .calibration = {.offset = {0}, .crc = 0xff},
+    .beep        = {.volume = VOL_LOW},
     .crc         = 0x00,
 };
 
@@ -92,7 +94,7 @@ static uint8_t crc8(const uint8_t data[], size_t length)
   return crc;
 }
 
-static bool DbConfigIsValid(Config_t *cfg)
+static bool configIsValid(Config_t *cfg)
 {
   uint8_t *data   = (uint8_t *)cfg;
   size_t   length = sizeof(*cfg) - sizeof(cfg->crc);
@@ -104,19 +106,7 @@ static bool DbConfigIsValid(Config_t *cfg)
   return magicOk && crcOk;
 }
 
-static void DbSaveConfig(void)
-{
-  // Recalculate CRC
-  uint8_t *data   = (uint8_t *)&db.config;
-  size_t   length = sizeof(db.config) - sizeof(db.config.crc);
-  db.config.crc   = crc8(data, length);
-
-  // Write to EEPROM
-  EEPROM.writeBytes(CONFIG_ADDRESS, &db.config, sizeof(db.config));
-  EEPROM.commit();
-}
-
-static void DbLock(SemaphoreHandle_t &mutex)
+static void lockMutex(SemaphoreHandle_t &mutex)
 {
   BaseType_t res;
   do {
@@ -124,7 +114,7 @@ static void DbLock(SemaphoreHandle_t &mutex)
   } while (pdTRUE != res);
 }
 
-static void DbUnlock(SemaphoreHandle_t &mutex)
+static void unlockMutex(SemaphoreHandle_t &mutex)
 {
   BaseType_t res;
   do {
@@ -142,7 +132,7 @@ void DbInit(void)
   EEPROM.begin(EEPROM_SIZE);
   EEPROM.readBytes(CONFIG_ADDRESS, &db.config, sizeof(db.config));
 
-  if (DbConfigIsValid(&db.config)) {
+  if (configIsValid(&db.config)) {
     Serial.println("Config restored successfully");
     Serial.println("Location:");
     Serial.printf("  UTC offset: %d\n", db.config.params.location.utcOffset);
@@ -182,31 +172,23 @@ void DbInit(void)
   configASSERT(NULL != db.locks.board);
 }
 
-void DbParamsLock(void)
+void DbCfgSysParamsGet(SysParams_t *p)
 {
-  DbLock(db.locks.config);
-}
-
-void DbParamsUnlock(void)
-{
-  DbUnlock(db.locks.config);
-}
-
-void DbParamsGet(SysParams_t *p)
-{
+  lockMutex(db.locks.config);
   memcpy(p, &db.config.params, sizeof(SysParams_t));
+  unlockMutex(db.locks.config);
 }
 
-void DbParamsSet(SysParams_t *p)
+void DbCfgSysParamsSet(SysParams_t *p)
 {
+  lockMutex(db.locks.config);
   memcpy(&db.config.params, p, sizeof(SysParams_t));
-
-  DbSaveConfig();
+  unlockMutex(db.locks.config);
 }
 
-bool DbCalibrationIsValid(void)
+bool DbCfgImuCalibrationIsValid(void)
 {
-  DbLock(db.locks.config);
+  lockMutex(db.locks.config);
 
   uint8_t *data   = (uint8_t *)&db.config.calibration.offset;
   size_t   length = sizeof(db.config.calibration.offset);
@@ -214,14 +196,14 @@ bool DbCalibrationIsValid(void)
 
   bool crcOk = (db.config.calibration.crc == crc);
 
-  DbUnlock(db.locks.config);
+  unlockMutex(db.locks.config);
 
   return crcOk;
 }
 
-void DbCalibrationGet(ImuOffset_t *offset)
+void DbCfgImuCalibrationGet(ImuOffset_t *offset)
 {
-  DbLock(db.locks.config);
+  lockMutex(db.locks.config);
 
   uint8_t *dst    = (uint8_t *)offset;
   uint8_t *src    = (uint8_t *)&db.config.calibration.offset;
@@ -229,12 +211,12 @@ void DbCalibrationGet(ImuOffset_t *offset)
 
   memcpy(dst, src, length);
 
-  DbUnlock(db.locks.config);
+  unlockMutex(db.locks.config);
 }
 
-void DbCalibrationSet(ImuOffset_t *offset)
+void DbCfgImuCalibrationSet(ImuOffset_t *offset)
 {
-  DbLock(db.locks.config);
+  lockMutex(db.locks.config);
 
   uint8_t *dst    = (uint8_t *)&db.config.calibration.offset;
   uint8_t *src    = (uint8_t *)offset;
@@ -244,107 +226,133 @@ void DbCalibrationSet(ImuOffset_t *offset)
 
   db.config.calibration.crc = crc8(dst, length);
 
-  DbSaveConfig();
+  unlockMutex(db.locks.config);
+}
 
-  DbUnlock(db.locks.config);
+void DbCfgBeepSettingsGet(BeepSettings_t *beep)
+{
+  lockMutex(db.locks.config);
+  memcpy(beep, &db.config.beep, sizeof(BeepSettings_t));
+  unlockMutex(db.locks.config);
+}
+
+void DbCfgBeepSettingsSet(BeepSettings_t *beep)
+{
+  lockMutex(db.locks.config);
+  memcpy(&db.config.beep, beep, sizeof(BeepSettings_t));
+  unlockMutex(db.locks.config);
+}
+
+void DbCfgSaveToEeprom(void)
+{
+  lockMutex(db.locks.config);
+
+  uint8_t *data   = (uint8_t *)&db.config;
+  size_t   length = sizeof(db.config) - sizeof(db.config.crc);
+  db.config.crc   = crc8(data, length);
+
+  EEPROM.writeBytes(CONFIG_ADDRESS, &db.config, sizeof(db.config));
+  EEPROM.commit();
+
+  unlockMutex(db.locks.config);
 }
 
 void DbDataGpsGet(GpsData_t *p)
 {
-  DbLock(db.locks.gps);
+  lockMutex(db.locks.gps);
   memcpy(p, &db.data.gps, sizeof(GpsData_t));
-  DbUnlock(db.locks.gps);
+  unlockMutex(db.locks.gps);
 }
 
 void DbDataGpsSet(GpsData_t *p)
 {
-  DbLock(db.locks.gps);
+  lockMutex(db.locks.gps);
   memcpy(&db.data.gps, p, sizeof(GpsData_t));
-  DbUnlock(db.locks.gps);
+  unlockMutex(db.locks.gps);
 }
 
 void DbDataBpsGet(BpsData_t *p)
 {
-  DbLock(db.locks.bps);
+  lockMutex(db.locks.bps);
   memcpy(p, &db.data.bps, sizeof(BpsData_t));
-  DbUnlock(db.locks.bps);
+  unlockMutex(db.locks.bps);
 }
 
 void DbDataBpsSet(BpsData_t *p)
 {
-  DbLock(db.locks.bps);
+  lockMutex(db.locks.bps);
   memcpy(&db.data.bps, p, sizeof(BpsData_t));
-  DbUnlock(db.locks.bps);
+  unlockMutex(db.locks.bps);
 }
 
 void DbDataFilterParametersGet(FilterParameters_t *p)
 {
-  DbLock(db.locks.filterParams);
+  lockMutex(db.locks.filterParams);
   memcpy(p, &db.data.filterParams, sizeof(FilterParameters_t));
-  DbUnlock(db.locks.filterParams);
+  unlockMutex(db.locks.filterParams);
 }
 
 void DbDataFilterParametersSet(FilterParameters_t *p)
 {
-  DbLock(db.locks.filterParams);
+  lockMutex(db.locks.filterParams);
   memcpy(&db.data.filterParams, p, sizeof(FilterParameters_t));
-  DbUnlock(db.locks.filterParams);
+  unlockMutex(db.locks.filterParams);
 }
 
 void DbDataFilterOutputGet(FilterOutput_t *p)
 {
-  DbLock(db.locks.filter);
+  lockMutex(db.locks.filter);
   memcpy(p, &db.data.filter, sizeof(FilterOutput_t));
-  DbUnlock(db.locks.filter);
+  unlockMutex(db.locks.filter);
 }
 
 void DbDataFilterOutputSet(FilterOutput_t *p)
 {
-  DbLock(db.locks.filter);
+  lockMutex(db.locks.filter);
   memcpy(&db.data.filter, p, sizeof(FilterOutput_t));
-  DbUnlock(db.locks.filter);
+  unlockMutex(db.locks.filter);
 }
 
 void DbDataImuGet(ImuData_t *p)
 {
-  DbLock(db.locks.imu);
+  lockMutex(db.locks.imu);
   memcpy(p, &db.data.imu, sizeof(ImuData_t));
-  DbUnlock(db.locks.imu);
+  unlockMutex(db.locks.imu);
 }
 
 void DbDataImuSet(ImuData_t *p)
 {
-  DbLock(db.locks.imu);
+  lockMutex(db.locks.imu);
   memcpy(&db.data.imu, p, sizeof(ImuData_t));
-  DbUnlock(db.locks.imu);
+  unlockMutex(db.locks.imu);
 }
 
 void DbDataBatteryGet(Battery_t *p)
 {
-  DbLock(db.locks.battery);
+  lockMutex(db.locks.battery);
   memcpy(p, &db.data.battery, sizeof(Battery_t));
-  DbUnlock(db.locks.battery);
+  unlockMutex(db.locks.battery);
 }
 
 void DbDataBatterySet(Battery_t *p)
 {
-  DbLock(db.locks.battery);
+  lockMutex(db.locks.battery);
   memcpy(&db.data.battery, p, sizeof(Battery_t));
-  DbUnlock(db.locks.battery);
+  unlockMutex(db.locks.battery);
 }
 
 void DbDataBoardGet(Board_t *p)
 {
-  DbLock(db.locks.board);
+  lockMutex(db.locks.board);
   memcpy(p, &db.data.board, sizeof(Board_t));
-  DbUnlock(db.locks.board);
+  unlockMutex(db.locks.board);
 }
 
 void DbDataBoardSet(Board_t *p)
 {
-  DbLock(db.locks.board);
+  lockMutex(db.locks.board);
   memcpy(&db.data.board, p, sizeof(Board_t));
-  DbUnlock(db.locks.board);
+  unlockMutex(db.locks.board);
 }
 
 /****************************** END OF FILE **********************************/

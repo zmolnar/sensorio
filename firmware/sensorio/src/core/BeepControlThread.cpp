@@ -22,9 +22,9 @@
 #define BEEP_PIN              33
 
 #define VOLUME_ZERO 0
-#define VOLUME_LOW  (BEEP_RESOLUTION_RANGE * 0.02)
-#define VOLUME_MED  (BEEP_RESOLUTION_RANGE * 0.05)
-#define VOLUME_HIGH (BEEP_RESOLUTION_RANGE * 0.5)
+#define VOLUME_LOW  (uint32_t)(BEEP_RESOLUTION_RANGE * 0.02)
+#define VOLUME_MED  (uint32_t)(BEEP_RESOLUTION_RANGE * 0.05)
+#define VOLUME_HIGH (uint32_t)(BEEP_RESOLUTION_RANGE * 0.5)
 
 /*******************************************************************************/
 /* MACRO DEFINITIONS */
@@ -79,7 +79,7 @@ static double silenceDurationMaxLift = 60;
 
 static BeepControlState_t beepControlState = BEEP_DISABLED;
 static BeepState_t        beepState        = BEEP_OFF;
-static BeepVolume_t       beepVolume       = VOLUME_MED;
+static BeepVolume_t       beepVolume       = VOLUME_LOW;
 static TimerState_t       timerState       = TIMER_STOPPED;
 
 static uint32_t beepFrequency;
@@ -196,7 +196,6 @@ static void startTimer(uint32_t delay_ms)
 
 static void stopTimer()
 {
-  Serial.print("tstop");
   timerStop(beepTimer);
   timerAlarmDisable(beepTimer);
   timerState = TIMER_STOPPED;
@@ -312,6 +311,25 @@ static void handleSignalProcessorEvent(void)
   updateBeeperStateMachine();
 }
 
+static void updateLocalsFromConfig(void)
+{
+  static const BeepVolume_t conversion[4] = {
+      VOLUME_ZERO,
+      VOLUME_LOW,
+      VOLUME_MED,
+      VOLUME_HIGH,
+  };
+
+  BeepSettings_t beep;
+  DbCfgBeepSettingsGet(&beep);
+
+  if ((0 <= beep.volume) && (beep.volume <= 3)) {
+    beepVolume = conversion[beep.volume];
+  } else {
+    beepVolume = VOLUME_LOW;
+  }
+}
+
 /*******************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS */
 /*******************************************************************************/
@@ -319,6 +337,7 @@ void BeepControlThread(void *p)
 {
   (void)p;
 
+  updateLocalsFromConfig();
   // playStartupSignal();
 
   while (1) {
@@ -326,6 +345,7 @@ void BeepControlThread(void *p)
     BaseType_t    result = xQueueReceive(beepQueue, &cmd, portMAX_DELAY);
 
     if (pdTRUE == result) {
+      updateLocalsFromConfig();
       switch (cmd) {
       case SYSTEM_SHUTDOWN: {
         handleSystemShutdownEvent();

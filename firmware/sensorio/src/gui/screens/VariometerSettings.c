@@ -37,6 +37,8 @@ static lv_obj_t *period_slider;
 static lv_obj_t *period_text;
 static lv_obj_t *qnh_label;
 static lv_obj_t *qnh_spinbox;
+static lv_obj_t *volume_label;
+static lv_obj_t *volume_list;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -45,6 +47,23 @@ static lv_obj_t *qnh_spinbox;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
+static VolumeLevel_t convert_volume_option_to_enum(int16_t option)
+{
+  static const VolumeLevel_t options[4] = {
+    [0] = VOL_ZERO,
+    [1] = VOL_LOW,
+    [2] = VOL_MEDIUM,
+    [3] = VOL_HIGH,
+  };
+
+  VolumeLevel_t vol = VOL_ZERO;
+  if ((0 <= option) && (option <= 3)) {
+    vol = options[option];
+  }
+
+  return vol;
+}
+
 static void mbox_event_handler(lv_obj_t *obj, lv_event_t event)
 {
   if (LV_EVENT_VALUE_CHANGED == event) {
@@ -53,12 +72,18 @@ static void mbox_event_handler(lv_obj_t *obj, lv_event_t event)
     if (0 == id) {
       uint32_t period = (uint32_t)lv_slider_get_value(period_slider);
 
-      DbParamsLock();
       SysParams_t params;
-      DbParamsGet(&params);
+      DbCfgSysParamsGet(&params);
       params.screens.vario.chart_refresh_period = period * 1000;
-      DbParamsSet(&params);
-      DbParamsUnlock();
+      DbCfgSysParamsSet(&params);
+
+      BeepSettings_t beep;
+      DbCfgBeepSettingsGet(&beep);
+      int16_t option = lv_dropdown_get_selected(volume_list);
+      beep.volume = convert_volume_option_to_enum(option);
+      DbCfgBeepSettingsSet(&beep);
+      
+      DbCfgSaveToEeprom();
     } else {
       ;
     }
@@ -74,6 +99,7 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
   case LV_EVENT_FOCUSED: {
     lv_group_add_obj(group, period_slider);
     lv_group_add_obj(group, qnh_spinbox);
+    lv_group_add_obj(group, volume_list);
     break;
   }
   case LV_EVENT_DEFOCUSED: {
@@ -149,9 +175,7 @@ lv_obj_t *variometer_settings_screen_create(lv_style_t *style)
   lv_obj_align(period_slider, period_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
 
   SysParams_t params;
-  DbParamsLock();
-  DbParamsGet(&params);
-  DbParamsUnlock();
+  DbCfgSysParamsGet(&params);
 
   uint32_t period = params.screens.vario.chart_refresh_period / 1000;
   lv_slider_set_value(period_slider, (int16_t)period, LV_ANIM_OFF);
@@ -186,6 +210,22 @@ lv_obj_t *variometer_settings_screen_create(lv_style_t *style)
   lv_obj_set_event_cb(btn, lv_spinbox_decrement_event_cb);
   lv_obj_set_style_local_value_str(
       btn, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, LV_SYMBOL_MINUS);
+
+  volume_label = lv_label_create(scr, NULL);
+  lv_label_set_text(volume_label, "Volume");
+  lv_obj_align(volume_label, qnh_spinbox, LV_ALIGN_OUT_BOTTOM_MID, 0, 50);
+
+  BeepSettings_t beep;
+  DbCfgBeepSettingsGet(&beep);
+
+  volume_list = lv_dropdown_create(scr, NULL);
+  lv_dropdown_set_options(volume_list,
+                          "OFF\n"
+                          "Low\n"
+                          "Medium\n"
+                          "High");
+  lv_dropdown_set_selected(volume_list, (int16_t)beep.volume);
+  lv_obj_align(volume_list, volume_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
 
   group = SensorioGetEncoderGroup();
 

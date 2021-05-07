@@ -169,9 +169,9 @@ void ImuManagerThread(void *p)
   // Restore calibration constants
   bool calibrationNeeded = false;
 
-  if (DbCalibrationIsValid()) {
+  if (DbCfgImuCalibrationIsValid()) {
     ImuOffset_t offset;
-    DbCalibrationGet(&offset);
+    DbCfgImuCalibrationGet(&offset);
     success = sendCalibrationToDevice(bno055, offset);
     configASSERT(success);
     calibrationNeeded = false;
@@ -323,8 +323,9 @@ void ImuManagerThread(void *p)
         offset.mag.z  = magoffset.z;
         offset.mag.r  = magoffset.r;
 
-        DbCalibrationSet(&offset);
-        configASSERT(DbCalibrationIsValid());
+        DbCfgImuCalibrationSet(&offset);
+        configASSERT(DbCfgImuCalibrationIsValid());
+        DbCfgSaveToEeprom();
 
         calibrationNeeded = false;
 

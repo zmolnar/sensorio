@@ -148,6 +148,17 @@ typedef enum {
   BAT_INVALID,
 } BatteryStatus_t;
 
+typedef enum {
+  VOL_ZERO = 0,
+  VOL_LOW = 1,
+  VOL_MEDIUM = 2,
+  VOL_HIGH = 3,
+} VolumeLevel_t;
+
+typedef struct BeepSettings_s {
+  VolumeLevel_t volume;
+} BeepSettings_t;
+
 typedef struct Battery_s {
   BatteryStatus_t status;
   double          voltage;
@@ -172,14 +183,15 @@ extern "C"
 #endif
 
   void DbInit(void);
-
-  void DbParamsLock(void);
-  void DbParamsUnlock(void);
-  void DbParamsGet(SysParams_t *p);
-  void DbParamsSet(SysParams_t *p);
-  bool DbCalibrationIsValid(void);
-  void DbCalibrationGet(ImuOffset_t *offset);
-  void DbCalibrationSet(ImuOffset_t *offset);
+  
+  void DbCfgSysParamsGet(SysParams_t *p);
+  void DbCfgSysParamsSet(SysParams_t *p);
+  bool DbCfgImuCalibrationIsValid(void);
+  void DbCfgImuCalibrationGet(ImuOffset_t *offset);
+  void DbCfgImuCalibrationSet(ImuOffset_t *offset);
+  void DbCfgBeepSettingsGet(BeepSettings_t *beep);
+  void DbCfgBeepSettingsSet(BeepSettings_t *beep);
+  void DbCfgSaveToEeprom(void);
 
   void DbDataGpsGet(GpsData_t *p);
   void DbDataGpsSet(GpsData_t *p);
