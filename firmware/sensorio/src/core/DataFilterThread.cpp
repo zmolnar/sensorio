@@ -224,7 +224,7 @@ void DataFilterThread(void *p)
               "%3.2f %3.2f %3.2f "
               "%3.2f %3.2f %3.2f "
               "%5.1f %3.2f %3.2f\n",
-              (int)timeStamp, (int)dt,
+              (int)timeStamp, (int)(dt*1000),
               (int)bps.cooked.pressure,
               imu.gravity.x, imu.gravity.y, imu.gravity.z,
               imu.acceleration.x, imu.acceleration.y, imu.acceleration.z,
