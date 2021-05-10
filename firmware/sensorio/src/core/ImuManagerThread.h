@@ -32,6 +32,7 @@ extern SemaphoreHandle_t readImu;
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
 void ImuManagerThread(void *p);
+void ImuManagerInit(void);
 
 #endif /* IMU_MANAGER_THREAD_H */
 

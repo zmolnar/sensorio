@@ -1,7 +1,7 @@
 ﻿---
 AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: 'true'
-AlignConsecutiveDeclarations: 'true'
+AlignConsecutiveAssignments: 'false'
+AlignConsecutiveDeclarations: 'false'
 AlignConsecutiveMacros: 'true'
 AlignEscapedNewlines: Right
 AlignOperands: 'true'

@@ -39,6 +39,7 @@ extern "C"
 #endif
 
   void        SensorioStart(void);
+  void        SensorioStop(void);
   void        SensorioStartupFinished(void);
   lv_group_t *SensorioGetEncoderGroup(void);
   void        SensorioClearEncoderGroup(void);

@@ -8,8 +8,9 @@
 /*****************************************************************************/
 #include "Sensorio.h"
 #include "Power.h"
-#include "dashboard/Dashboard.h"
 #include "core/DataLoggerThread.h"
+#include "dashboard/Dashboard.h"
+
 
 #if defined(SIMULATOR)
 #include <stdio.h>
@@ -93,8 +94,7 @@ static void exit_msgbox_event_handler(lv_obj_t *obj, lv_event_t event)
 
     if (0 == id) {
       lv_obj_clean(lv_scr_act());
-      LogWaitToFinish();
-      PowerStop();
+      SensorioStop();
     } else {
       SensorioLoadEncoderGroup();
       lv_group_focus_obj(lv_obj_get_parent(obj));
@@ -125,11 +125,17 @@ void SensorioStart(void)
   lv_scr_load(startup);
 }
 
+void SensorioStop(void)
+{
+  LogWaitToFinish();
+  PowerStop();
+}
+
 void SensorioStartupFinished(void)
 {
   lv_obj_del(startup);
 
-  vario   = variometer_screen_create(&no_border_style);
+  vario = variometer_screen_create(&no_border_style);
   bpsdata = bps_data_screen_create(&no_border_style);
   imudata = imu_data_screen_create(&no_border_style);
   gpsdata = gps_data_screen_create(&no_border_style);

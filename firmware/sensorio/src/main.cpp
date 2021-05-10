@@ -39,6 +39,7 @@ void setup()
   DbInit();
   
   BeepControlThreadInit();
+  ImuManagerInit();
 
 #if 1
   xTaskCreatePinnedToCore(DataFilterThread,

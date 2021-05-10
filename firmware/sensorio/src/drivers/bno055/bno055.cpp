@@ -42,7 +42,7 @@ bool BNO055::begin(void)
   bool success = false;
 
   if (init()) {
-    delay(100);
+    bno055.delay_msec(100);
     error = convertError(bno055_init(&bno055));
     if (OK == error) {
       u8 chipId;
@@ -60,6 +60,16 @@ bool BNO055::begin(void)
   }
 
   return success;
+}
+
+bool BNO055::reset(void)
+{
+  error = convertError(bno055_set_sys_rst(1));
+  if (OK == error) {
+    bno055.delay_msec(1000);
+  }
+
+  return OK == error;
 }
 
 bool BNO055::getDeviceStatus(BNO055::Status &status)
@@ -85,6 +95,12 @@ bool BNO055::setPowerMode(PowerMode mode)
 bool BNO055::setOperationMode(OperationMode mode)
 {
   error = convertError(bno055_set_operation_mode(static_cast<u8>(mode)));
+
+  if (OK == error) {
+    // Refer to the datasheet at page 22.
+    bno055.delay_msec(30);
+  }
+
   return OK == error;
 }
 
@@ -105,7 +121,19 @@ bool BNO055::getClockSource(ClockSource &s)
 bool BNO055::setClockSource(ClockSource s)
 {
   error = convertError(bno055_set_clk_src(static_cast<u8>(s)));
+  if (OK == error) {
+    bno055.delay_msec(1000);
+  }
   return OK == error;
+}
+
+bool BNO055::isExternalClockInUse(void)
+{
+  BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
+
+  bool success = getClockSource(clk);
+
+  return success && (BNO055::ClockSource::EXT == clk);
 }
 
 BNO055::Error BNO055::getError(void)
@@ -247,7 +275,6 @@ bool BNO055::getMagOffset(MagOffset_t &offset)
   error = convertError(bno055_read_mag_offset(&offset));
   return OK == error;
 }
-
 
 BNO055::Error BNO055::convertError(BNO055_RETURN_FUNCTION_TYPE e)
 {

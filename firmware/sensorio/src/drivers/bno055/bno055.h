@@ -132,11 +132,13 @@ public:
   }
 
   bool  begin(void);
+  bool  reset(void);
   bool  getDeviceStatus(BNO055::Status &status);
   bool  setPowerMode(PowerMode mode);
   bool  setOperationMode(OperationMode mode);
   bool  getClockSource(ClockSource &s);
   bool  setClockSource(ClockSource s);
+  bool  isExternalClockInUse(void);
   Error getError(void);
   bool  getAcceleration(Accel_t &data, Unit unit = MILLIG);
   bool  getGyro(Gyro_t &data, Unit unit = DPS);
