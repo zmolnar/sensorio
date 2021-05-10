@@ -120,7 +120,7 @@ public:
          bus_write_t wr,
          delay_t     dl,
          int         addr = BNO055_ADDRESS_COM3_HIGH) :
-      init(init), error(UNKNOWN)
+      init(init), errorCode(UNKNOWN)
   {
     bno055.bus_write  = wr;
     bno055.bus_read   = rd;
@@ -161,7 +161,7 @@ public:
 private:
   bus_init_t init;
   bno055_t   bno055;
-  Error      error;
+  Error      errorCode;
 
   Error convertError(BNO055_RETURN_FUNCTION_TYPE e);
 };

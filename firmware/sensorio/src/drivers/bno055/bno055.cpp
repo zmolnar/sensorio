@@ -39,16 +39,16 @@
 /*****************************************************************************/
 bool BNO055::begin(void)
 {
-  bool success = false;
+  bool error = true;
 
   if (init()) {
     bno055.delay_msec(100);
-    error = convertError(bno055_init(&bno055));
-    if (OK == error) {
+    errorCode = convertError(bno055_init(&bno055));
+    if (OK == errorCode) {
       u8 chipId;
-      error = convertError(bno055_read_chip_id(&chipId));
-      if (OK == error) {
-        success = (0xA0 == chipId);
+      errorCode = convertError(bno055_read_chip_id(&chipId));
+      if (OK == errorCode) {
+        error = (0xA0 != chipId);
       } else {
         Serial.println("failed to read the bno055 chip-id");
       }
@@ -59,246 +59,246 @@ bool BNO055::begin(void)
     Serial.println("bno055 TWI begin failed");
   }
 
-  return success;
+  return error;
 }
 
 bool BNO055::reset(void)
 {
-  error = convertError(bno055_set_sys_rst(1));
-  if (OK == error) {
+  errorCode = convertError(bno055_set_sys_rst(1));
+  if (OK == errorCode) {
     bno055.delay_msec(1000);
   }
 
-  return OK == error;
+  return OK != errorCode;
 }
 
 bool BNO055::getDeviceStatus(BNO055::Status &status)
 {
   u8 code = 0;
-  error   = convertError(bno055_get_sys_stat_code(&code));
+  errorCode   = convertError(bno055_get_sys_stat_code(&code));
 
-  if (OK == error) {
+  if (OK == errorCode) {
     status = static_cast<Status>(code);
   } else {
     status = BNO055::Status::SYS_UNKNOWN;
   }
 
-  return OK == error;
+  return OK != errorCode;
 }
 
 bool BNO055::setPowerMode(PowerMode mode)
 {
-  error = convertError(bno055_set_power_mode(static_cast<u8>(mode)));
-  return OK == error;
+  errorCode = convertError(bno055_set_power_mode(static_cast<u8>(mode)));
+  return OK != errorCode;
 }
 
 bool BNO055::setOperationMode(OperationMode mode)
 {
-  error = convertError(bno055_set_operation_mode(static_cast<u8>(mode)));
+  errorCode = convertError(bno055_set_operation_mode(static_cast<u8>(mode)));
 
-  if (OK == error) {
+  if (OK == errorCode) {
     // Refer to the datasheet at page 22.
     bno055.delay_msec(30);
   }
 
-  return OK == error;
+  return OK != errorCode;
 }
 
 bool BNO055::getClockSource(ClockSource &s)
 {
   u8 src = 0;
-  error  = convertError(bno055_get_clk_src(&src));
+  errorCode  = convertError(bno055_get_clk_src(&src));
 
-  if (OK == error) {
+  if (OK == errorCode) {
     s = static_cast<ClockSource>(src);
   } else {
     s = UNDEF;
   }
 
-  return OK == error;
+  return OK != errorCode;
 }
 
 bool BNO055::setClockSource(ClockSource s)
 {
-  error = convertError(bno055_set_clk_src(static_cast<u8>(s)));
-  if (OK == error) {
+  errorCode = convertError(bno055_set_clk_src(static_cast<u8>(s)));
+  if (OK == errorCode) {
     bno055.delay_msec(1000);
   }
-  return OK == error;
+  return OK != errorCode;
 }
 
 bool BNO055::isExternalClockInUse(void)
 {
   BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
 
-  bool success = getClockSource(clk);
+  bool error = getClockSource(clk);
 
-  return success && (BNO055::ClockSource::EXT == clk);
+  return error || (BNO055::ClockSource::EXT == clk);
 }
 
 BNO055::Error BNO055::getError(void)
 {
-  return error;
+  return errorCode;
 }
 
 bool BNO055::getAcceleration(BNO055::Accel_t &data, Unit unit)
 {
   switch (unit) {
   case MILLIG:
-    error = convertError(bno055_convert_double_accel_xyz_mg(&data));
+    errorCode = convertError(bno055_convert_double_accel_xyz_mg(&data));
     break;
   case MSQ:
-    error = convertError(bno055_convert_double_accel_xyz_msq(&data));
+    errorCode = convertError(bno055_convert_double_accel_xyz_msq(&data));
     break;
   default:
-    error = UNIT_ERROR;
+    errorCode = UNIT_ERROR;
     break;
   }
 
-  return OK == error;
+  return OK != errorCode;
 }
 
 bool BNO055::getGyro(Gyro_t &data, Unit unit)
 {
   switch (unit) {
   case DPS:
-    error = convertError(bno055_convert_double_gyro_xyz_dps(&data));
+    errorCode = convertError(bno055_convert_double_gyro_xyz_dps(&data));
     break;
   case RPS:
-    error = convertError(bno055_convert_double_gyro_xyz_rps(&data));
+    errorCode = convertError(bno055_convert_double_gyro_xyz_rps(&data));
     break;
   default:
-    error = UNIT_ERROR;
+    errorCode = UNIT_ERROR;
     break;
   }
 
-  return OK == error;
+  return OK != errorCode;
 }
 
 bool BNO055::getMag(Mag_t &data)
 {
-  error = convertError(bno055_convert_double_mag_xyz_uT(&data));
-  return OK == error;
+  errorCode = convertError(bno055_convert_double_mag_xyz_uT(&data));
+  return OK != errorCode;
 }
 
 bool BNO055::getEulerAngles(BNO055::Euler_t &data, Unit unit)
 {
   switch (unit) {
   case DEG:
-    error = convertError(bno055_convert_double_euler_hpr_deg(&data));
+    errorCode = convertError(bno055_convert_double_euler_hpr_deg(&data));
     break;
   case RAD:
-    error = convertError(bno055_convert_double_euler_hpr_rad(&data));
+    errorCode = convertError(bno055_convert_double_euler_hpr_rad(&data));
     break;
   default:
-    error = UNIT_ERROR;
+    errorCode = UNIT_ERROR;
     break;
   }
 
-  return OK == error;
+  return OK != errorCode;
 }
 
 bool BNO055::getQuaternion(Quaternion_t &data)
 {
-  error = convertError(bno055_read_quaternion_wxyz(&data));
-  return OK == error;
+  errorCode = convertError(bno055_read_quaternion_wxyz(&data));
+  return OK != errorCode;
 }
 
 bool BNO055::getLinearAcceleration(LinearAccel_t &data)
 {
-  error = convertError(bno055_convert_double_linear_accel_xyz_msq(&data));
-  return OK == error;
+  errorCode = convertError(bno055_convert_double_linear_accel_xyz_msq(&data));
+  return OK != errorCode;
 }
 
 bool BNO055::getGravity(Gravity_t &data)
 {
-  error = convertError(bno055_convert_double_gravity_xyz_msq(&data));
-  return OK == error;
+  errorCode = convertError(bno055_convert_double_gravity_xyz_msq(&data));
+  return OK != errorCode;
 }
 
 bool BNO055::getAccCalibrationStatus(u8 &status)
 {
-  error = convertError(bno055_get_accel_calib_stat(&status));
-  return OK == error;
+  errorCode = convertError(bno055_get_accel_calib_stat(&status));
+  return OK != errorCode;
 }
 
 bool BNO055::getGyroCalibrationStatus(u8 &status)
 {
-  error = convertError(bno055_get_gyro_calib_stat(&status));
-  return OK == error;
+  errorCode = convertError(bno055_get_gyro_calib_stat(&status));
+  return OK != errorCode;
 }
 
 bool BNO055::getMagCalibrationStatus(u8 &status)
 {
-  error = convertError(bno055_get_mag_calib_stat(&status));
-  return OK == error;
+  errorCode = convertError(bno055_get_mag_calib_stat(&status));
+  return OK != errorCode;
 }
 
 bool BNO055::getSystemCalibrationStatus(u8 &status)
 {
-  error = convertError(bno055_get_sys_calib_stat(&status));
-  return OK == error;
+  errorCode = convertError(bno055_get_sys_calib_stat(&status));
+  return OK != errorCode;
 }
 
 bool BNO055::setAccOffset(AccelOffset_t &offset)
 {
-  error = convertError(bno055_write_accel_offset(&offset));
-  return OK == error;
+  errorCode = convertError(bno055_write_accel_offset(&offset));
+  return OK != errorCode;
 }
 
 bool BNO055::getAccOffset(AccelOffset_t &offset)
 {
-  error = convertError(bno055_read_accel_offset(&offset));
-  return OK == error;
+  errorCode = convertError(bno055_read_accel_offset(&offset));
+  return OK != errorCode;
 }
 
 bool BNO055::setGyroOffset(GyroOffset_t &offset)
 {
-  error = convertError(bno055_write_gyro_offset(&offset));
-  return OK == error;
+  errorCode = convertError(bno055_write_gyro_offset(&offset));
+  return OK != errorCode;
 }
 
 bool BNO055::getGyroOffset(GyroOffset_t &offset)
 {
-  error = convertError(bno055_read_gyro_offset(&offset));
-  return OK == error;
+  errorCode = convertError(bno055_read_gyro_offset(&offset));
+  return OK != errorCode;
 }
 
 bool BNO055::setMagOffset(MagOffset_t &offset)
 {
-  error = convertError(bno055_write_mag_offset(&offset));
-  return OK == error;
+  errorCode = convertError(bno055_write_mag_offset(&offset));
+  return OK != errorCode;
 }
 
 bool BNO055::getMagOffset(MagOffset_t &offset)
 {
-  error = convertError(bno055_read_mag_offset(&offset));
-  return OK == error;
+  errorCode = convertError(bno055_read_mag_offset(&offset));
+  return OK != errorCode;
 }
 
 BNO055::Error BNO055::convertError(BNO055_RETURN_FUNCTION_TYPE e)
 {
-  Error error;
+  Error errorCode;
 
   switch (e) {
   case BNO055_SUCCESS:
-    error = OK;
+    errorCode = OK;
     break;
   case BNO055_ERROR:
-    error = ERROR;
+    errorCode = ERROR;
     break;
   case BNO055_OUT_OF_RANGE:
-    error = OUT_OF_RANGE;
+    errorCode = OUT_OF_RANGE;
     break;
   case BNO055_E_NULL_PTR:
-    error = NULL_POINTER;
+    errorCode = NULL_POINTER;
     break;
   default:
-    error = UNKNOWN;
+    errorCode = UNKNOWN;
     break;
   }
 
-  return error;
+  return errorCode;
 }
 
 /****************************** END OF FILE **********************************/

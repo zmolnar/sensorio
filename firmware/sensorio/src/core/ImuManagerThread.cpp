@@ -21,6 +21,12 @@
 #define BNO_SDA  17
 #define BNO_FREQ 400000
 
+#define IMU_ASSERT(error)                                                      \
+  configASSERT(!error);                                                        \
+  if (error) {                                                                 \
+    SensorioStop();                                                            \
+  }
+
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
 /*****************************************************************************/
@@ -85,36 +91,27 @@ static s8 i2c_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
   return (i == cnt) ? BNO055_SUCCESS : BNO055_ERROR;
 }
 
-static inline void saveLogAndResetInCaseOfError(bool error)
-{
-  configASSERT(!error);
-  if (error) {
-    // TODO Write logfile
-    SensorioStop();
-  }
-}
-
 static bool resetAndInitializeImu(BNO055 &imu)
 {
-  bool success = false;
+  static const uint32_t maxNumOfRetries = 5;
 
-  const uint32_t maxNumOfRetries = 5;
-  for (uint32_t i = 0; (!success) && (i < maxNumOfRetries); ++i) {
-    success = imu.begin();
-    success = success && imu.reset();
-    success = success && imu.setPowerMode(BNO055::PowerMode::NORMAL);
-    success = success && imu.setClockSource(BNO055::ClockSource::EXT);
-    success = success && imu.isExternalClockInUse();
-    success = success && imu.setOperationMode(BNO055::OperationMode::NDOF);
+  bool error = true;
+  for (uint32_t i = 0; error && (i < maxNumOfRetries); ++i) {
+    error = imu.begin();
+    error = error || imu.reset();
+    error = error || imu.setPowerMode(BNO055::PowerMode::NORMAL);
+    error = error || imu.setClockSource(BNO055::ClockSource::EXT);
+    error = error || !imu.isExternalClockInUse();
+    error = error || imu.setOperationMode(BNO055::OperationMode::NDOF);
 
-    if (!success) {
+    if (error) {
       Serial.print("BNO055 device init failed #");
       Serial.println(i);
       delay(500);
     }
   }
 
-  return success;
+  return error;
 }
 
 static bool sendCalibrationToDevice(BNO055 &imu, ImuOffset_t &offset)
@@ -124,22 +121,22 @@ static bool sendCalibrationToDevice(BNO055 &imu, ImuOffset_t &offset)
   accoffset.y = offset.acc.y;
   accoffset.z = offset.acc.z;
   accoffset.r = offset.acc.r;
-  bool success = imu.setAccOffset(accoffset);
+  bool error = imu.setAccOffset(accoffset);
 
   BNO055::GyroOffset_t gyrooffset;
   gyrooffset.x = offset.gyro.x;
   gyrooffset.y = offset.gyro.y;
   gyrooffset.z = offset.gyro.z;
-  success = success && imu.setGyroOffset(gyrooffset);
+  error = error || imu.setGyroOffset(gyrooffset);
 
   BNO055::MagOffset_t magoffset;
   magoffset.x = offset.mag.x;
   magoffset.y = offset.mag.y;
   magoffset.z = offset.mag.z;
   magoffset.r = offset.mag.r;
-  success = success && imu.setMagOffset(magoffset);
+  error = error || imu.setMagOffset(magoffset);
 
-  return success;
+  return error;
 }
 
 static bool isImuFullyCalibrated(const ImuData_t &data)
@@ -150,20 +147,20 @@ static bool isImuFullyCalibrated(const ImuData_t &data)
 
 static bool receiveCalibrationFromDevice(BNO055 &imu, ImuOffset_t &offset)
 {
-  bool success = imu.setOperationMode(BNO055::OperationMode::CONFIG);
+  bool error = imu.setOperationMode(BNO055::OperationMode::CONFIG);
 
   BNO055::AccelOffset_t accoffset;
-  success = success && imu.getAccOffset(accoffset);
+  error = error || imu.getAccOffset(accoffset);
 
   BNO055::GyroOffset_t gyrooffset;
-  success = success && imu.getGyroOffset(gyrooffset);
+  error = error || imu.getGyroOffset(gyrooffset);
 
   BNO055::MagOffset_t magoffset;
-  success = success && imu.getMagOffset(magoffset);
+  error = error || imu.getMagOffset(magoffset);
 
-  success = success && imu.setOperationMode(BNO055::OperationMode::NDOF);
+  error = error || imu.setOperationMode(BNO055::OperationMode::NDOF);
 
-  if (success) {
+  if (!error) {
     offset.acc.x = accoffset.x;
     offset.acc.y = accoffset.y;
     offset.acc.z = accoffset.z;
@@ -177,7 +174,7 @@ static bool receiveCalibrationFromDevice(BNO055 &imu, ImuOffset_t &offset)
     offset.mag.r = magoffset.r;
   }
 
-  return success;
+  return error;
 }
 
 static void checkImuStatusAndResetIfNeeded(BNO055 &imu,
@@ -188,8 +185,8 @@ static void checkImuStatusAndResetIfNeeded(BNO055 &imu,
   errorCounter = (IMU_SYS_ERROR == status) ? (errorCounter + 1) : 0;
 
   if (4 < errorCounter) {
-    bool success = resetAndInitializeImu(imu);
-    saveLogAndResetInCaseOfError(!success);
+    bool error = resetAndInitializeImu(imu);
+    IMU_ASSERT(error);
   }
 }
 
@@ -232,103 +229,103 @@ deviceClockSourceToImuClockSource(BNO055::ClockSource src)
 static bool updateDeviceStatus(BNO055 &imu, ImuData_t &data)
 {
   BNO055::Status devstatus = BNO055::Status::SYS_UNKNOWN;
-  bool success = imu.getDeviceStatus(devstatus);
-  if (success) {
-    data.system.status = deviceStatusToImuStatus(devstatus);
-  } else {
+  bool error = imu.getDeviceStatus(devstatus);
+  if (error) {
     data.system.status = IMU_SYS_UNKNOWN;
+  } else {
+    data.system.status = deviceStatusToImuStatus(devstatus);
   }
 
-  return success;
+  return error;
 }
 
 static bool updateClockSource(BNO055 &imu, ImuData_t &data)
 {
   BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
-  bool success = imu.getClockSource(clk);
-  if (success) {
-    data.system.clk = deviceClockSourceToImuClockSource(clk);
-  } else {
+  bool error = imu.getClockSource(clk);
+  if (error) {
     data.system.clk = IMU_CLK_UNKNOWN;
+  } else {
+    data.system.clk = deviceClockSourceToImuClockSource(clk);
   }
 
-  return success;
+  return error;
 }
 
 static bool updateEulerAngles(BNO055 &imu, ImuData_t &data)
 {
   BNO055::Euler_t euler;
-  bool success = imu.getEulerAngles(euler, BNO055::Unit::DEG);
+  bool error = imu.getEulerAngles(euler, BNO055::Unit::DEG);
 
-  data.euler.yaw = success ? euler.h : 0;
-  data.euler.pitch = success ? euler.p : 0;
-  data.euler.roll = success ? euler.r : 0;
+  data.euler.yaw = error ? 0 : euler.h;
+  data.euler.pitch = error ? 0 : euler.p;
+  data.euler.roll = error ? 0 : euler.r;
 
-  return success;
+  return error;
 }
 
 static bool updateGravityVector(BNO055 &imu, ImuData_t &data)
 {
   BNO055::Gravity_t gravity;
-  bool success = imu.getGravity(gravity);
+  bool error = imu.getGravity(gravity);
 
-  data.gravity.x = success ? gravity.x : 0;
-  data.gravity.y = success ? gravity.y : 0;
-  data.gravity.z = success ? gravity.z : 0;
+  data.gravity.x = error ? 0 : gravity.x;
+  data.gravity.y = error ? 0 : gravity.y;
+  data.gravity.z = error ? 0 : gravity.z;
 
-  return success;
+  return error;
 }
 
 static bool updateAccelerationVector(BNO055 &imu, ImuData_t &data)
 {
   BNO055::LinearAccel_t acc;
-  bool success = imu.getLinearAcceleration(acc);
+  bool error = imu.getLinearAcceleration(acc);
 
-  data.acceleration.x = success ? acc.x : 0;
-  data.acceleration.y = success ? acc.y : 0;
-  data.acceleration.z = success ? acc.z : 0;
+  data.acceleration.x = error ? 0 : acc.x;
+  data.acceleration.y = error ? 0 : acc.y;
+  data.acceleration.z = error ? 0 : acc.z;
 
-  return success;
+  return error;
 }
 
 static bool updateAccCalibrationStatus(BNO055 &imu, ImuData_t &data)
 {
   uint8_t byte = 0;
-  bool success = imu.getAccCalibrationStatus(byte);
+  bool error = imu.getAccCalibrationStatus(byte);
 
-  data.calibration.acc = success ? byte : 0;
+  data.calibration.acc = error ? 0 : byte;
 
-  return success;
+  return error;
 }
 
 static bool updateGyroCalibrationStatus(BNO055 &imu, ImuData_t &data)
 {
   uint8_t byte = 0;
-  bool success = imu.getGyroCalibrationStatus(byte);
+  bool error = imu.getGyroCalibrationStatus(byte);
 
-  data.calibration.gyro = success ? byte : 0;
+  data.calibration.gyro = error ? 0 : byte;
 
-  return success;
+  return error;
 }
 
 static bool updateMagCalibrationStatus(BNO055 &imu, ImuData_t &data)
 {
   uint8_t byte = 0;
-  bool success = imu.getMagCalibrationStatus(byte);
+  bool error = imu.getMagCalibrationStatus(byte);
 
-  data.calibration.mag = success ? byte : 0;
+  data.calibration.mag = error ? 0 : byte;
 
-  return success;
+  return error;
 }
 
 static bool updateSysCalibrationStatus(BNO055 &imu, ImuData_t &data)
 {
   uint8_t byte = 0;
-  bool success = imu.getSystemCalibrationStatus(byte);
+  bool error = imu.getSystemCalibrationStatus(byte);
 
-  data.calibration.sys = success ? byte : 0;
+  data.calibration.sys = error ? 0 : byte;
 
-  return success;
+  return error;
 }
 
 /*****************************************************************************/
@@ -338,14 +335,14 @@ void ImuManagerThread(void *p)
 {
   BNO055 imu = BNO055(i2c_init, i2c_bus_read, i2c_bus_write, delay);
 
-  bool success = resetAndInitializeImu(imu);
-  saveLogAndResetInCaseOfError(!success);
+  bool error = resetAndInitializeImu(imu);
+  IMU_ASSERT(error);
 
   if (DbCfgImuCalibrationIsValid()) {
     ImuOffset_t offset;
     DbCfgImuCalibrationGet(&offset);
-    success = sendCalibrationToDevice(imu, offset);
-    saveLogAndResetInCaseOfError(!success);
+    error = sendCalibrationToDevice(imu, offset);
+    IMU_ASSERT(error);
     calibrationDataNeeded = false;
   } else {
     calibrationDataNeeded = true;
@@ -357,26 +354,26 @@ void ImuManagerThread(void *p)
     ImuData_t data;
     memset(&data, 0, sizeof(data));
 
-    bool success = updateDeviceStatus(imu, data);
+    error = updateDeviceStatus(imu, data);
 
     checkImuStatusAndResetIfNeeded(imu, data.system.status);
 
-    success = success && updateClockSource(imu, data);
-    success = success && updateEulerAngles(imu, data);
-    success = success && updateAccCalibrationStatus(imu, data);
-    success = success && updateGyroCalibrationStatus(imu, data);
-    success = success && updateMagCalibrationStatus(imu, data);
-    success = success && updateSysCalibrationStatus(imu, data);
-    success = success && updateGravityVector(imu, data);
-    success = success && updateAccelerationVector(imu, data);
+    error = error || updateClockSource(imu, data);
+    error = error || updateEulerAngles(imu, data);
+    error = error || updateAccCalibrationStatus(imu, data);
+    error = error || updateGyroCalibrationStatus(imu, data);
+    error = error || updateMagCalibrationStatus(imu, data);
+    error = error || updateSysCalibrationStatus(imu, data);
+    error = error || updateGravityVector(imu, data);
+    error = error || updateAccelerationVector(imu, data);
 
     DbDataImuSet(&data);
 
-    if (calibrationDataNeeded && isImuFullyCalibrated(data)) {
+    if ((!error) && calibrationDataNeeded && isImuFullyCalibrated(data)) {
       ImuOffset_t offset;
       memset(&offset, 0, sizeof(offset));
 
-      success = receiveCalibrationFromDevice(imu, offset);
+      error = receiveCalibrationFromDevice(imu, offset);
 
       DbCfgImuCalibrationSet(&offset);
       DbCfgSaveToEeprom();
