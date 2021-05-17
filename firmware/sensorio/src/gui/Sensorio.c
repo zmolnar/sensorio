@@ -127,7 +127,10 @@ void SensorioStart(void)
 
 void SensorioStop(void)
 {
+#warning "Update this"
+#if 0  
   LogWaitToFinish();
+#endif
   PowerStop();
 }
 

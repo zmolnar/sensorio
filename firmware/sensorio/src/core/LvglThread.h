@@ -29,9 +29,18 @@
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void LvglThread(void *p);
 void LvglStartupFinished(void);
 void LvglShutdownRequested(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LVGL_THREAD_H */
 

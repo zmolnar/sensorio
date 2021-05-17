@@ -8,17 +8,20 @@
 /*****************************************************************************/
 #include "LvglThread.h"
 
-#include <Arduino.h>
+#include <drivers/encoder/Encoder.h>
+#include <drivers/lcd/SharpLcd.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/timers.h>
+#include <gui/Sensorio.h>
+#include <lvgl.h>
 
-#include "drivers/encoder/Encoder.h"
-#include "drivers/lcd/SharpLcd.h"
-#include "gui/Sensorio.h"
-#include "lvgl.h"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
-#define LVGL_TICK_IN_MS 5
+#define LVGL_TICK_IN_MS 20
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
@@ -31,9 +34,10 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static TaskHandle_t  lvglTask = NULL;
+static TaskHandle_t lvglTask = NULL;
 static TimerHandle_t timerHandle;
-static bool          shutdownRequested = false;
+static bool shutdownRequested = false;
+static const char *tag = "LVGL";
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -67,7 +71,9 @@ static void tick(TimerHandle_t xTimer)
 void LvglThread(void *p)
 {
   (void)p;
-  
+
+  ESP_LOGI(tag, "LVGL thread started");
+
   // Initialize LVGL
   lv_init();
 
@@ -78,18 +84,19 @@ void LvglThread(void *p)
   // Start GUI application
   SensorioStart();
 
-  lvglTask    = xTaskGetCurrentTaskHandle();
+  lvglTask = xTaskGetCurrentTaskHandle();
   timerHandle = xTimerCreate(
       "lvgl tick timer", pdMS_TO_TICKS(LVGL_TICK_IN_MS), pdTRUE, 0, tick);
-  if (pdPASS != xTimerStart(timerHandle, 0)) {
-    Serial.println("timer start failed");
-  }
+  configASSERT(timerHandle);
+
+  xTimerStart(timerHandle, 0);
 
   while (1) {
     uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
+    
     if (0 < notification) {
       lv_tick_inc(notification * LVGL_TICK_IN_MS);
+
       lv_task_handler();
       if (shutdownRequested) {
         SensorioConfirmExit();
@@ -97,7 +104,7 @@ void LvglThread(void *p)
       }
       SharpLcdSendVcomIfNeeded();
     } else {
-      Serial.println("lvgl timeout");
+      ESP_LOGE(tag, "lvgl timeout");
     }
   }
 }

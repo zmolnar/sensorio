@@ -8,8 +8,13 @@
 /*****************************************************************************/
 #include "Dashboard.h"
 
-#include <Arduino.h>
-#include <EEPROM.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+
+#include <string.h>
+
+#warning "EEPROM handling is not implemented"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -72,10 +77,16 @@ static const Config_t defaultConfig = {
     .magic       = MAGIC,
     .params      = {.location = {.utcOffset = 0},
                .screens  = {.vario = {.chart_refresh_period = 1000}}},
-    .calibration = {.offset = {0}, .crc = 0xff},
+    .calibration = {.offset = {
+      .acc = {.x = 0, .y = 0, .z = 0, .r = 0},
+      .gyro = {.x = 0, .y = 0, .z = 0},
+      .mag = {.x = 0, .y = 0, .z = 0, .r = 0},
+    }, .crc = 0xff},
     .beep        = {.volume = VOL_LOW},
     .crc         = 0x00,
 };
+
+static const char *tag = "DSB";
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -129,21 +140,22 @@ void DbInit(void)
 {
   memset(&db, 0, sizeof(db));
 
+#if 0
   EEPROM.begin(EEPROM_SIZE);
   EEPROM.readBytes(CONFIG_ADDRESS, &db.config, sizeof(db.config));
+#endif
 
   if (configIsValid(&db.config)) {
-    Serial.println("Config restored successfully");
-    Serial.println("Location:");
-    Serial.printf("  UTC offset: %d\n", db.config.params.location.utcOffset);
-    Serial.println("Screens");
-    Serial.println("  Variometer");
-    Serial.printf("    Chart refresh period: %d\n",
+    ESP_LOGI(tag, "Config restored successfully");
+    ESP_LOGI(tag, "Location:");
+    ESP_LOGI(tag, "  UTC offset: %d", db.config.params.location.utcOffset);
+    ESP_LOGI(tag, "Screens");
+    ESP_LOGI(tag, "  Variometer");
+    ESP_LOGI(tag, "    Chart refresh period: %d",
                   db.config.params.screens.vario.chart_refresh_period);
-    Serial.print("CRC: ");
-    Serial.println(db.config.crc);
+    ESP_LOGI(tag, "CRC: %d", db.config.crc);
   } else {
-    Serial.println("Config corrupted, default config loaded");
+    ESP_LOGE(tag, "Config corrupted, default config loaded");
     db.config = defaultConfig;
   }
 
@@ -250,10 +262,10 @@ void DbCfgSaveToEeprom(void)
   uint8_t *data   = (uint8_t *)&db.config;
   size_t   length = sizeof(db.config) - sizeof(db.config.crc);
   db.config.crc   = crc8(data, length);
-
+#if 0
   EEPROM.writeBytes(CONFIG_ADDRESS, &db.config, sizeof(db.config));
   EEPROM.commit();
-
+#endif
   unlockMutex(db.locks.config);
 }
 

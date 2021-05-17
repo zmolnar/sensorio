@@ -1,15 +1,20 @@
-#include <Arduino.h>
-
+#if 0
 #include "core/BatteryMonitorThread.h"
 #include "core/BeepControlThread.h"
 #include "core/GpsManagerThread.h"
 #include "core/DataFilterThread.h"
 #include "core/DataLoggerThread.h"
 #include "core/ImuManagerThread.h"
-#include "core/LvglThread.h"
 #include "core/PressureReaderThread.h"
-#include "dashboard/Dashboard.h"
+#endif
+
 #include "Power.h"
+#include <core/LvglThread.h>
+#include <dashboard/Dashboard.h>
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <esp_log.h>
 
 typedef enum {
   PRIO_0_INVALID = 0,
@@ -27,21 +32,20 @@ typedef enum {
   PRIO_1_LVGL = 10,
 } ThreadPrio_Core1_t;
 
-void setup()
+static const char *tag = "MAIN";
+
+void app_main(void)
 {
-  Serial.begin(460800);
-  Serial.println();
-  Serial.println();
-  Serial.println("Sensorio started ...");
-
+  ESP_LOGI(tag, "Init started");
+  
   PowerStart();
-  
   DbInit();
-  
-  BeepControlThreadInit();
-  ImuManagerInit();
 
-#if 1
+  
+  // BeepControlThreadInit();
+  // ImuManagerInit();
+
+#if 0
   xTaskCreatePinnedToCore(DataFilterThread,
                           "data filter",
                           8192,
@@ -51,7 +55,7 @@ void setup()
                           0);
 #endif
 
-#if 1
+#if 0
   xTaskCreatePinnedToCore(DataLoggerThread,
                           "data logger",
                           8192,
@@ -61,7 +65,7 @@ void setup()
                           0);
 #endif
 
-#if 1
+#if 0
   xTaskCreatePinnedToCore(PressureReaderThread,
                           "pressure reader",
                           2048,
@@ -71,7 +75,7 @@ void setup()
                           0);
 #endif
 
-#if 1
+#if 0
   xTaskCreatePinnedToCore(BeepControlThread,
                           "beeper",
                           2048,
@@ -81,17 +85,17 @@ void setup()
                           0);
 #endif
 
-#if 1
+#if 0
   xTaskCreatePinnedToCore(
       ImuManagerThread, "IMU manager", 4096, NULL, PRIO_0_IMU, NULL, 0);
 #endif
 
-#if 1
+#if 0
   xTaskCreatePinnedToCore(
       GpsManagerThread, "GPS thread", 2048, NULL, PRIO_0_GPS, NULL, 0);
 #endif
 
-#if 1
+#if 0
   xTaskCreatePinnedToCore(
       BatteryMonitorThread, "Battery thread", 2048, NULL, PRIO_0_BATTMON, NULL, 0);
 #endif
@@ -100,9 +104,8 @@ void setup()
   xTaskCreatePinnedToCore(
       LvglThread, "LVGL thread", 16384, NULL, PRIO_1_LVGL, NULL, 1);
 #endif
-}
 
-void loop()
-{
-  delay(1000);
+  while(1) {
+    vTaskDelay(10000 / portTICK_RATE_MS);
+  }
 }

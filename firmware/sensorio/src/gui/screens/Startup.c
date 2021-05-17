@@ -42,7 +42,7 @@ static void bar_increment(lv_task_t *t)
   a += 2;
   lv_bar_set_value(t->user_data, a, LV_ANIM_ON);
 
-  if (100 <= a) {
+  if (50 <= a) {
     a = 0;
     lv_task_del(t);
     SensorioStartupFinished();
@@ -73,7 +73,7 @@ lv_obj_t *startup_screen_create(lv_style_t *style)
   lv_obj_set_size(bar, 200, 15);
   lv_obj_align(bar, scr, LV_ALIGN_IN_BOTTOM_MID, 0, -40);
   lv_bar_set_value(bar, 0, LV_ANIM_OFF);
-  lv_task_create(bar_increment, 60, LV_TASK_PRIO_LOWEST, bar);
+  lv_task_create(bar_increment, 100, LV_TASK_PRIO_LOWEST, bar);
 
   return scr;
 }
