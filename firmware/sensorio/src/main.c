@@ -5,11 +5,11 @@
 #include "core/DataFilterThread.h"
 #include "core/DataLoggerThread.h"
 #include "core/ImuManagerThread.h"
-#include "core/PressureReaderThread.h"
 #endif
 
 #include "Power.h"
 #include <core/LvglThread.h>
+#include "core/PressureReaderThread.h"
 #include <dashboard/Dashboard.h>
 
 #include <freertos/FreeRTOS.h>
@@ -36,11 +36,12 @@ static const char *tag = "MAIN";
 
 void app_main(void)
 {
-  ESP_LOGI(tag, "Init started");
+  ESP_LOGI(tag, "Sensorio started");
   
   PowerStart();
   DbInit();
 
+  PressureReaderInit();
   
   // BeepControlThreadInit();
   // ImuManagerInit();
@@ -65,7 +66,7 @@ void app_main(void)
                           0);
 #endif
 
-#if 0
+#if 1
   xTaskCreatePinnedToCore(PressureReaderThread,
                           "pressure reader",
                           2048,

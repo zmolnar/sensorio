@@ -273,10 +273,7 @@ static void configureLeftButtonAndDebounceTimer(void)
   conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
   conf.pull_up_en = GPIO_PULLUP_DISABLE;
 
-  ESP_EARLY_LOGI(tag, "b");
   gpio_config(&conf);
-  ESP_EARLY_LOGI(tag, "a");
-
   gpio_set_intr_type(ENC_LEFT, GPIO_INTR_ANYEDGE);
   gpio_isr_handler_add(ENC_LEFT, encoderLeftISR, NULL);
 

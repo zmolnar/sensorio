@@ -29,7 +29,17 @@
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void PressureReaderThread(void *p);
+void PressureReaderInit(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* PRESSURE_READER_THREAD_H */
 

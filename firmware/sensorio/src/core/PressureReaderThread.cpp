@@ -13,13 +13,18 @@
 #include "dashboard/Dashboard.h"
 #include "drivers/ms5611/ms5611.h"
 
+#include <driver/gpio.h>
+#include <driver/i2c.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
+#include <freertos/timers.h>
+
+
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
-#define BPS_SDA  13
-#define BPS_SCL  14
-#define BPS_FREQ 400000
-
 #define SAMPLE_PERIOD_IN_US 25000
 
 /*****************************************************************************/
@@ -33,9 +38,14 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
+static const char *tag = "BPS";
 static SemaphoreHandle_t readBps;
+// static hw_timer_t *timer;
 
-static hw_timer_t *timer;
+static gpio_num_t i2c_gpio_sda = GPIO_NUM_13;
+static gpio_num_t i2c_gpio_scl = GPIO_NUM_14;
+static uint32_t i2c_frequency = 400000;
+static i2c_port_t i2c_port = I2C_NUM_0;
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -44,18 +54,94 @@ static hw_timer_t *timer;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
-static void tick(void)
+static inline bool installMasterDriver(i2c_port_t port)
 {
+  return ESP_OK != i2c_driver_install(port, I2C_MODE_MASTER, 0, 0, 0);
+}
+
+static inline bool paramConfig(i2c_port_t port, const i2c_config_t *conf)
+{
+  return ESP_OK != i2c_param_config(port, conf); 
+}
+
+static inline uint8_t readAddress(uint8_t addr)
+{
+  return (addr) << 1 | I2C_MASTER_READ;
+}
+
+static inline uint8_t writeAddress(uint8_t addr)
+{
+  return (addr) << 1 | I2C_MASTER_WRITE;
+}
+
+static bool i2c_init(void)
+{
+    i2c_config_t conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = i2c_gpio_sda,
+        .scl_io_num = i2c_gpio_scl,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master = {
+          .clk_speed = i2c_frequency,
+        }
+    };
+
+    bool error = paramConfig(i2c_port, &conf);
+    error = error || installMasterDriver(i2c_port);
+
+    return error;
+}
+
+static size_t i2c_write(uint8_t addr, uint8_t buf[], size_t length)
+{
+  i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+  i2c_master_start(cmd);
+  i2c_master_write_byte(cmd, writeAddress(addr), I2C_MASTER_ACK);
+  i2c_master_write(cmd, buf, length, I2C_MASTER_ACK);
+  i2c_master_stop(cmd);
+  esp_err_t error = i2c_master_cmd_begin(i2c_port, cmd, pdMS_TO_TICKS(100));
+  i2c_cmd_link_delete(cmd);
+
+  return ESP_OK == error ? length : 0;
+}
+
+static size_t i2c_read(uint8_t addr, uint8_t buf[], size_t length)
+{
+  i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+  i2c_master_start(cmd);
+  i2c_master_write_byte(cmd, readAddress(addr), I2C_MASTER_ACK);
+  if (1 < length) {
+    i2c_master_read(cmd, buf, length - 1, I2C_MASTER_ACK);
+  }
+  i2c_master_read(cmd, buf + length - 1, 1, I2C_MASTER_NACK);
+  i2c_master_stop(cmd);
+  esp_err_t error = i2c_master_cmd_begin(i2c_port, cmd, pdMS_TO_TICKS(100));
+  i2c_cmd_link_delete(cmd);
+
+  return ESP_OK == error ? length : 0;
+}
+
+static void delay(uint32_t ms)
+{
+  vTaskDelay(pdMS_TO_TICKS(ms));
+}
+
+static void tick(TimerHandle_t xTimer)
+{
+  (void)xTimer;
+
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   xSemaphoreGiveFromISR(readBps, &xHigherPriorityTaskWoken);
   if (pdTRUE == xHigherPriorityTaskWoken) {
     portYIELD_FROM_ISR();
   }
 
-  xSemaphoreGiveFromISR(readImu, &xHigherPriorityTaskWoken);
-  if (pdTRUE == xHigherPriorityTaskWoken) {
-    portYIELD_FROM_ISR();
-  }
+#warning Fix this
+  // xSemaphoreGiveFromISR(readImu, &xHigherPriorityTaskWoken);
+  // if (pdTRUE == xHigherPriorityTaskWoken) {
+  //   portYIELD_FROM_ISR();
+  // }
 }
 
 /*****************************************************************************/
@@ -63,54 +149,52 @@ static void tick(void)
 /*****************************************************************************/
 void PressureReaderThread(void *p)
 {
-  readBps = xSemaphoreCreateBinary();
+  MS5611 bps = MS5611(MS5611::CSB_LOW, i2c_init, i2c_write, i2c_read, delay);
 
-  TwoWire ms5611_twi = TwoWire(0);
-  MS5611  ms5611     = MS5611(ms5611_twi);
-
-  bool success = false;
-  for (uint32_t i = 0; (!success) && (i < 5); ++i) {
-    success = ms5611.begin(BPS_SDA, BPS_SCL, BPS_FREQ);
-    if (!success) {
-      Serial.print("MS5611 startup failed ");
-      Serial.println(i);
-      delay(1000);
-    } else {
-      Serial.println("MS5611 is ready");
-    }
+  bool error = bps.start();
+  for (size_t i = 0; (i < 5) && error; ++i) {
+    ESP_LOGI(tag, "Failed to start ms5611 #%d", (int)i);
+    error = bps.start();
+    vTaskDelay(pdMS_TO_TICKS(500));
   }
- 
-  configASSERT(success);
 
-  timer = timerBegin(3, 80, true);
-  timerAttachInterrupt(timer, tick, true);
-  timerAlarmWrite(timer, SAMPLE_PERIOD_IN_US, true);
-  timerAlarmEnable(timer);
+  configASSERT(!error);
+  ESP_LOGI(tag, "MS5611 started");
 
+  TimerHandle_t timerHandle =
+      xTimerCreate("bps tick timer", pdMS_TO_TICKS(20), pdTRUE, 0, tick);
+  configASSERT(timerHandle);
+
+  xTimerStart(timerHandle, 0);
 
   while (1) {
-
     xSemaphoreTake(readBps, portMAX_DELAY);
 
-    bool result = ms5611.convert(MS5611::Osr::OSR_4096);
+    error = bps.update(MS5611::Osr::OSR_4096);
 
-    if (result) {
+    if (!error) {
       BpsData_t data;
       memset(&data, 0, sizeof(data));
 
-      data.raw.temp        = ms5611.getRawTemp();
-      data.raw.pressure    = ms5611.getRawPressure();
-      data.cooked.temp     = ms5611.getCompensatedTemp();
-      data.cooked.pressure = ms5611.getCompensatedPressure();
+      data.raw.temp = bps.getRawTemp();
+      data.raw.pressure = bps.getRawPressure();
+      data.cooked.temp = bps.getCompensatedTemp();
+      data.cooked.pressure = bps.getCompensatedPressure();
 
       DbDataBpsSet(&data);
 
-      xSemaphoreGive(filterDataReady);
+#warning Fix this
+      // xSemaphoreGive(filterDataReady);
 
     } else {
-      Serial.println("MS5611 conversion error");
+      ESP_LOGE(tag, "MS5611 conversion error");
     }
   }
+}
+
+void PressureReaderInit(void)
+{
+  readBps = xSemaphoreCreateBinary();
 }
 
 /****************************** END OF FILE **********************************/
