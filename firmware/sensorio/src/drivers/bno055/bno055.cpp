@@ -7,8 +7,7 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "bno055.h"
-
-#include <Arduino.h>
+#include <esp_log.h>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -37,29 +36,14 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
-bool BNO055::begin(void)
+bool BNO055::init(void)
 {
-  bool error = true;
+  return bus_init();
+}
 
-  if (init()) {
-    bno055.delay_msec(100);
-    errorCode = convertError(bno055_init(&bno055));
-    if (OK == errorCode) {
-      u8 chipId;
-      errorCode = convertError(bno055_read_chip_id(&chipId));
-      if (OK == errorCode) {
-        error = (0xA0 != chipId);
-      } else {
-        Serial.println("failed to read the bno055 chip-id");
-      }
-    } else {
-      Serial.println("bno055 init failed");
-    }
-  } else {
-    Serial.println("bno055 TWI begin failed");
-  }
-
-  return error;
+bool BNO055::start(void)
+{
+  return OK != convertError(bno055_init(&bno055));
 }
 
 bool BNO055::reset(void)
@@ -75,7 +59,7 @@ bool BNO055::reset(void)
 bool BNO055::getDeviceStatus(BNO055::Status &status)
 {
   u8 code = 0;
-  errorCode   = convertError(bno055_get_sys_stat_code(&code));
+  errorCode = convertError(bno055_get_sys_stat_code(&code));
 
   if (OK == errorCode) {
     status = static_cast<Status>(code);
@@ -107,7 +91,7 @@ bool BNO055::setOperationMode(OperationMode mode)
 bool BNO055::getClockSource(ClockSource &s)
 {
   u8 src = 0;
-  errorCode  = convertError(bno055_get_clk_src(&src));
+  errorCode = convertError(bno055_get_clk_src(&src));
 
   if (OK == errorCode) {
     s = static_cast<ClockSource>(src);

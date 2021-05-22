@@ -120,7 +120,7 @@ public:
          bus_write_t wr,
          delay_t     dl,
          int         addr = BNO055_ADDRESS_COM3_HIGH) :
-      init(init), errorCode(UNKNOWN)
+      bus_init(init), errorCode(UNKNOWN)
   {
     bno055.bus_write  = wr;
     bno055.bus_read   = rd;
@@ -131,7 +131,8 @@ public:
   {
   }
 
-  bool  begin(void);
+  bool  init(void);
+  bool  start(void);
   bool  reset(void);
   bool  getDeviceStatus(BNO055::Status &status);
   bool  setPowerMode(PowerMode mode);
@@ -159,7 +160,7 @@ public:
   bool  getMagOffset(MagOffset_t &offset);
 
 private:
-  bus_init_t init;
+  bus_init_t bus_init;
   bno055_t   bno055;
   Error      errorCode;
 

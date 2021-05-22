@@ -4,12 +4,12 @@
 #include "core/GpsManagerThread.h"
 #include "core/DataFilterThread.h"
 #include "core/DataLoggerThread.h"
-#include "core/ImuManagerThread.h"
 #endif
 
-#include "Power.h"
+#include <Power.h>
 #include <core/LvglThread.h>
-#include "core/PressureReaderThread.h"
+#include <core/PressureReaderThread.h>
+#include <core/ImuManagerThread.h>
 #include <dashboard/Dashboard.h>
 
 #include <freertos/FreeRTOS.h>
@@ -42,9 +42,9 @@ void app_main(void)
   DbInit();
 
   PressureReaderInit();
+  ImuManagerInit();
   
   // BeepControlThreadInit();
-  // ImuManagerInit();
 
 #if 0
   xTaskCreatePinnedToCore(DataFilterThread,
@@ -86,7 +86,7 @@ void app_main(void)
                           0);
 #endif
 
-#if 0
+#if 1
   xTaskCreatePinnedToCore(
       ImuManagerThread, "IMU manager", 4096, NULL, PRIO_0_IMU, NULL, 0);
 #endif

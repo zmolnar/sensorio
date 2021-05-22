@@ -6,10 +6,13 @@
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
-#include <Arduino.h>
-#include <Wire.h>
-
 #include "ImuManagerThread.h"
+
+#include <driver/i2c.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+
 #include "dashboard/Dashboard.h"
 #include "drivers/bno055/bno055.h"
 #include "gui/Sensorio.h"
@@ -17,15 +20,6 @@
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
-#define BNO_SCL  16
-#define BNO_SDA  17
-#define BNO_FREQ 400000
-
-#define IMU_ASSERT(error)                                                      \
-  configASSERT(!error);                                                        \
-  if (error) {                                                                 \
-    SensorioStop();                                                            \
-  }
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
@@ -38,9 +32,14 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
+static const char *tag = "IMU";
 SemaphoreHandle_t readImu;
 
-static TwoWire bno055_twi = TwoWire(1);
+static gpio_num_t i2c_gpio_sda = GPIO_NUM_17;
+static gpio_num_t i2c_gpio_scl = GPIO_NUM_16;
+static uint32_t i2c_frequency = 400000;
+static i2c_port_t i2c_port = I2C_NUM_1;
+
 static bool calibrationDataNeeded = false;
 
 /*****************************************************************************/
@@ -50,45 +49,83 @@ static bool calibrationDataNeeded = false;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
+static inline bool installMasterDriver(i2c_port_t port)
+{
+  return ESP_OK != i2c_driver_install(port, I2C_MODE_MASTER, 0, 0, 0);
+}
+
+static inline bool paramConfig(i2c_port_t port, const i2c_config_t *conf)
+{
+  return ESP_OK != i2c_param_config(port, conf);
+}
+
+static inline uint8_t readAddress(uint8_t addr)
+{
+  return (addr << 1) | I2C_MASTER_READ;
+}
+
+static inline uint8_t writeAddress(uint8_t addr)
+{
+  return (addr << 1) | I2C_MASTER_WRITE;
+}
+
 static bool i2c_init(void)
 {
-  return bno055_twi.begin(BNO_SDA, BNO_SCL, BNO_FREQ);
+  i2c_config_t conf = {.mode = I2C_MODE_MASTER,
+                       .sda_io_num = i2c_gpio_sda,
+                       .scl_io_num = i2c_gpio_scl,
+                       .sda_pullup_en = GPIO_PULLUP_ENABLE,
+                       .scl_pullup_en = GPIO_PULLUP_ENABLE,
+                       .master = {
+                           .clk_speed = i2c_frequency,
+                       }};
+
+  bool error = paramConfig(i2c_port, &conf);
+  error = error || installMasterDriver(i2c_port);
+
+  // Set timeout to 10 ms to mimic clock stretching.
+  i2c_set_timeout(i2c_port, I2C_APB_CLK_FREQ * 10 / 1000);
+
+  return error;
 }
 
 static s8 i2c_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
 {
-  bno055_twi.beginTransmission(dev_addr);
-  bno055_twi.write(reg_addr);
-  size_t i;
-  for (i = 0; i < cnt; ++i) {
-    if (0 == bno055_twi.write(static_cast<uint8_t>(reg_data[i]))) {
-      break;
-    }
-  }
-  bno055_twi.endTransmission();
+  configASSERT(1 == cnt);
 
-  configASSERT(i == cnt);
+  i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+  i2c_master_start(cmd);
+  i2c_master_write_byte(cmd, writeAddress(dev_addr), true);
+  i2c_master_write_byte(cmd, reg_addr, true);
+  i2c_master_write(cmd, reg_data, cnt, true);
+  i2c_master_stop(cmd);
 
-  return (i == cnt) ? BNO055_SUCCESS : BNO055_ERROR;
+  esp_err_t error = i2c_master_cmd_begin(i2c_port, cmd, portMAX_DELAY);
+  i2c_cmd_link_delete(cmd);
+
+  return ESP_OK == error ? BNO055_SUCCESS : BNO055_ERROR;
 }
 
 static s8 i2c_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
+{  
+  i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+  i2c_master_start(cmd);
+  i2c_master_write_byte(cmd, writeAddress(dev_addr), true);
+  i2c_master_write_byte(cmd, reg_addr, true);
+  i2c_master_start(cmd);
+  i2c_master_write_byte(cmd, readAddress(dev_addr), true);
+  i2c_master_read(cmd, reg_data, cnt, I2C_MASTER_LAST_NACK);
+  i2c_master_stop(cmd);
+
+  esp_err_t error = i2c_master_cmd_begin(i2c_port, cmd, portMAX_DELAY);
+  i2c_cmd_link_delete(cmd);
+
+  return ESP_OK == error ? BNO055_SUCCESS : BNO055_ERROR;
+}
+
+static void delay(uint32_t ms)
 {
-  bno055_twi.beginTransmission(dev_addr);
-  bno055_twi.write(reg_addr);
-  bno055_twi.endTransmission();
-
-  bno055_twi.requestFrom(dev_addr, cnt);
-  size_t i;
-  for (i = 0; i < cnt; ++i) {
-    if (bno055_twi.available()) {
-      reg_data[i] = static_cast<u8>(bno055_twi.read());
-    } else {
-      break;
-    }
-  }
-
-  return (i == cnt) ? BNO055_SUCCESS : BNO055_ERROR;
+  vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
 static bool resetAndInitializeImu(BNO055 &imu)
@@ -97,7 +134,7 @@ static bool resetAndInitializeImu(BNO055 &imu)
 
   bool error = true;
   for (uint32_t i = 0; error && (i < maxNumOfRetries); ++i) {
-    error = imu.begin();
+    error = imu.start();
     error = error || imu.reset();
     error = error || imu.setPowerMode(BNO055::PowerMode::NORMAL);
     error = error || imu.setClockSource(BNO055::ClockSource::EXT);
@@ -105,9 +142,8 @@ static bool resetAndInitializeImu(BNO055 &imu)
     error = error || imu.setOperationMode(BNO055::OperationMode::NDOF);
 
     if (error) {
-      Serial.print("BNO055 device init failed #");
-      Serial.println(i);
-      delay(500);
+      ESP_LOGE(tag, "BNO055 device init failed #%d", (int)i);
+      vTaskDelay(pdMS_TO_TICKS(500));
     }
   }
 
@@ -186,7 +222,7 @@ static void checkImuStatusAndResetIfNeeded(BNO055 &imu,
 
   if (4 < errorCounter) {
     bool error = resetAndInitializeImu(imu);
-    IMU_ASSERT(error);
+    configASSERT(!error);
   }
 }
 
@@ -335,14 +371,15 @@ void ImuManagerThread(void *p)
 {
   BNO055 imu = BNO055(i2c_init, i2c_bus_read, i2c_bus_write, delay);
 
-  bool error = resetAndInitializeImu(imu);
-  IMU_ASSERT(error);
+  bool error = imu.init();
+  error = error || resetAndInitializeImu(imu);
+  configASSERT(!error);
 
   if (DbCfgImuCalibrationIsValid()) {
     ImuOffset_t offset;
     DbCfgImuCalibrationGet(&offset);
     error = sendCalibrationToDevice(imu, offset);
-    IMU_ASSERT(error);
+    configASSERT(!error);
     calibrationDataNeeded = false;
   } else {
     calibrationDataNeeded = true;
@@ -381,9 +418,9 @@ void ImuManagerThread(void *p)
       calibrationDataNeeded = false;
 
       if (DbCfgImuCalibrationIsValid()) {
-        Serial.println("IMU offsets updated in EEPROM");
+        ESP_LOGI(tag, "IMU offsets updated in EEPROM");
       } else {
-        Serial.println("Failed to update IMU offsets in EEPROM");
+        ESP_LOGI(tag, "Failed to update IMU offsets in EEPROM");
       }
     }
   }

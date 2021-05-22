@@ -38,7 +38,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static const char *tag = "BPS";
+static const char *tag = "PRT";
 static SemaphoreHandle_t readBps;
 // static hw_timer_t *timer;
 
@@ -97,10 +97,11 @@ static size_t i2c_write(uint8_t addr, uint8_t buf[], size_t length)
 {
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
   i2c_master_start(cmd);
-  i2c_master_write_byte(cmd, writeAddress(addr), I2C_MASTER_ACK);
-  i2c_master_write(cmd, buf, length, I2C_MASTER_ACK);
+  i2c_master_write_byte(cmd, writeAddress(addr), true);
+  i2c_master_write(cmd, buf, length, true);
   i2c_master_stop(cmd);
-  esp_err_t error = i2c_master_cmd_begin(i2c_port, cmd, pdMS_TO_TICKS(100));
+
+  esp_err_t error = i2c_master_cmd_begin(i2c_port, cmd, portMAX_DELAY);
   i2c_cmd_link_delete(cmd);
 
   return ESP_OK == error ? length : 0;
@@ -110,13 +111,11 @@ static size_t i2c_read(uint8_t addr, uint8_t buf[], size_t length)
 {
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
   i2c_master_start(cmd);
-  i2c_master_write_byte(cmd, readAddress(addr), I2C_MASTER_ACK);
-  if (1 < length) {
-    i2c_master_read(cmd, buf, length - 1, I2C_MASTER_ACK);
-  }
-  i2c_master_read(cmd, buf + length - 1, 1, I2C_MASTER_NACK);
+  i2c_master_write_byte(cmd, readAddress(addr), true);
+  i2c_master_read(cmd, buf, length, I2C_MASTER_LAST_NACK);
   i2c_master_stop(cmd);
-  esp_err_t error = i2c_master_cmd_begin(i2c_port, cmd, pdMS_TO_TICKS(100));
+
+  esp_err_t error = i2c_master_cmd_begin(i2c_port, cmd, portMAX_DELAY);
   i2c_cmd_link_delete(cmd);
 
   return ESP_OK == error ? length : 0;
@@ -137,11 +136,10 @@ static void tick(TimerHandle_t xTimer)
     portYIELD_FROM_ISR();
   }
 
-#warning Fix this
-  // xSemaphoreGiveFromISR(readImu, &xHigherPriorityTaskWoken);
-  // if (pdTRUE == xHigherPriorityTaskWoken) {
-  //   portYIELD_FROM_ISR();
-  // }
+  xSemaphoreGiveFromISR(readImu, &xHigherPriorityTaskWoken);
+  if (pdTRUE == xHigherPriorityTaskWoken) {
+    portYIELD_FROM_ISR();
+  }
 }
 
 /*****************************************************************************/
