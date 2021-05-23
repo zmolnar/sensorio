@@ -11,10 +11,10 @@
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include <nvs.h>
+#include <nvs_flash.h>
 
 #include <string.h>
-
-#warning "EEPROM handling is not implemented"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -26,24 +26,24 @@
 /* TYPE DEFINITIONS                                                          */
 /*****************************************************************************/
 typedef struct Data_s {
-  GpsData_t          gps;
-  BpsData_t          bps;
+  GpsData_t gps;
+  BpsData_t bps;
   FilterParameters_t filterParams;
-  FilterOutput_t     filter;
-  ImuData_t          imu;
-  Battery_t          battery;
-  Board_t            board;
+  FilterOutput_t filter;
+  ImuData_t imu;
+  Battery_t battery;
+  Board_t board;
 } Data_t;
 
 typedef struct Config_s {
-  uint32_t    magic;
+  uint32_t magic;
   SysParams_t params;
   struct {
     ImuOffset_t offset;
-    uint32_t    crc;
+    uint32_t crc;
   } calibration;
   BeepSettings_t beep;
-  uint32_t       crc;
+  uint32_t crc;
 } Config_t;
 
 typedef struct Locks_s {
@@ -58,9 +58,9 @@ typedef struct Locks_s {
 } Locks_t;
 
 typedef struct Dashboard_s {
-  Data_t   data;
+  Data_t data;
   Config_t config;
-  Locks_t  locks;
+  Locks_t locks;
 } Dashboard_t;
 
 /*****************************************************************************/
@@ -74,16 +74,18 @@ typedef struct Dashboard_s {
 static Dashboard_t db;
 
 static const Config_t defaultConfig = {
-    .magic       = MAGIC,
-    .params      = {.location = {.utcOffset = 0},
-               .screens  = {.vario = {.chart_refresh_period = 1000}}},
-    .calibration = {.offset = {
-      .acc = {.x = 0, .y = 0, .z = 0, .r = 0},
-      .gyro = {.x = 0, .y = 0, .z = 0},
-      .mag = {.x = 0, .y = 0, .z = 0, .r = 0},
-    }, .crc = 0xff},
-    .beep        = {.volume = VOL_LOW},
-    .crc         = 0x00,
+    .magic = MAGIC,
+    .params = {.location = {.utcOffset = 0},
+               .screens = {.vario = {.chart_refresh_period = 1000}}},
+    .calibration = {.offset =
+                        {
+                            .acc = {.x = 0, .y = 0, .z = 0, .r = 0},
+                            .gyro = {.x = 0, .y = 0, .z = 0},
+                            .mag = {.x = 0, .y = 0, .z = 0, .r = 0},
+                        },
+                    .crc = 0xff},
+    .beep = {.volume = VOL_LOW},
+    .crc = 0x00,
 };
 
 static const char *tag = "DSB";
@@ -105,14 +107,14 @@ static uint8_t crc8(const uint8_t data[], size_t length)
   return crc;
 }
 
-static bool configIsValid(Config_t *cfg)
+static bool isConfigValid(Config_t *cfg)
 {
-  uint8_t *data   = (uint8_t *)cfg;
-  size_t   length = sizeof(*cfg) - sizeof(cfg->crc);
-  uint8_t  crc    = crc8(data, length);
+  uint8_t *data = (uint8_t *)cfg;
+  size_t length = sizeof(*cfg) - sizeof(cfg->crc);
+  uint8_t crc = crc8(data, length);
 
   bool magicOk = (MAGIC == cfg->magic);
-  bool crcOk   = (cfg->crc == crc);
+  bool crcOk = (cfg->crc == crc);
 
   return magicOk && crcOk;
 }
@@ -133,6 +135,58 @@ static void unlockMutex(SemaphoreHandle_t &mutex)
   } while (pdTRUE != res);
 }
 
+static void readConfigFromNvs(Config_t *cfg)
+{
+  nvs_handle_t handle;
+  esp_err_t err = nvs_open("storage", NVS_READWRITE, &handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(tag, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+  } else {
+    size_t length = sizeof(*cfg);
+    err = nvs_get_blob(handle, "config", cfg, &length);
+    switch (err) {
+    case ESP_OK: {
+      ESP_LOGI(tag, "Config fetched from NVS");
+      break;
+    }
+    case ESP_ERR_NVS_NOT_FOUND: {
+      ESP_LOGI(tag, "Config not found in NVS, use default values");
+      *cfg = defaultConfig;
+      break;
+    }
+    default: {
+      ESP_LOGE(tag, "Error (%s) getting config!\n", esp_err_to_name(err));
+      break;
+    }
+    }
+
+    nvs_close(handle);
+  }
+}
+
+static void writeConfigToNvs(Config_t *cfg)
+{
+  nvs_handle_t handle;
+  esp_err_t err = nvs_open("storage", NVS_READWRITE, &handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(tag, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+  } else {
+    err = nvs_set_blob(handle, "config", cfg, sizeof(*cfg));
+    switch (err) {
+    case ESP_OK: {
+      ESP_LOGI(tag, "Config written to NVS successfully");
+      break;
+    }
+    default: {
+      ESP_LOGE(tag, "Error (%s) saving config!\n", esp_err_to_name(err));
+      break;
+    }
+    }
+
+    nvs_close(handle);
+  }
+}
+
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
@@ -140,19 +194,26 @@ void DbInit(void)
 {
   memset(&db, 0, sizeof(db));
 
-#if 0
-  EEPROM.begin(EEPROM_SIZE);
-  EEPROM.readBytes(CONFIG_ADDRESS, &db.config, sizeof(db.config));
-#endif
+  esp_err_t err = nvs_flash_init();
+  if (err == ESP_ERR_NVS_NO_FREE_PAGES ||
+      err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    // NVS partition was truncated and needs to be erased. Retry nvs_flash_init
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    err = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(err);
 
-  if (configIsValid(&db.config)) {
+  readConfigFromNvs(&db.config);
+
+  if (isConfigValid(&db.config)) {
     ESP_LOGI(tag, "Config restored successfully");
     ESP_LOGI(tag, "Location:");
     ESP_LOGI(tag, "  UTC offset: %d", db.config.params.location.utcOffset);
     ESP_LOGI(tag, "Screens");
     ESP_LOGI(tag, "  Variometer");
-    ESP_LOGI(tag, "    Chart refresh period: %d",
-                  db.config.params.screens.vario.chart_refresh_period);
+    ESP_LOGI(tag,
+             "    Chart refresh period: %d",
+             db.config.params.screens.vario.chart_refresh_period);
     ESP_LOGI(tag, "CRC: %d", db.config.crc);
   } else {
     ESP_LOGE(tag, "Config corrupted, default config loaded");
@@ -202,9 +263,9 @@ bool DbCfgImuCalibrationIsValid(void)
 {
   lockMutex(db.locks.config);
 
-  uint8_t *data   = (uint8_t *)&db.config.calibration.offset;
-  size_t   length = sizeof(db.config.calibration.offset);
-  uint8_t  crc    = crc8(data, length);
+  uint8_t *data = (uint8_t *)&db.config.calibration.offset;
+  size_t length = sizeof(db.config.calibration.offset);
+  uint8_t crc = crc8(data, length);
 
   bool crcOk = (db.config.calibration.crc == crc);
 
@@ -217,9 +278,9 @@ void DbCfgImuCalibrationGet(ImuOffset_t *offset)
 {
   lockMutex(db.locks.config);
 
-  uint8_t *dst    = (uint8_t *)offset;
-  uint8_t *src    = (uint8_t *)&db.config.calibration.offset;
-  size_t   length = sizeof(ImuOffset_t);
+  uint8_t *dst = (uint8_t *)offset;
+  uint8_t *src = (uint8_t *)&db.config.calibration.offset;
+  size_t length = sizeof(ImuOffset_t);
 
   memcpy(dst, src, length);
 
@@ -230,9 +291,9 @@ void DbCfgImuCalibrationSet(ImuOffset_t *offset)
 {
   lockMutex(db.locks.config);
 
-  uint8_t *dst    = (uint8_t *)&db.config.calibration.offset;
-  uint8_t *src    = (uint8_t *)offset;
-  size_t   length = sizeof(ImuOffset_t);
+  uint8_t *dst = (uint8_t *)&db.config.calibration.offset;
+  uint8_t *src = (uint8_t *)offset;
+  size_t length = sizeof(ImuOffset_t);
 
   memcpy(dst, src, length);
 
@@ -259,13 +320,12 @@ void DbCfgSaveToEeprom(void)
 {
   lockMutex(db.locks.config);
 
-  uint8_t *data   = (uint8_t *)&db.config;
-  size_t   length = sizeof(db.config) - sizeof(db.config.crc);
-  db.config.crc   = crc8(data, length);
-#if 0
-  EEPROM.writeBytes(CONFIG_ADDRESS, &db.config, sizeof(db.config));
-  EEPROM.commit();
-#endif
+  uint8_t *data = (uint8_t *)&db.config;
+  size_t length = sizeof(db.config) - sizeof(db.config.crc);
+  db.config.crc = crc8(data, length);
+
+  writeConfigToNvs(&db.config);
+
   unlockMutex(db.locks.config);
 }
 
