@@ -35,7 +35,7 @@ extern "C"
 #endif
 
 void PressureReaderThread(void *p);
-void PressureReaderInit(void);
+void PressureReaderThreadInit(void);
 
 #ifdef __cplusplus
 }

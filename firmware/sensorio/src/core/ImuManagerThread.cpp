@@ -426,7 +426,7 @@ void ImuManagerThread(void *p)
   }
 }
 
-void ImuManagerInit(void)
+void ImuManagerThreadInit(void)
 {
   readImu = xSemaphoreCreateBinary();
 }

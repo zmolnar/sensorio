@@ -7,6 +7,7 @@
 #endif
 
 #include <Power.h>
+#include <core/DataFilterThread.h>
 #include <core/LvglThread.h>
 #include <core/PressureReaderThread.h>
 #include <core/ImuManagerThread.h>
@@ -41,12 +42,13 @@ void app_main(void)
   PowerStart();
   DbInit();
 
-  PressureReaderInit();
-  ImuManagerInit();
+  PressureReaderThreadInit();
+  ImuManagerThreadInit();
+  DataFilterThreadInit();
   
   // BeepControlThreadInit();
 
-#if 0
+#if 1
   xTaskCreatePinnedToCore(DataFilterThread,
                           "data filter",
                           8192,

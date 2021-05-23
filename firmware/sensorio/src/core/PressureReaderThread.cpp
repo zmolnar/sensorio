@@ -181,8 +181,7 @@ void PressureReaderThread(void *p)
 
       DbDataBpsSet(&data);
 
-#warning Fix this
-      // xSemaphoreGive(filterDataReady);
+      xSemaphoreGive(filterDataReady);
 
     } else {
       ESP_LOGE(tag, "MS5611 conversion error");
@@ -190,7 +189,7 @@ void PressureReaderThread(void *p)
   }
 }
 
-void PressureReaderInit(void)
+void PressureReaderThreadInit(void)
 {
   readBps = xSemaphoreCreateBinary();
 }

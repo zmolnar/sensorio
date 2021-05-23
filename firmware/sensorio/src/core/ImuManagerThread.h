@@ -38,7 +38,7 @@ extern "C"
 #endif
 
 void ImuManagerThread(void *p);
-void ImuManagerInit(void);
+void ImuManagerThreadInit(void);
 
 #ifdef __cplusplus
 }

@@ -13,7 +13,11 @@
 #include "kalmanfilter/MerweScaledSigmaPoints.h"
 #include "kalmanfilter/Ukf.h"
 
-#include <Arduino.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
+#include <math.h>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -30,6 +34,8 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
+static const char *tag = "DATAFILTER";
+
 SemaphoreHandle_t filterDataReady;
 
 static const size_t dim_x = 3;
@@ -131,8 +137,6 @@ static double calculateDt(void)
 /*****************************************************************************/
 void DataFilterThread(void *p)
 {
-  filterDataReady = xSemaphoreCreateBinary();
-
   MerweScaledSigmaPoints sigmas(dim_x, alpha, beta, kappa);
   UnscentedKalmanFilter  ukf(dim_x, dim_z, fx, hx, sigmas);
 
@@ -185,9 +189,9 @@ void DataFilterThread(void *p)
 
   Matrix z(dim_z, 1);
 
-  Serial.println("Kalman filter started");
+  ESP_LOGI(tag, "Kalman filter started");
 
-  LogAppend("ts dt p gx gy gz ax ay az h v a\n\n");
+  // LogAppend("ts dt p gx gy gz ax ay az h v a\n\n");
 
   while (1) {
     xSemaphoreTake(filterDataReady, portMAX_DELAY);
@@ -217,45 +221,24 @@ void DataFilterThread(void *p)
     out.vario.averaged = 0;
 
     DbDataFilterOutputSet(&out);
-    BeepControlUpdate();
+    // BeepControlUpdate();
 
-    LogAppend("%d %d "
-              "%d "
-              "%3.2f %3.2f %3.2f "
-              "%3.2f %3.2f %3.2f "
-              "%5.1f %3.2f %3.2f\n",
-              (int)timeStamp, (int)(dt*1000),
-              (int)bps.cooked.pressure,
-              imu.gravity.x, imu.gravity.y, imu.gravity.z,
-              imu.acceleration.x, imu.acceleration.y, imu.acceleration.z,
-              ukf.x(0), ukf.x(1), ukf.x(2));         
-
-#if 0
-      Serial.print(timeStamp);
-      Serial.print(" ");
-      Serial.print(dt, 3);
-      Serial.print(" ");
-      Serial.print(bps.cooked.pressure);
-      Serial.print(" ");
-      Serial.print(imu.gravity.x);
-      Serial.print(" ");
-      Serial.print(imu.gravity.y);
-      Serial.print(" ");
-      Serial.print(imu.gravity.z);
-      Serial.print(" ");
-      Serial.print(imu.acceleration.x);
-      Serial.print(" ");
-      Serial.print(imu.acceleration.y);
-      Serial.print(" ");
-      Serial.print(imu.acceleration.z);
-      Serial.print(" ");
-      Serial.print(ukf.x(0));
-      Serial.print(" ");
-      Serial.print(ukf.x(1));
-      Serial.print(" ");
-      Serial.println(ukf.x(2));
-#endif
+    // LogAppend("%d %d "
+    //           "%d "
+    //           "%3.2f %3.2f %3.2f "
+    //           "%3.2f %3.2f %3.2f "
+    //           "%5.1f %3.2f %3.2f\n",
+    //           (int)timeStamp, (int)(dt*1000),
+    //           (int)bps.cooked.pressure,
+    //           imu.gravity.x, imu.gravity.y, imu.gravity.z,
+    //           imu.acceleration.x, imu.acceleration.y, imu.acceleration.z,
+    //           ukf.x(0), ukf.x(1), ukf.x(2));         
   }
+}
+
+void DataFilterThreadInit(void)
+{
+  filterDataReady = xSemaphoreCreateBinary();
 }
 
 /****************************** END OF FILE **********************************/

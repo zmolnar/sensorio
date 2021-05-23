@@ -32,7 +32,17 @@ extern SemaphoreHandle_t filterDataReady;
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void DataFilterThread(void *p);
+void DataFilterThreadInit(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DATA_FILTER_THREAD_H */
 
