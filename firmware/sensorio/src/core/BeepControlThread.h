@@ -29,11 +29,18 @@
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
-void BeepControlThread(void *p);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
-void BeepControlThreadInit(void);
+  void BeepControlThread(void *p);
+  void BeepControlThreadInit(void);
+  void BeepControlUpdate(void);
 
-void BeepControlUpdate(void);
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BEEP_CONTROL_THREAD_H */
 

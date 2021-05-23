@@ -3,6 +3,7 @@
 
 idf_component_register(SRCS "main.c"
                             "Power.cpp"
+                            "core/BeepControlThread.cpp"
                             "core/LvglThread.cpp"
                             "core/ImuManagerThread.cpp"
                             "core/PressureReaderThread.cpp"

@@ -131,6 +131,7 @@ void SensorioStop(void)
 #if 0  
   LogWaitToFinish();
 #endif
+  
   PowerStop();
 }
 

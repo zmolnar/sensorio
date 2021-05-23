@@ -7,6 +7,7 @@
 #endif
 
 #include <Power.h>
+#include <core/BeepControlThread.h>
 #include <core/DataFilterThread.h>
 #include <core/LvglThread.h>
 #include <core/PressureReaderThread.h>
@@ -45,8 +46,7 @@ void app_main(void)
   PressureReaderThreadInit();
   ImuManagerThreadInit();
   DataFilterThreadInit();
-  
-  // BeepControlThreadInit();
+  BeepControlThreadInit();
 
 #if 1
   xTaskCreatePinnedToCore(DataFilterThread,
@@ -78,7 +78,7 @@ void app_main(void)
                           0);
 #endif
 
-#if 0
+#if 1
   xTaskCreatePinnedToCore(BeepControlThread,
                           "beeper",
                           2048,

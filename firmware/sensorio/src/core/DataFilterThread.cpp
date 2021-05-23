@@ -221,7 +221,7 @@ void DataFilterThread(void *p)
     out.vario.averaged = 0;
 
     DbDataFilterOutputSet(&out);
-    // BeepControlUpdate();
+    BeepControlUpdate();
 
     // LogAppend("%d %d "
     //           "%d "
