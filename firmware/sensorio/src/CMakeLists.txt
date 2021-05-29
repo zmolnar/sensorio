@@ -4,6 +4,7 @@
 idf_component_register(SRCS "main.c"
                             "MicroNMEA.cpp"
                             "Power.cpp"
+                            "core/BatteryMonitorThread.cpp"
                             "core/BeepControlThread.cpp"
                             "core/GpsManagerThread.cpp"
                             "core/LvglThread.cpp"

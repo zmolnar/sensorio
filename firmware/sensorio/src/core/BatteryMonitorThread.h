@@ -29,7 +29,17 @@
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void BatteryMonitorThread(void *p);
+void BatteryMonitorInit(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* BATTERY_MONITOR_THREAD_H */
 

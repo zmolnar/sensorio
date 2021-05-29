@@ -8,16 +8,27 @@
 /*****************************************************************************/
 #include "BatteryMonitorThread.h"
 
-#include <Arduino.h>
+#include <driver/adc.h>
+#include <driver/gpio.h>
+#include <esp_adc_cal.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
-#include "dashboard/Dashboard.h"
+#include <dashboard/Dashboard.h>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
-#define BAT_ADC     32
-#define USB_PRESENT 34
-#define BAT_STAT    39
+#define BAT_ADC_CHANNEL      ADC1_CHANNEL_4
+#define BAT_ADC_WIDTH        ADC_WIDTH_BIT_12
+#define BAT_ADC_ATTEN        ADC_ATTEN_DB_11
+#define BAT_AVG_SAMPLE_COUNT 10
+
+#define USB_PRESENT     GPIO_NUM_34
+#define USB_PRESENT_SEL GPIO_SEL_34
+#define BAT_STATUS      GPIO_NUM_39
+#define BAT_STATUS_SEL  GPIO_SEL_39
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
@@ -38,21 +49,21 @@
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
-static bool detectUSB(void)
+static inline bool detectUSB(void)
 {
-  return (HIGH == digitalRead(USB_PRESENT));
+  return (1 == gpio_get_level(USB_PRESENT));
 }
 
-static bool detectSTAT(void)
+static inline bool detectSTAT(void)
 {
-  return (HIGH == digitalRead(BAT_STAT));
+  return (1 == gpio_get_level(BAT_STATUS));
 }
 
 static BatteryStatus_t decodeStatus(void)
 {
   BatteryStatus_t status;
 
-  bool usbPresent     = detectUSB();
+  bool usbPresent = detectUSB();
   bool chargeFinished = detectSTAT();
 
   if (usbPresent) {
@@ -68,9 +79,9 @@ static uint32_t voltage2percentage(double voltage)
 {
   uint32_t p = 0;
 
-  if (4.2 <= voltage) {
+  if (4.15 <= voltage) {
     p = 100;
-  } else if (4.15 <= voltage) {
+  } else if (4.13 <= voltage) {
     p = 95;
   } else if (4.11 <= voltage) {
     p = 90;
@@ -115,31 +126,59 @@ static uint32_t voltage2percentage(double voltage)
   return p;
 }
 
+static void configurePins(void)
+{
+  gpio_config_t conf;
+  conf.pin_bit_mask = USB_PRESENT_SEL | BAT_STATUS_SEL;
+  conf.intr_type = GPIO_INTR_DISABLE;
+  conf.mode = GPIO_MODE_INPUT;
+  conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+  conf.pull_up_en = GPIO_PULLUP_DISABLE;
+  gpio_config(&conf);
+}
+
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
 void BatteryMonitorThread(void *p)
 {
-  pinMode(BAT_STAT, INPUT);
-  pinMode(USB_PRESENT, INPUT);
+  configurePins();
+
+  adc1_config_width(BAT_ADC_WIDTH);
+  adc1_config_channel_atten(BAT_ADC_CHANNEL, BAT_ADC_ATTEN);
+
+  esp_adc_cal_characteristics_t adc_chars;
+  esp_adc_cal_characterize(
+      ADC_UNIT_1, BAT_ADC_ATTEN, BAT_ADC_WIDTH, 1100, &adc_chars);
 
   while (1) {
-    double value   = (double)analogRead(BAT_ADC);
-    double voltage = ((value / 4096.0) * 3.57) * (330.0 / 220.0);
+    int raw = 0;
+    for (size_t i = 0; i < BAT_AVG_SAMPLE_COUNT; ++i) {
+      raw += adc1_get_raw(BAT_ADC_CHANNEL);
+    }
+
+    raw = raw / BAT_AVG_SAMPLE_COUNT;
+
+    uint32_t raw_voltage = esp_adc_cal_raw_to_voltage(raw, &adc_chars);
+    double voltage = ((double)raw_voltage) / 1000.0 * (330.0 / 220.0);
 
     Battery_t battery;
-    battery.status     = decodeStatus();
-    battery.voltage    = voltage;
+    battery.status = decodeStatus();
+    battery.voltage = voltage;
     battery.percentage = voltage2percentage(voltage);
-    battery.value      = (uint32_t)value;
+    battery.value = (uint32_t)raw;
     DbDataBatterySet(&battery);
 
     Board_t board;
     board.usbConnected = detectUSB();
     DbDataBoardSet(&board);
 
-    delay(1000);
+    vTaskDelay(pdMS_TO_TICKS(1000));
   }
+}
+
+void BatteryMonitorInit(void)
+{
 }
 
 /****************************** END OF FILE **********************************/

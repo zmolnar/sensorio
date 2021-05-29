@@ -1,12 +1,6 @@
-#if 0
-#include "core/BatteryMonitorThread.h"
-#include "core/BeepControlThread.h"
-#include "core/GpsManagerThread.h"
-#include "core/DataFilterThread.h"
-#include "core/DataLoggerThread.h"
-#endif
 
 #include <Power.h>
+#include <core/BatteryMonitorThread.h>
 #include <core/BeepControlThread.h>
 #include <core/DataFilterThread.h>
 #include <core/GpsManagerThread.h>
@@ -48,6 +42,7 @@ void app_main(void)
   ImuManagerThreadInit();
   DataFilterThreadInit();
   BeepControlThreadInit();
+  BatteryMonitorInit();
 
 #if 1
   xTaskCreatePinnedToCore(DataFilterThread,
@@ -99,7 +94,7 @@ void app_main(void)
       GpsManagerThread, "GPS thread", 4096, NULL, PRIO_0_GPS, NULL, 0);
 #endif
 
-#if 0
+#if 1
   xTaskCreatePinnedToCore(
       BatteryMonitorThread, "Battery thread", 2048, NULL, PRIO_0_BATTMON, NULL, 0);
 #endif
