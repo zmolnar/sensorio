@@ -395,7 +395,6 @@ void BeepControlThread(void *p)
 {
   (void)p;
 
-  // initializePwmOutput();
   initializeTimer();
 
   updateLocalsFromConfig();

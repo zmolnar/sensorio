@@ -29,7 +29,16 @@
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 void GpsManagerThread(void *p);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* GPS_MANAGER_THREAD_H */
 

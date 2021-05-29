@@ -2,8 +2,10 @@
 # without default 'CMakeLists.txt' file.
 
 idf_component_register(SRCS "main.c"
+                            "MicroNMEA.cpp"
                             "Power.cpp"
                             "core/BeepControlThread.cpp"
+                            "core/GpsManagerThread.cpp"
                             "core/LvglThread.cpp"
                             "core/ImuManagerThread.cpp"
                             "core/PressureReaderThread.cpp"

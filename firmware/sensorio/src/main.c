@@ -9,6 +9,7 @@
 #include <Power.h>
 #include <core/BeepControlThread.h>
 #include <core/DataFilterThread.h>
+#include <core/GpsManagerThread.h>
 #include <core/LvglThread.h>
 #include <core/PressureReaderThread.h>
 #include <core/ImuManagerThread.h>
@@ -93,9 +94,9 @@ void app_main(void)
       ImuManagerThread, "IMU manager", 4096, NULL, PRIO_0_IMU, NULL, 0);
 #endif
 
-#if 0
+#if 1
   xTaskCreatePinnedToCore(
-      GpsManagerThread, "GPS thread", 2048, NULL, PRIO_0_GPS, NULL, 0);
+      GpsManagerThread, "GPS thread", 4096, NULL, PRIO_0_GPS, NULL, 0);
 #endif
 
 #if 0
