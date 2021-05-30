@@ -191,7 +191,7 @@ void DataFilterThread(void *p)
 
   ESP_LOGI(tag, "Kalman filter started");
 
-  // LogAppend("ts dt p gx gy gz ax ay az h v a\n\n");
+  LogAppend("ts dt p gx gy gz ax ay az h v a\n\n");
 
   while (1) {
     xSemaphoreTake(filterDataReady, portMAX_DELAY);
@@ -223,16 +223,16 @@ void DataFilterThread(void *p)
     DbDataFilterOutputSet(&out);
     BeepControlUpdate();
 
-    // LogAppend("%d %d "
-    //           "%d "
-    //           "%3.2f %3.2f %3.2f "
-    //           "%3.2f %3.2f %3.2f "
-    //           "%5.1f %3.2f %3.2f\n",
-    //           (int)timeStamp, (int)(dt*1000),
-    //           (int)bps.cooked.pressure,
-    //           imu.gravity.x, imu.gravity.y, imu.gravity.z,
-    //           imu.acceleration.x, imu.acceleration.y, imu.acceleration.z,
-    //           ukf.x(0), ukf.x(1), ukf.x(2));         
+    LogAppend("%d %d "
+              "%d "
+              "%3.2f %3.2f %3.2f "
+              "%3.2f %3.2f %3.2f "
+              "%5.1f %3.2f %3.2f\n",
+              (int)timeStamp, (int)(dt*1000),
+              (int)bps.cooked.pressure,
+              imu.gravity.x, imu.gravity.y, imu.gravity.z,
+              imu.acceleration.x, imu.acceleration.y, imu.acceleration.z,
+              ukf.x(0), ukf.x(1), ukf.x(2));         
   }
 }
 

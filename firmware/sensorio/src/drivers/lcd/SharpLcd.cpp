@@ -205,10 +205,10 @@ void SharpLcdInit(void)
       .post_cb = 0,
   };
 
-  esp_err_t err = spi_bus_initialize(HSPI_HOST, &buscfg, 1);
+  esp_err_t err = spi_bus_initialize(VSPI_HOST, &buscfg, 0);
   assert(err == ESP_OK);
 
-  err = spi_bus_add_device(HSPI_HOST, &devcfg, &lcd_spi);
+  err = spi_bus_add_device(VSPI_HOST, &devcfg, &lcd_spi);
   assert(err == ESP_OK);
 
   // Configure chip-select pin.

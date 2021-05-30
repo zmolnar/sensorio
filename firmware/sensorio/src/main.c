@@ -3,6 +3,7 @@
 #include <core/BatteryMonitorThread.h>
 #include <core/BeepControlThread.h>
 #include <core/DataFilterThread.h>
+#include <core/DataLoggerThread.h>
 #include <core/GpsManagerThread.h>
 #include <core/LvglThread.h>
 #include <core/PressureReaderThread.h>
@@ -41,6 +42,7 @@ void app_main(void)
   PressureReaderThreadInit();
   ImuManagerThreadInit();
   DataFilterThreadInit();
+  DataLoggerThreadInit();
   BeepControlThreadInit();
   BatteryMonitorInit();
 
@@ -54,7 +56,7 @@ void app_main(void)
                           0);
 #endif
 
-#if 0
+#if 1
   xTaskCreatePinnedToCore(DataLoggerThread,
                           "data logger",
                           8192,

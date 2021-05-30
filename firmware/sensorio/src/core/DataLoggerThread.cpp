@@ -7,11 +7,23 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "DataLoggerThread.h"
-#include "dashboard/Dashboard.h"
 
-#include <Arduino.h>
-#include <SD.h>
-#include <SPI.h>
+#include <dashboard/Dashboard.h>
+
+#include "esp_vfs_fat.h"
+#include <esp_err.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
+
+#include "sdmmc_cmd.h"
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/unistd.h>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -20,17 +32,19 @@
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
 /*****************************************************************************/
+static const char *tag = "data-logger";
+
 static const size_t bufcapacity = 1024;
 
 typedef struct Storage_s {
   const uint8_t *data;
-  size_t         length;
+  size_t length;
 } Storage_t;
 
 class Buffer {
 private:
-  char              buf[bufcapacity];
-  size_t            end;
+  char buf[bufcapacity];
+  size_t end;
   SemaphoreHandle_t mutex;
 
 public:
@@ -66,17 +80,15 @@ public:
 
   bool push_back(const char *fmt, va_list args)
   {
-    char * buffer = buf + end;
+    char *buffer = buf + end;
     size_t length = freeCapacity();
 
     size_t n = vsnprintf(buffer, length, fmt, args);
 
-    bool error = true;
+    bool error = !(n < length);
+    end += error ? 0 : n;
 
-    if (n < length) {
-      end += n;
-      error = false;
-    }
+    buf[end] = '\0';
 
     return error;
   }
@@ -84,13 +96,13 @@ public:
   void clear()
   {
     buf[0] = '\0';
-    end    = 0;
+    end = 0;
   }
 
   Storage_t getStorage()
   {
     Storage_t storage;
-    storage.data   = (uint8_t *)buf;
+    storage.data = (uint8_t *)buf;
     storage.length = end;
     return storage;
   }
@@ -100,10 +112,10 @@ typedef Buffer *Message_t;
 
 class Logger {
 private:
-  Buffer *         bufInUse;
+  Buffer *bufInUse;
   xSemaphoreHandle mutex;
-  Buffer           buf_A;
-  Buffer           buf_B;
+  Buffer buf_A;
+  Buffer buf_B;
 
 public:
   QueueHandle_t queue;
@@ -167,7 +179,7 @@ public:
 
       if (error) {
         // Couldn't write it into the new buffer neither, drop the entry.
-        Serial.println("Failed to save the message in the buffer");
+        ESP_LOGE(tag, "Failed to save the message in the buffer");
       }
     }
 
@@ -194,16 +206,28 @@ static SemaphoreHandle_t sdlock;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
-bool createLogFile(char *path, size_t length, GpsData_t *gps)
+static bool createDirectory(const char *path)
 {
-  size_t n       = snprintf(path, length, "/%04d", (int)gps->time.year);
-  bool   success = SD.mkdir(path);
+  int ret = mkdir(path, 777U);
+  return (0 != ret) && (EEXIST != errno);
+}
+
+static bool fileExists(const char *path)
+{
+  struct stat st;
+  return 0 == stat(path, &st);
+}
+
+static bool createLogFile(char *path, size_t length, GpsData_t *gps)
+{
+  size_t n = snprintf(path, length, "/sdcard/%04d", (int)gps->time.year);
+  bool error = createDirectory(path);
 
   n += snprintf(path + n, length - n, "/%02d", (int)gps->time.month);
-  success = success && SD.mkdir(path);
+  error = error || createDirectory(path);
 
   n += snprintf(path + n, length - n, "/%02d", (int)gps->time.day);
-  success = success && SD.mkdir(path);
+  error = error || createDirectory(path);
 
   n += snprintf(path + n,
                 length - n,
@@ -213,150 +237,59 @@ bool createLogFile(char *path, size_t length, GpsData_t *gps)
                 (int)gps->time.second);
 
   // Append running index if needed
-  bool found = SD.exists(path);
+  bool found = fileExists(path);
   for (int i = 0; found && (i < 100); ++i) {
-    size_t datlen = strlen(".dat");    
+    size_t datlen = strlen(".dat");
     snprintf(path + n - datlen, length - n + datlen, "_%02d.dat", i);
-    found = SD.exists(path);
+    found = fileExists(path);
   }
 
-  if (success) {
-    Serial.print(path);
-    Serial.println(" created successfully");
+  if (error) {
+    ESP_LOGE(tag, "Failed to create %s", path);
   } else {
-    Serial.print("Failed to create ");
-    Serial.println(path);
+    ESP_LOGI(tag, "%s created successfully", path);
   }
 
-  return success;
+  return error;
 }
 
-bool createTmpFile(char *path, size_t length)
+static bool isDateTimeValid(GpsData_t *gps)
 {
-  size_t n       = snprintf(path, length, "/tmp");
-  bool   success = SD.mkdir(path);
+  bool isvalid = 2000U < gps->time.year;
+  isvalid &= gps->time.month <= 12U;
+  isvalid &= gps->time.day <= 31U;
 
-  bool found = true;
-  for (int i = 0; found && (i < 100); ++i) {
-    snprintf(path + n, length - n, "/tmp_%02d.dat", i);
-    found = SD.exists(path);
-    if (found) {
-      Serial.print(path);
-      Serial.println(" already exists, try next");
-    }
-  }
-
-  Serial.print("Tmp file created: ");
-  Serial.println(path);
-
-  return success && !found;
+  return isvalid;
 }
 
-static bool moveTmpFile(const char *tmp_path, const char *logfile_path)
-{
-  bool success = false;
-
-  File readFrom = SD.open(tmp_path, FILE_READ);
-  if (readFrom) {
-    File writeTo = SD.open(logfile_path, FILE_WRITE);
-    if (writeTo) {
-      size_t  n;
-      uint8_t buf[64];
-      while ((n = readFrom.read(buf, sizeof(buf))) > 0) {
-        writeTo.write(buf, n);
-      }
-
-      writeTo.close();
-
-      Serial.print("Copied ");
-      Serial.print(n);
-      Serial.print(" byte(s) from ");
-      Serial.print(tmp_path);
-      Serial.print(" to ");
-      Serial.println(logfile_path);
-
-      success = true;
-
-    } else {
-      Serial.print("Failed to open ");
-      Serial.println(logfile_path);
-    }
-
-    readFrom.close();
-
-  } else {
-    Serial.print("Failed to open ");
-    Serial.println(tmp_path);
-  }
-
-  return success;
-}
-
-const char *getLogfileName(void)
+static const char *getLogfileName(void)
 {
   static enum {
     NOT_INITED,
-    TMP_IN_USE,
     FILE_CREATED,
   } state = NOT_INITED;
 
   static char path[128];
-
   const char *logfile = path;
-
-  GpsData_t gps;
-  DbDataGpsGet(&gps);
-
-  bool dateTimeIsValid = 2000U < gps.time.year;
-  dateTimeIsValid &= gps.time.month <= 12U;
-  dateTimeIsValid &= gps.time.day <= 31U;
 
   switch (state) {
   case NOT_INITED: {
-    if (dateTimeIsValid) {
-      if (createLogFile(path, sizeof(path), &gps)) {
+    GpsData_t gps;
+    DbDataGpsGet(&gps);
+    if (isDateTimeValid(&gps)) {
+      bool error = createLogFile(path, sizeof(path), &gps);
+      if (error) {
+        path[0] = '\0';
+        logfile = NULL;
+      } else {
         state = FILE_CREATED;
-      } else {
-        path[0] = '\0';
-        logfile = NULL;
-      }
-    } else {
-      bool found = createTmpFile(path, sizeof(path));
-      if (found) {
-        state = TMP_IN_USE;
-      } else {
-        path[0] = '\0';
-        logfile = NULL;
       }
     }
     break;
   }
-  case TMP_IN_USE: {
-    if (dateTimeIsValid) {
-      char tmp_path[sizeof(path)];
-      memcpy(tmp_path, path, sizeof(tmp_path));
-      if (createLogFile(path, sizeof(path), &gps)) {
-        bool success = moveTmpFile(tmp_path, path);
-        if (success) {
-          SD.remove(tmp_path);
-        }
-        state = FILE_CREATED;
-      } else {
-        // Continue to use the temp file.
-        memcpy(path, tmp_path, sizeof(path));
-      }
-
-      createLogFile(path, sizeof(path), &gps);
-      state = FILE_CREATED;
-    } else {
-      ;
-    }
-    break;
-  }
-  case FILE_CREATED: {
-    break;
-  }
+  case FILE_CREATED:
   default: {
+    logfile = path;
     break;
   }
   }
@@ -367,17 +300,58 @@ const char *getLogfileName(void)
 static void lockSdCard(void)
 {
   BaseType_t res;
-    do {
-      res = xSemaphoreTake(sdlock, portMAX_DELAY);
-    } while (pdTRUE != res);
+  do {
+    res = xSemaphoreTake(sdlock, portMAX_DELAY);
+  } while (pdTRUE != res);
 }
 
 static void unlockSdCard(void)
 {
   BaseType_t res;
-    do {
-      res = xSemaphoreGive(sdlock);
-    } while (pdTRUE != res);
+  do {
+    res = xSemaphoreGive(sdlock);
+  } while (pdTRUE != res);
+}
+
+static bool initializeSdCard(void)
+{
+  ESP_LOGI(tag, "Initializing SD card");
+
+  sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+  host.flags = SDMMC_HOST_FLAG_SPI;
+  host.max_freq_khz = 10000;
+
+  sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
+  slot_config.gpio_miso = GPIO_NUM_5;
+  slot_config.gpio_mosi = GPIO_NUM_0;
+  slot_config.gpio_sck = GPIO_NUM_2;
+  slot_config.gpio_cs = GPIO_NUM_15;
+
+  esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+      .format_if_mount_failed = false,
+      .max_files = 5,
+      .allocation_unit_size = 16 * 1024,
+  };
+
+  sdmmc_card_t *card;
+  esp_err_t ret = esp_vfs_fat_sdmmc_mount(
+      "/sdcard", &host, &slot_config, &mount_config, &card);
+
+  if (ret != ESP_OK) {
+    if (ret == ESP_FAIL) {
+      ESP_LOGE(tag,
+               "Failed to mount filesystem. "
+               "If you want the card to be formatted, set "
+               "format_if_mount_failed = true.");
+    } else {
+      ESP_LOGE(tag,
+               "Failed to initialize the card (%s). "
+               "Make sure SD card lines have pull-up resistors in place.",
+               esp_err_to_name(ret));
+    }
+  }
+
+  return ESP_OK != ret;
 }
 
 /*****************************************************************************/
@@ -385,22 +359,16 @@ static void unlockSdCard(void)
 /*****************************************************************************/
 void DataLoggerThread(void *p)
 {
-  sdlock = xSemaphoreCreateMutex();
-
-  SPIClass sdcSpi(HSPI);
-  sdcSpi.begin(2, 5, 0, 15);
-
-  while (!SD.begin(15, sdcSpi)) {
-    Serial.println("Failed to initialize SD card");
-    delay(1000);
+  // Try to mount SD card until it succeeds.
+  while (initializeSdCard()) {
+    vTaskDelay(pdMS_TO_TICKS(2000));
   }
 
   while (1) {
-    Message_t  msg;
+    Message_t msg;
     BaseType_t result = xQueueReceive(logger.queue, &msg, portMAX_DELAY);
 
     if (pdTRUE == result) {
-
       lockSdCard();
 
       Buffer *buf = msg;
@@ -408,18 +376,16 @@ void DataLoggerThread(void *p)
       if (buf) {
         const char *logfile = getLogfileName();
         if (NULL != logfile) {
-          File file = SD.open(logfile, FILE_APPEND);
+          FILE *f = fopen(logfile, "a");
 
           buf->lock();
 
-          if (file) {
+          if (f) {
             Storage_t storage = buf->getStorage();
-            file.write(storage.data, storage.length);
-            file.close();
+            fprintf(f, "%s", storage.data);
+            fclose(f);
           } else {
-            Serial.print("Failed to open ");
-            Serial.println(logfile);
-            Serial.println("Log entry is dropped");
+            ESP_LOGE(tag, "Failed to open %s, log entry is dropped", logfile);
           }
 
           buf->clear();
@@ -428,11 +394,13 @@ void DataLoggerThread(void *p)
       }
 
       unlockSdCard();
-
-    } else {
-      Serial.println("Failed to read message queue");
     }
   }
+}
+
+void DataLoggerThreadInit(void)
+{
+  sdlock = xSemaphoreCreateMutex();
 }
 
 void LogAppend(const char *fmt, ...)

@@ -36,6 +36,8 @@ extern "C"
 
 void DataLoggerThread(void *p);
 
+void DataLoggerThreadInit(void);
+
 void LogAppend(const char *fmt, ...);
 
 void LogWaitToFinish(void);
