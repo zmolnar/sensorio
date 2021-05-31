@@ -7,13 +7,16 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "Encoder.h"
-#include "Power.h"
-#include "core/LvglThread.h"
-#include "lvgl.h"
+
+#include <Power.h>
+#include <lvgl.h>
+
+#include <core/LvglThread.h>
+
 #include <driver/gpio.h>
+#include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
-#include <esp_log.h>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -149,7 +152,6 @@ static void encoderLeftISR(void *p)
   int level = gpio_get_level(ENC_LEFT);
 
   if ((HIGH == level) && (LOW == encoder.level.left)) {
-    
     gpio_intr_disable(ENC_RIGHT);
     gpio_intr_disable(ENC_OK);
     --encoder.counter;
@@ -168,7 +170,6 @@ static void encoderLeftISR(void *p)
     xTimerStartFromISR(encoder.debounceTimers.left, 0);
 
     if (pdFALSE == xTimerIsTimerActive(encoder.debounceTimers.ok)) {
-      
       gpio_intr_enable(ENC_OK);
     }
 
@@ -215,7 +216,7 @@ static void encoderRightISR(void *p)
 void encoderOkISR(void *p)
 {
   (void)p;
-  
+
   int level = gpio_get_level(ENC_OK);
 
   if ((LOW == level) && (HIGH == encoder.level.ok)) {

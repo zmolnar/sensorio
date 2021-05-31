@@ -32,7 +32,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static const char *tag = "IMU";
+static const char *tag = "imu-thread";
 SemaphoreHandle_t readImu;
 
 static gpio_num_t i2c_gpio_sda = GPIO_NUM_17;

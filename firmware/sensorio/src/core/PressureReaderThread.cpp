@@ -21,7 +21,6 @@
 #include <freertos/task.h>
 #include <freertos/timers.h>
 
-
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
@@ -38,7 +37,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static const char *tag = "PRT";
+static const char *tag = "bps-thread";
 static SemaphoreHandle_t readBps;
 // static hw_timer_t *timer;
 
@@ -61,7 +60,7 @@ static inline bool installMasterDriver(i2c_port_t port)
 
 static inline bool paramConfig(i2c_port_t port, const i2c_config_t *conf)
 {
-  return ESP_OK != i2c_param_config(port, conf); 
+  return ESP_OK != i2c_param_config(port, conf);
 }
 
 static inline uint8_t readAddress(uint8_t addr)
@@ -76,21 +75,19 @@ static inline uint8_t writeAddress(uint8_t addr)
 
 static bool i2c_init(void)
 {
-    i2c_config_t conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = i2c_gpio_sda,
-        .scl_io_num = i2c_gpio_scl,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master = {
-          .clk_speed = i2c_frequency,
-        }
-    };
+  i2c_config_t conf = {.mode = I2C_MODE_MASTER,
+                       .sda_io_num = i2c_gpio_sda,
+                       .scl_io_num = i2c_gpio_scl,
+                       .sda_pullup_en = GPIO_PULLUP_ENABLE,
+                       .scl_pullup_en = GPIO_PULLUP_ENABLE,
+                       .master = {
+                           .clk_speed = i2c_frequency,
+                       }};
 
-    bool error = paramConfig(i2c_port, &conf);
-    error = error || installMasterDriver(i2c_port);
+  bool error = paramConfig(i2c_port, &conf);
+  error = error || installMasterDriver(i2c_port);
 
-    return error;
+  return error;
 }
 
 static size_t i2c_write(uint8_t addr, uint8_t buf[], size_t length)

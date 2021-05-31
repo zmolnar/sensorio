@@ -41,6 +41,7 @@ void app_main(void)
 
   PressureReaderThreadInit();
   ImuManagerThreadInit();
+  GpsManagerThreadInit();
   DataFilterThreadInit();
   DataLoggerThreadInit();
   BeepControlThreadInit();

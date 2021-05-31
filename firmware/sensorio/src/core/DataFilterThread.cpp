@@ -34,7 +34,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static const char *tag = "DATAFILTER";
+static const char *tag = "data-filter-thread";
 
 SemaphoreHandle_t filterDataReady;
 

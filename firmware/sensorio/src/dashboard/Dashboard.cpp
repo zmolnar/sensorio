@@ -88,7 +88,7 @@ static const Config_t defaultConfig = {
     .crc = 0x00,
 };
 
-static const char *tag = "DSB";
+static const char *tag = "dashboard";
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */

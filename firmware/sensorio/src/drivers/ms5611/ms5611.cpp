@@ -26,7 +26,7 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static const char *tag = "MS5611";
+static const char *tag = "ms5611";
 
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
@@ -69,7 +69,7 @@ bool MS5611::reset(void)
   if (!error) {
     delay(250);
   } else {
-    ESP_LOGE(tag, "Failed to reset MS5611");
+    ESP_LOGE(tag, "failed to reset");
   }
 
   return error;
@@ -88,10 +88,10 @@ bool MS5611::readCalibration(void)
     if (!error) {
       prom[i] = ((uint16_t)data[0] << 8) + data[1];
     } else {
-      ESP_LOGE(tag, "Read PROM failed");
+      ESP_LOGE(tag, "reading PROM failed");
     }
 
-    ESP_LOGI(tag, "PROM[%d] = %x", (int)i, (int)prom[i]);
+    ESP_LOGD(tag, "PROM[%d] = %x", (int)i, (int)prom[i]);
   }
 
   error = error || validateProm(prom);
@@ -126,7 +126,7 @@ bool MS5611::validateProm(uint16_t prom[8])
   remainder = (0x000F & (remainder >> 12));
 
   bool isValid = remainder == crc_read;
-  ESP_LOGI(tag, "Calibration constants are %svalid", isValid ? "" : "in");
+  ESP_LOGI(tag, "calibration constants are %svalid", isValid ? "" : "in");
 
   return !isValid;
 }

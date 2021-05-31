@@ -36,6 +36,8 @@ extern "C"
 
 void GpsManagerThread(void *p);
 
+void GpsManagerThreadInit(void);
+
 #ifdef __cplusplus
 }
 #endif

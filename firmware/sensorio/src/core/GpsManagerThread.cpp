@@ -7,6 +7,7 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "GpsManagerThread.h"
+
 #include <dashboard/Dashboard.h>
 
 #include <MicroNMEA.h>
@@ -45,7 +46,7 @@
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
 static bool isValid = true;
-static const char *tag = "gps-manager";
+static const char *tag = "gps-thread";
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -142,6 +143,10 @@ void GpsManagerThread(void *p)
       }
     }
   }
+}
+
+void GpsManagerThreadInit(void)
+{
 }
 
 /****************************** END OF FILE **********************************/

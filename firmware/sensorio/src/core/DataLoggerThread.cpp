@@ -10,9 +10,9 @@
 
 #include <dashboard/Dashboard.h>
 
-#include "esp_vfs_fat.h"
 #include <esp_err.h>
 #include <esp_log.h>
+#include <esp_vfs_fat.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
@@ -32,7 +32,7 @@
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
 /*****************************************************************************/
-static const char *tag = "data-logger";
+static const char *tag = "data-logger-thread";
 
 static const size_t bufcapacity = 1024;
 

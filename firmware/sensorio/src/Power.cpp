@@ -9,9 +9,8 @@
 #include "Power.h"
 
 #include <driver/gpio.h>
-#include <esp_log.h>
 
-#include "core/LvglThread.h"
+#include <core/LvglThread.h>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */

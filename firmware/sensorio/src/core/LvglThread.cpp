@@ -10,13 +10,14 @@
 
 #include <drivers/encoder/Encoder.h>
 #include <drivers/lcd/SharpLcd.h>
+#include <gui/Sensorio.h>
+
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/timers.h>
-#include <gui/Sensorio.h>
-#include <lvgl.h>
 
+#include <lvgl.h>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -37,7 +38,7 @@
 static TaskHandle_t lvglTask = NULL;
 static TimerHandle_t timerHandle;
 static bool shutdownRequested = false;
-static const char *tag = "LVGL";
+static const char *tag = "lvgl-thread";
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
@@ -93,7 +94,7 @@ void LvglThread(void *p)
 
   while (1) {
     uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    
+
     if (0 < notification) {
       lv_tick_inc(notification * LVGL_TICK_IN_MS);
 
