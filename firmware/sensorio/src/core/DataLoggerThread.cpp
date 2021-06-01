@@ -319,7 +319,7 @@ static bool initializeSdCard(void)
 
   sdmmc_host_t host = SDSPI_HOST_DEFAULT();
   host.flags = SDMMC_HOST_FLAG_SPI;
-  host.max_freq_khz = 10000;
+  host.max_freq_khz = 20000;
 
   sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
   slot_config.gpio_miso = GPIO_NUM_5;

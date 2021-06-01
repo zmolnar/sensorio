@@ -9,8 +9,6 @@
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -27,7 +25,6 @@
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL VARIABLES                                           */
 /*****************************************************************************/
-extern SemaphoreHandle_t readImu;
 
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
@@ -39,6 +36,7 @@ extern "C"
 
 void ImuManagerThread(void *p);
 void ImuManagerThreadInit(void);
+void SampleImu(void);
 
 #ifdef __cplusplus
 }

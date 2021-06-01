@@ -33,7 +33,7 @@
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
 static const char *tag = "imu-thread";
-SemaphoreHandle_t readImu;
+static SemaphoreHandle_t readImu;
 
 static gpio_num_t i2c_gpio_sda = GPIO_NUM_17;
 static gpio_num_t i2c_gpio_scl = GPIO_NUM_16;
@@ -429,6 +429,11 @@ void ImuManagerThread(void *p)
 void ImuManagerThreadInit(void)
 {
   readImu = xSemaphoreCreateBinary();
+}
+
+void SampleImu(void)
+{
+  xSemaphoreGive(readImu);
 }
 
 /****************************** END OF FILE ********************************/

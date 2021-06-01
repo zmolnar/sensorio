@@ -37,9 +37,8 @@
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static const char *tag = "bps-thread";
 static SemaphoreHandle_t readBps;
-// static hw_timer_t *timer;
+static const char *tag = "bps-thread";
 
 static gpio_num_t i2c_gpio_sda = GPIO_NUM_13;
 static gpio_num_t i2c_gpio_scl = GPIO_NUM_14;
@@ -123,22 +122,6 @@ static void delay(uint32_t ms)
   vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
-static void tick(TimerHandle_t xTimer)
-{
-  (void)xTimer;
-
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  xSemaphoreGiveFromISR(readBps, &xHigherPriorityTaskWoken);
-  if (pdTRUE == xHigherPriorityTaskWoken) {
-    portYIELD_FROM_ISR();
-  }
-
-  xSemaphoreGiveFromISR(readImu, &xHigherPriorityTaskWoken);
-  if (pdTRUE == xHigherPriorityTaskWoken) {
-    portYIELD_FROM_ISR();
-  }
-}
-
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
@@ -148,19 +131,13 @@ void PressureReaderThread(void *p)
 
   bool error = bps.start();
   for (size_t i = 0; (i < 5) && error; ++i) {
-    ESP_LOGI(tag, "Failed to start ms5611 #%d", (int)i);
+    ESP_LOGI(tag, "failed start attempt #%d", (int)i);
     error = bps.start();
     vTaskDelay(pdMS_TO_TICKS(500));
   }
 
   configASSERT(!error);
-  ESP_LOGI(tag, "MS5611 started");
-
-  TimerHandle_t timerHandle =
-      xTimerCreate("bps tick timer", pdMS_TO_TICKS(20), pdTRUE, 0, tick);
-  configASSERT(timerHandle);
-
-  xTimerStart(timerHandle, 0);
+  ESP_LOGI(tag, "started");
 
   while (1) {
     xSemaphoreTake(readBps, portMAX_DELAY);
@@ -177,9 +154,6 @@ void PressureReaderThread(void *p)
       data.cooked.pressure = bps.getCompensatedPressure();
 
       DbDataBpsSet(&data);
-
-      xSemaphoreGive(filterDataReady);
-
     } else {
       ESP_LOGE(tag, "MS5611 conversion error");
     }
@@ -189,6 +163,11 @@ void PressureReaderThread(void *p)
 void PressureReaderThreadInit(void)
 {
   readBps = xSemaphoreCreateBinary();
+}
+
+void SampleBps(void)
+{
+  xSemaphoreGive(readBps);
 }
 
 /****************************** END OF FILE **********************************/

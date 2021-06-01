@@ -36,6 +36,7 @@ extern "C"
 
 void PressureReaderThread(void *p);
 void PressureReaderThreadInit(void);
+void SampleBps(void);
 
 #ifdef __cplusplus
 }

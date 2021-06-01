@@ -6,13 +6,16 @@
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
-#include "BeepControlThread.h"
-#include "DataFilterThread.h"
-#include "DataLoggerThread.h"
-#include "dashboard/Dashboard.h"
-#include "kalmanfilter/MerweScaledSigmaPoints.h"
-#include "kalmanfilter/Ukf.h"
+#include <core/BeepControlThread.h>
+#include <core/DataFilterThread.h>
+#include <core/DataLoggerThread.h>
+#include <core/ImuManagerThread.h>
+#include <core/PressureReaderThread.h>
+#include <dashboard/Dashboard.h>
+#include <kalmanfilter/MerweScaledSigmaPoints.h>
+#include <kalmanfilter/Ukf.h>
 
+#include <driver/timer.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -22,6 +25,12 @@
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
+#define SAMPLE_PERIOD_IN_MS    20U
+#define SAMPLING_TIMER_GROUP   TIMER_GROUP_0
+#define SAMPLING_TIMER         TIMER_1
+#define SAMPLING_TIMER_DIVIDER (8U)
+#define MS_TO_TIMER_TICK(ms)                                                   \
+  ((ms) * ((TIMER_BASE_CLK / SAMPLING_TIMER_DIVIDER) / 1000))
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
@@ -35,13 +44,12 @@
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
 static const char *tag = "data-filter-thread";
-
-SemaphoreHandle_t filterDataReady;
+static SemaphoreHandle_t filterDataStart;
 
 static const size_t dim_x = 3;
 static const size_t dim_z = 2;
 static const double alpha = 0.3;
-static const double beta  = 2.0;
+static const double beta = 2.0;
 static const double kappa = 0.1;
 
 /*****************************************************************************/
@@ -56,7 +64,7 @@ static Matrix fx(const Vector &x, double dt)
 {
   Matrix xout = Matrix(dim_x, 1);
 
-  // Position     = a*dt2/2 + v*dt + x0
+  // Position     = a*dt^2/2 + v*dt + x0
   // Speed        = a*dt + v
   // Acceleration = a
 
@@ -74,11 +82,11 @@ static Matrix hx(const Vector &x)
 
   // Convert height to pressure at altitude using barometric formula
   double press = 101325 * pow((1 - 2.25577 * pow(10, -5) * x(0)), 5.25588);
-  double acc   = x(2);
+  double acc = x(2);
 
   Matrix zout = Matrix(2, 1);
-  zout(0)     = press;
-  zout(1)     = acc;
+  zout(0) = press;
+  zout(1) = acc;
 
   return zout;
 }
@@ -99,9 +107,10 @@ static double calculateVerticalAcceleration(ImuData_t &imu)
 
   if ((9.0 < absg) && (absg < 11.0)) {
     double skag = (gx * ax) + (gy * ay) + (gz * az);
-    acc  = skag / absg;
+    acc = skag / absg;
   } else {
-    acc = sqrt((ax * ax) + (ay * ay) + (az * az));
+    // Sensor error, the gravity vector is reported to be (0,0,0)
+    acc = 0;
   }
 
   return acc;
@@ -132,18 +141,60 @@ static double calculateDt(void)
   return dt;
 }
 
+static bool IRAM_ATTR timerCallback(void *args)
+{
+  (void)args;
+
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  xSemaphoreGiveFromISR(filterDataStart, &xHigherPriorityTaskWoken);
+  if (pdTRUE == xHigherPriorityTaskWoken) {
+    portYIELD_FROM_ISR();
+  }
+
+  timer_set_counter_value(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, 0);
+  timer_start(SAMPLING_TIMER_GROUP, SAMPLING_TIMER);
+
+  return false;
+}
+
+static void initAndStartSamplingTimer(void)
+{
+  timer_config_t config = {
+      .alarm_en = TIMER_ALARM_EN,
+      .counter_en = TIMER_PAUSE,
+      .intr_type = TIMER_INTR_LEVEL,
+      .counter_dir = TIMER_COUNT_UP,
+      .auto_reload = TIMER_AUTORELOAD_EN,
+      .divider = SAMPLING_TIMER_DIVIDER,
+  };
+  timer_init(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, &config);
+  timer_set_counter_value(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, 0);
+  timer_set_alarm_value(SAMPLING_TIMER_GROUP,
+                        SAMPLING_TIMER,
+                        MS_TO_TIMER_TICK(SAMPLE_PERIOD_IN_MS));
+  timer_enable_intr(SAMPLING_TIMER_GROUP, SAMPLING_TIMER);
+  timer_isr_callback_add(
+      SAMPLING_TIMER_GROUP, SAMPLING_TIMER, timerCallback, NULL, 0);
+  timer_set_counter_value(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, 0);
+  timer_start(SAMPLING_TIMER_GROUP, SAMPLING_TIMER);
+}
+
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
 void DataFilterThread(void *p)
 {
   MerweScaledSigmaPoints sigmas(dim_x, alpha, beta, kappa);
-  UnscentedKalmanFilter  ukf(dim_x, dim_z, fx, hx, sigmas);
+  UnscentedKalmanFilter ukf(dim_x, dim_z, fx, hx, sigmas);
+
+  initAndStartSamplingTimer();
 
   // Wait for the sensors to start up properly
   bool ready = false;
   do {
-    xSemaphoreTake(filterDataReady, portMAX_DELAY);
+    SampleImu();
+    xSemaphoreTake(filterDataStart, portMAX_DELAY);
+
     ImuData_t imu;
     DbDataImuGet(&imu);
 
@@ -156,17 +207,23 @@ void DataFilterThread(void *p)
   // Set initial conditions
   ready = false;
   do {
-    xSemaphoreTake(filterDataReady, portMAX_DELAY);
+    SampleBps();
+    xSemaphoreTake(filterDataStart, portMAX_DELAY);
+
     BpsData_t bps;
     DbDataBpsGet(&bps);
 
-    double p0     = bps.cooked.pressure;
-    double height = 44330 * (1 - pow(p0 / 101325.0, 0.1902));
-    ukf.x(0)      = height; // Initial height
-    ukf.x(1)      = 0.0;    // Initial speed
-    ukf.x(2)      = 0.0;    // Initial acceleration
+    if (0 < bps.cooked.pressure) {
+      double p0 = bps.cooked.pressure;
+      double height = 44330 * (1 - pow(p0 / 101325.0, 0.1902));
+      ukf.x(0) = height; // Initial height
+      ukf.x(1) = 0.0;    // Initial speed
+      ukf.x(2) = 0.0;    // Initial acceleration
 
-    ready = true;
+      ready = true;
+    } else {
+      ready = false;
+    }
 
   } while (!ready);
 
@@ -194,7 +251,7 @@ void DataFilterThread(void *p)
   LogAppend("ts dt p gx gy gz ax ay az h v a\n\n");
 
   while (1) {
-    xSemaphoreTake(filterDataReady, portMAX_DELAY);
+    xSemaphoreTake(filterDataStart, portMAX_DELAY);
     TickType_t timeStamp = xTaskGetTickCount();
 
     // Calculate dt
@@ -206,6 +263,10 @@ void DataFilterThread(void *p)
     ImuData_t imu;
     DbDataImuGet(&imu);
 
+    // Wake up data sampling threads.
+    SampleBps();
+    SampleImu();
+
     // Update measurement vector
     z(0) = bps.cooked.pressure;
     z(1) = calculateVerticalAcceleration(imu);
@@ -216,29 +277,37 @@ void DataFilterThread(void *p)
 
     // Update the results in the database
     FilterOutput_t out;
-    out.height         = ukf.x(0);
-    out.vario.instant  = ukf.x(1);
+    out.height = ukf.x(0);
+    out.vario.instant = ukf.x(1);
     out.vario.averaged = 0;
 
     DbDataFilterOutputSet(&out);
     BeepControlUpdate();
 
-    LogAppend("%d %d "
-              "%d "
-              "%3.2f %3.2f %3.2f "
-              "%3.2f %3.2f %3.2f "
-              "%5.1f %3.2f %3.2f\n",
-              (int)timeStamp, (int)(dt*1000),
-              (int)bps.cooked.pressure,
-              imu.gravity.x, imu.gravity.y, imu.gravity.z,
-              imu.acceleration.x, imu.acceleration.y, imu.acceleration.z,
-              ukf.x(0), ukf.x(1), ukf.x(2));         
+    LogAppend(
+        "%d %d "
+        "%d "
+        "%3.2f %3.2f %3.2f "
+        "%3.2f %3.2f %3.2f "
+        "%5.1f %3.2f %3.2f\n",
+        (int)timeStamp,
+        (int)(dt * 1000),
+        (int)bps.cooked.pressure,
+        imu.gravity.x,
+        imu.gravity.y,
+        imu.gravity.z,
+        imu.acceleration.x,
+        imu.acceleration.y,
+        imu.acceleration.z,
+        ukf.x(0),
+        ukf.x(1),
+        ukf.x(2));
   }
 }
 
 void DataFilterThreadInit(void)
 {
-  filterDataReady = xSemaphoreCreateBinary();
+  filterDataStart = xSemaphoreCreateBinary();
 }
 
 /****************************** END OF FILE **********************************/
