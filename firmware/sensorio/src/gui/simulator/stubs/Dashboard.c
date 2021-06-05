@@ -124,6 +124,16 @@ void DbDataBpsSet(BpsData_t *p)
 {
 }
 
+void DbDataLocalTimeGet(LocalTime_t *p)
+{
+  p->year = 2021;
+  p->month = 6;
+  p->day = 1;
+  p->hour = 8;
+  p->minute = 29;
+  p->second = 54;
+}
+
 void DbDataFilterOutputGet(FilterOutput_t *p)
 {
   static uint32_t offset;

@@ -7,6 +7,7 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "Dashboard.h"
+#include "LocalTime.h"
 
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
@@ -75,7 +76,7 @@ static Dashboard_t db;
 
 static const Config_t defaultConfig = {
     .magic = MAGIC,
-    .params = {.location = {.utcOffset = 0},
+    .params = {.location = {.utcOffset = 1},
                .screens = {.vario = {.chart_refresh_period = 1000}}},
     .calibration = {.offset =
                         {
@@ -355,6 +356,26 @@ void DbDataBpsSet(BpsData_t *p)
   lockMutex(db.locks.bps);
   memcpy(&db.data.bps, p, sizeof(BpsData_t));
   unlockMutex(db.locks.bps);
+}
+
+void DbDataLocalTimeGet(LocalTime_t *p)
+{
+  lockMutex(db.locks.gps);
+  p->year = db.data.gps.time.year;
+  p->month = db.data.gps.time.month;
+  p->day = db.data.gps.time.day;
+  p->hour = db.data.gps.time.hour;
+  p->minute = db.data.gps.time.minute;
+  p->second = db.data.gps.time.second;
+  unlockMutex(db.locks.gps);
+
+  lockMutex(db.locks.config);
+  int offset = db.config.params.location.utcOffset;
+  unlockMutex(db.locks.config);
+
+  int dow = LtDayOfWeek(p->year, p->month, p->day);
+  offset += LtIsDaylightSavingTime(p->day, p->month, dow) ? 1 : 0;
+  LtAddOffsetToDateTime(p, offset);
 }
 
 void DbDataFilterParametersGet(FilterParameters_t *p)

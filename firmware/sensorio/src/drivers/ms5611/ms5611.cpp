@@ -48,7 +48,18 @@ bool MS5611::update(Osr osr)
   bool error = doConversion(CONV_PRESSURE, osr, p_raw);
   error = error || doConversion(CONV_TEMP, osr, t_raw);
   error = error || processData();
+  error = error || checkRange();
   return error;
+}
+
+bool MS5611::checkRange(void)
+{
+  bool invalid = (p_comp < 1000) || (120000 < p_comp);
+  if (invalid) {
+    ESP_LOGE(tag, "pressure out of range: %d", (int)p_comp);
+  }
+
+  return invalid;
 }
 
 bool MS5611::sendCmd(uint8_t buf[], size_t length)

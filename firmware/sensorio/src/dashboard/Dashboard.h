@@ -9,6 +9,8 @@
 /*****************************************************************************/
 /* INCLUDES                                                                  */
 /*****************************************************************************/
+#include "LocalTime.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -198,6 +200,8 @@ extern "C"
 
   void DbDataBpsGet(BpsData_t *p);
   void DbDataBpsSet(BpsData_t *p);
+
+  void DbDataLocalTimeGet(LocalTime_t *p);
 
   void DbDataFilterParametersGet(FilterParameters_t *p);
   void DbDataFilterParametersSet(FilterParameters_t *p);

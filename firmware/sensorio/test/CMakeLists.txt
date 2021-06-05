@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+project(localtime-test LANGUAGES CXX)
+set(CMAKE_BUILD_TYPE Debug)
+add_executable(${PROJECT_NAME} localtime-test.cpp ../src/dashboard/LocalTime.cpp)
+include_directories(../src/dashboard)                   
+find_package(Catch2 REQUIRED)
+target_link_libraries(${PROJECT_NAME} Catch2::Catch2 Catch2::Catch2WithMain)

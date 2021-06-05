@@ -104,16 +104,16 @@ static void refresh_task(lv_task_t *p)
   (void)p;
 
   // Set time
-  GpsData_t gps_data;
-  DbDataGpsGet(&gps_data);
+  LocalTime_t time;
+  DbDataLocalTimeGet(&time);
 
   lv_table_set_cell_value_fmt(data_table,
                               0,
                               0,
                               "%02d:%02d:%02d",
-                              gps_data.time.hour,
-                              gps_data.time.minute,
-                              gps_data.time.second);
+                              time.hour,
+                              time.minute,
+                              time.second);
 
   FilterOutput_t filter_data;
   DbDataFilterOutputGet(&filter_data);
@@ -130,6 +130,9 @@ static void refresh_task(lv_task_t *p)
   } else {
     symbol = LV_SYMBOL_MINUS;
   }
+
+  GpsData_t gps_data;
+  DbDataGpsGet(&gps_data);
 
   lv_table_set_cell_value_fmt(data_table, 1, 0, "%2.1f %s", vario, symbol);
   lv_table_set_cell_value_fmt(data_table, 3, 0, "%d", (int)gps_data.speed);

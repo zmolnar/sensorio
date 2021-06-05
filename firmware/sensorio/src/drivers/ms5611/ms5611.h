@@ -99,6 +99,7 @@ private:
   uint32_t t_raw;
   uint32_t t_comp;
 
+  bool checkRange(void);
   bool sendCmd(uint8_t buf[], size_t length);
   bool receiveData(uint8_t buf[], size_t length);
   bool reset(void);
