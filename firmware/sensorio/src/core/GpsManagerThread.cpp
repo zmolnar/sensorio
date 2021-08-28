@@ -85,7 +85,7 @@ void GpsManagerThread(void *p)
   uart_driver_install(GPS_UART, GPS_RX_BUF_IN_BYTES, 0, 20, &uartEventQueue, 0);
 
   uart_config_t gpsConfig = {
-      .baud_rate = 115200,
+      .baud_rate = 9600,
       .data_bits = UART_DATA_8_BITS,
       .parity = UART_PARITY_DISABLE,
       .stop_bits = UART_STOP_BITS_1,
@@ -140,6 +140,7 @@ void GpsManagerThread(void *p)
         }
       } else {
         ESP_LOGI(tag, "Discarded UART event %d", (int)event.type);
+        vTaskDelay(pdMS_TO_TICKS(1000));
       }
     }
   }
