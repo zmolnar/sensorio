@@ -8,7 +8,7 @@
 /*****************************************************************************/
 #include "SystemStatus.h"
 
-#include "dashboard/Dashboard.h"
+#include <dashboard/Dashboard.hpp>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -39,25 +39,24 @@ static lv_task_t *task;
 /*****************************************************************************/
 static void refresh_task(lv_task_t *t)
 {
-  Battery_t data;
-  DbDataBatteryGet(&data);
+  Dashboard::Battery batt {dashboard.battery.get()};
 
   char buf[10];
-  lv_snprintf(buf, sizeof(buf), "%3.02f V", data.voltage);
+  lv_snprintf(buf, sizeof(buf), "%3.02f V", batt.voltage);
   lv_table_set_cell_value(battery, 1, 1, buf);
-  lv_snprintf(buf, sizeof(buf), "%d", data.percentage);
+  lv_snprintf(buf, sizeof(buf), "%d", batt.percentage);
   lv_table_set_cell_value(battery, 2, 1, buf);
 
   const char *batStatus[] = {"Discharging", "Charging", "Charged", "Invalid"};
-  lv_table_set_cell_value(battery, 3, 1, batStatus[data.status]);
+  std::size_t bi = static_cast<std::size_t>(batt.status);
+  lv_table_set_cell_value(battery, 3, 1, batStatus[bi]);
 
-  lv_snprintf(buf, sizeof(buf), "%d", data.value);
+  lv_snprintf(buf, sizeof(buf), "%d", (int)batt.adcValue);
   lv_table_set_cell_value(battery, 4, 1, buf);
 
-  Board_t bdata;
-  DbDataBoardGet(&bdata);
+  Dashboard::Board bd {dashboard.board.get()};
 
-  lv_table_set_cell_value(board, 1, 1, bdata.usbConnected ? "Yes" : "No");
+  lv_table_set_cell_value(board, 1, 1, bd.usbConnected ? "Yes" : "No");
 }
 
 static void event_handler(lv_obj_t *obj, lv_event_t event)

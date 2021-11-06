@@ -11,7 +11,7 @@
 #include <core/DataLoggerThread.h>
 #include <core/ImuManagerThread.h>
 #include <core/PressureReaderThread.h>
-#include <dashboard/Dashboard.h>
+#include <dashboard/Dashboard.hpp>
 #include <kalmanfilter/MerweScaledSigmaPoints.h>
 #include <kalmanfilter/Ukf.h>
 
@@ -91,7 +91,7 @@ static Matrix hx(const Vector &x)
   return zout;
 }
 
-static double calculateVerticalAcceleration(ImuData_t &imu)
+static double calculateVerticalAcceleration(Dashboard::Imu &imu)
 {
   double gx = imu.gravity.x;
   double gy = imu.gravity.y;
@@ -154,6 +154,9 @@ static bool IRAM_ATTR timerCallback(void *args)
   timer_set_counter_value(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, 0);
   timer_start(SAMPLING_TIMER_GROUP, SAMPLING_TIMER);
 
+  SampleBps();
+  SampleImu();
+
   return false;
 }
 
@@ -179,6 +182,56 @@ static void initAndStartSamplingTimer(void)
   timer_start(SAMPLING_TIMER_GROUP, SAMPLING_TIMER);
 }
 
+static void unlockSemaphore(SemaphoreHandle_t &sem)
+{
+  BaseType_t res{pdFALSE};
+  do {
+    res = xSemaphoreGive(sem);
+  } while (pdTRUE != res);
+}
+
+static void lockSemaphore(SemaphoreHandle_t &sem)
+{
+  BaseType_t res{pdFALSE};
+  do {
+    res = xSemaphoreTake(sem, portMAX_DELAY);
+  } while (pdTRUE != res);
+}
+
+static void waitForImu()
+{
+  SemaphoreHandle_t sem = xSemaphoreCreateBinary();
+  configASSERT(nullptr != sem);
+  Mask mask = static_cast<Mask>(Dashboard::Dashboard::Data::IMU);
+  dashboard.subscribe(mask, [&sem]() {
+    unlockSemaphore(sem);
+  });
+  lockSemaphore(sem);
+}
+
+static void waitForBps()
+{
+  SemaphoreHandle_t sem = xSemaphoreCreateBinary();
+  configASSERT(nullptr != sem);
+  Mask mask = static_cast<Mask>(Dashboard::Dashboard::Data::BPS);
+  dashboard.subscribe(mask, [&sem]() {
+    unlockSemaphore(sem);
+  });
+  lockSemaphore(sem);
+}
+
+static void waitForImuAndBps()
+{
+  SemaphoreHandle_t sem = xSemaphoreCreateBinary();
+  configASSERT(nullptr != sem);
+  Mask mask = static_cast<Mask>(Dashboard::Dashboard::Data::BPS) |
+              static_cast<Mask>(Dashboard::Dashboard::Data::IMU);
+  dashboard.subscribe(mask, [&sem]() {
+    unlockSemaphore(sem);
+  });
+  lockSemaphore(sem);
+}
+
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
@@ -189,29 +242,29 @@ void DataFilterThread(void *p)
 
   initAndStartSamplingTimer();
 
+  ESP_LOGE("zzzz", "wait for IMU");
+
   // Wait for the sensors to start up properly
   bool ready = false;
   do {
-    SampleImu();
-    xSemaphoreTake(filterDataStart, portMAX_DELAY);
+    waitForImu();
 
-    ImuData_t imu;
-    DbDataImuGet(&imu);
+    Dashboard::Imu imu {dashboard.imu.get()};
 
-    ready = (IMU_SYS_RUNNING_FUSION == imu.system.status);
+    ready = (Dashboard::Imu::Status::RUNNING_FUSION == imu.system.status);
     ready &= (3 == imu.calibration.mag);
     ready &= (3 == imu.calibration.gyro);
 
   } while (!ready);
 
+  ESP_LOGE("zzzz", "wait for BPS");
+
   // Set initial conditions
   ready = false;
   do {
-    SampleBps();
-    xSemaphoreTake(filterDataStart, portMAX_DELAY);
+    waitForBps();
 
-    BpsData_t bps;
-    DbDataBpsGet(&bps);
+    Dashboard::Bps bps {dashboard.bps.get()};
 
     if (0 < bps.cooked.pressure) {
       double p0 = bps.cooked.pressure;
@@ -251,21 +304,15 @@ void DataFilterThread(void *p)
   LogAppend("ts dt p gx gy gz ax ay az h v a\n\n");
 
   while (1) {
-    xSemaphoreTake(filterDataStart, portMAX_DELAY);
+    waitForImuAndBps();
+
     TickType_t timeStamp = xTaskGetTickCount();
 
     // Calculate dt
     double dt = calculateDt();
 
-    BpsData_t bps;
-    DbDataBpsGet(&bps);
-
-    ImuData_t imu;
-    DbDataImuGet(&imu);
-
-    // Wake up data sampling threads.
-    SampleBps();
-    SampleImu();
+    Dashboard::Bps bps {dashboard.bps.get()};
+    Dashboard::Imu imu {dashboard.imu.get()};
 
     // Update measurement vector
     z(0) = bps.cooked.pressure;
@@ -276,12 +323,12 @@ void DataFilterThread(void *p)
     ukf.update(z);
 
     // Update the results in the database
-    FilterOutput_t out;
-    out.height = ukf.x(0);
-    out.vario.instant = ukf.x(1);
-    out.vario.averaged = 0;
+    Dashboard::Filter filter {};
+    filter.height = ukf.x(0);
+    filter.vario.instant = ukf.x(1);
+    filter.vario.averaged = 0;
+    dashboard.filter.set(filter);
 
-    DbDataFilterOutputSet(&out);
     BeepControlUpdate();
 
     LogAppend(

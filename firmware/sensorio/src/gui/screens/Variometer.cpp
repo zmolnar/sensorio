@@ -9,7 +9,8 @@
 #include "Variometer.h"
 #include "VariometerSettings.h"
 
-#include "dashboard/Dashboard.h"
+#include <dashboard/Dashboard.hpp>
+#include <dashboard/Config.hpp>
 #include "gui/Sensorio.h"
 
 /*****************************************************************************/
@@ -48,10 +49,9 @@ static void chart_refresh(lv_task_t *p)
 {
   (void)p;
 
-  FilterOutput_t filter_data;
-  DbDataFilterOutputGet(&filter_data);
+  Dashboard::Filter filter {dashboard.filter.get()};
 
-  lv_coord_t point = (lv_coord_t)filter_data.height;
+  lv_coord_t point = (lv_coord_t)filter.height;
   lv_chart_set_next(height_chart, height_history, point);
 
   static uint32_t point_count = 0;
@@ -104,22 +104,22 @@ static void refresh_task(lv_task_t *p)
   (void)p;
 
   // Set time
-  LocalTime_t time;
-  DbDataLocalTimeGet(&time);
+  Dashboard::Gps gps {dashboard.gps.get()};
+#warning Update UTC offset
+  Dashboard::Gps::DateTime lt {gps.getLocalTime(0)};
 
   lv_table_set_cell_value_fmt(data_table,
                               0,
                               0,
                               "%02d:%02d:%02d",
-                              time.hour,
-                              time.minute,
-                              time.second);
+                              lt.hour,
+                              lt.minute,
+                              lt.second);
 
-  FilterOutput_t filter_data;
-  DbDataFilterOutputGet(&filter_data);
+  Dashboard::Filter filter {dashboard.filter.get()};
 
   // Set vario
-  double vario = filter_data.vario.instant;
+  double vario = filter.vario.instant;
   vario        = ((int32_t)(vario * 10.0)) / 10.0;
   const char *symbol;
 
@@ -131,21 +131,17 @@ static void refresh_task(lv_task_t *p)
     symbol = LV_SYMBOL_MINUS;
   }
 
-  GpsData_t gps_data;
-  DbDataGpsGet(&gps_data);
-
   lv_table_set_cell_value_fmt(data_table, 1, 0, "%2.1f %s", vario, symbol);
-  lv_table_set_cell_value_fmt(data_table, 3, 0, "%d", (int)gps_data.speed);
-  lv_table_set_cell_value_fmt(data_table, 3, 1, "%d", (int)filter_data.height);
+  lv_table_set_cell_value_fmt(data_table, 3, 0, "%d", (int)gps.speed);
+  lv_table_set_cell_value_fmt(data_table, 3, 1, "%d", (int)filter.height);
 }
 
 static void reschedule_chart_refresh_task(void)
 {
-  SysParams_t params;
-  DbCfgSysParamsGet(&params);
+  Config::Gui gui {config.gui.get()};
 
-  if (chart_refresh_period != params.screens.vario.chart_refresh_period) {
-    chart_refresh_period = params.screens.vario.chart_refresh_period;
+  if (chart_refresh_period != gui.screens.variometer.chartRefreshPeriod) {
+    chart_refresh_period = gui.screens.variometer.chartRefreshPeriod;
     if (chart_task) {
       lv_task_del(chart_task);
     }

@@ -10,7 +10,7 @@
 #include "DataFilterThread.h"
 #include "ImuManagerThread.h"
 
-#include "dashboard/Dashboard.h"
+#include "dashboard/Dashboard.hpp"
 #include "drivers/ms5611/ms5611.h"
 
 #include <driver/gpio.h>
@@ -145,15 +145,12 @@ void PressureReaderThread(void *p)
     error = bps.update(MS5611::Osr::OSR_4096);
 
     if (!error) {
-      BpsData_t data;
-      memset(&data, 0, sizeof(data));
-
+      Dashboard::Bps data{};
       data.raw.temp = bps.getRawTemp();
       data.raw.pressure = bps.getRawPressure();
       data.cooked.temp = bps.getCompensatedTemp();
       data.cooked.pressure = bps.getCompensatedPressure();
-
-      DbDataBpsSet(&data);
+      dashboard.bps.set(data);
     } else {
       ESP_LOGE(tag, "MS5611 conversion error");
     }
@@ -167,7 +164,11 @@ void PressureReaderThreadInit(void)
 
 void SampleBps(void)
 {
-  xSemaphoreGive(readBps);
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  xSemaphoreGiveFromISR(readBps, &xHigherPriorityTaskWoken);
+  if (pdTRUE == xHigherPriorityTaskWoken) {
+    portYIELD_FROM_ISR();
+  }
 }
 
 /****************************** END OF FILE **********************************/

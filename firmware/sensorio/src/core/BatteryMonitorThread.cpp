@@ -14,7 +14,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include <dashboard/Dashboard.h>
+#include <dashboard/Dashboard.hpp>
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -58,17 +58,21 @@ static inline bool detectSTAT(void)
   return (1 == gpio_get_level(BAT_STATUS));
 }
 
-static BatteryStatus_t decodeStatus(void)
+static Dashboard::Battery::Status decodeStatus(void)
 {
-  BatteryStatus_t status;
+  Dashboard::Battery::Status status;
 
   bool usbPresent = detectUSB();
   bool chargeFinished = detectSTAT();
 
   if (usbPresent) {
-    status = chargeFinished ? BAT_CHARGED : BAT_CHARGING;
+    if (chargeFinished) {
+      status = Dashboard::Battery::Status::CHARGED;
+    } else {
+      status = Dashboard::Battery::Status::CHARGING;
+    }
   } else {
-    status = BAT_DISCHARGING;
+    status = Dashboard::Battery::Status::DISCHARGING;
   }
 
   return status;
@@ -161,16 +165,16 @@ void BatteryMonitorThread(void *p)
     uint32_t raw_voltage = esp_adc_cal_raw_to_voltage(raw, &adc_chars);
     double voltage = ((double)raw_voltage) / 1000.0 * (330.0 / 220.0);
 
-    Battery_t battery;
+    Dashboard::Battery battery{};
     battery.status = decodeStatus();
     battery.voltage = voltage;
     battery.percentage = voltage2percentage(voltage);
-    battery.value = (uint32_t)raw;
-    DbDataBatterySet(&battery);
+    battery.adcValue = raw_voltage;
+    dashboard.battery.set(battery);
 
-    Board_t board;
+    Dashboard::Board board{};
     board.usbConnected = detectUSB();
-    DbDataBoardSet(&board);
+    dashboard.board.set(board);
 
     vTaskDelay(pdMS_TO_TICKS(1000));
   }

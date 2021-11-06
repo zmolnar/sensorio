@@ -7,7 +7,7 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "ImuData.h"
-#include "dashboard/Dashboard.h"
+#include "dashboard/Dashboard.hpp"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -42,8 +42,7 @@ static void refresh_task(lv_task_t *p)
 {
   (void)p;
 
-  ImuData_t data;
-  DbDataImuGet(&data);
+  Dashboard::Imu imu {dashboard.imu.get()};
 
   static const char *status[] = {
       "Idle",
@@ -57,27 +56,30 @@ static void refresh_task(lv_task_t *p)
 
   static const char *clkSource[] = {"Internal", "External"};
 
-  lv_table_set_cell_value(sensor, 0, 1, status[data.system.status]);
-  lv_table_set_cell_value(sensor, 1, 1, clkSource[data.system.clk]);
-  lv_table_set_cell_value_fmt(sensor, 2, 1, "%d", data.calibration.acc);
-  lv_table_set_cell_value_fmt(sensor, 3, 1, "%d", data.calibration.mag);
-  lv_table_set_cell_value_fmt(sensor, 4, 1, "%d", data.calibration.gyro);
-  lv_table_set_cell_value_fmt(sensor, 5, 1, "%d", data.calibration.sys);
+  std::size_t statusi = static_cast<std::size_t>(imu.system.status);
+  std::size_t clki = static_cast<std::size_t>(imu.system.clock);
 
-  lv_table_set_cell_value_fmt(euler, 1, 0, "Y: %3.1f", data.euler.yaw);
-  lv_table_set_cell_value_fmt(euler, 1, 1, "P: %3.1f", data.euler.pitch);
-  lv_table_set_cell_value_fmt(euler, 1, 2, "R: %3.1f", data.euler.roll);
+  // lv_table_set_cell_value(sensor, 0, 1, status[statusi]);
+  // lv_table_set_cell_value(sensor, 1, 1, clkSource[clki]);
+  lv_table_set_cell_value_fmt(sensor, 2, 1, "%d", imu.calibration.acc);
+  lv_table_set_cell_value_fmt(sensor, 3, 1, "%d", imu.calibration.mag);
+  lv_table_set_cell_value_fmt(sensor, 4, 1, "%d", imu.calibration.gyro);
+  lv_table_set_cell_value_fmt(sensor, 5, 1, "%d", imu.calibration.sys);
 
-  lv_table_set_cell_value_fmt(gravity, 1, 0, "X: %3.1f", data.gravity.x);
-  lv_table_set_cell_value_fmt(gravity, 1, 1, "Y: %3.1f", data.gravity.y);
-  lv_table_set_cell_value_fmt(gravity, 1, 2, "Z: %3.1f", data.gravity.z);
+  lv_table_set_cell_value_fmt(euler, 1, 0, "Y: %3.1f", imu.euler.yaw);
+  lv_table_set_cell_value_fmt(euler, 1, 1, "P: %3.1f", imu.euler.pitch);
+  lv_table_set_cell_value_fmt(euler, 1, 2, "R: %3.1f", imu.euler.roll);
+
+  lv_table_set_cell_value_fmt(gravity, 1, 0, "X: %3.1f", imu.gravity.x);
+  lv_table_set_cell_value_fmt(gravity, 1, 1, "Y: %3.1f", imu.gravity.y);
+  lv_table_set_cell_value_fmt(gravity, 1, 2, "Z: %3.1f", imu.gravity.z);
 
   lv_table_set_cell_value_fmt(
-      acceleration, 1, 0, "X: %3.1f", data.acceleration.x);
+      acceleration, 1, 0, "X: %3.1f", imu.acceleration.x);
   lv_table_set_cell_value_fmt(
-      acceleration, 1, 1, "Y: %3.1f", data.acceleration.y);
+      acceleration, 1, 1, "Y: %3.1f", imu.acceleration.y);
   lv_table_set_cell_value_fmt(
-      acceleration, 1, 2, "Z: %3.1f", data.acceleration.z);
+      acceleration, 1, 2, "Z: %3.1f", imu.acceleration.z);
 }
 
 static void event_handler(lv_obj_t *obj, lv_event_t event)

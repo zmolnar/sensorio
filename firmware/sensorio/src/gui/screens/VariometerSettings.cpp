@@ -8,7 +8,9 @@
 /*****************************************************************************/
 #include "VariometerSettings.h"
 
-#include "dashboard/Dashboard.h"
+#include "dashboard/Dashboard.hpp"
+#include <dashboard/Config.hpp>
+
 #include "gui/Sensorio.h"
 
 #include <stdio.h>
@@ -51,23 +53,6 @@ static lv_obj_t *cancel_button;
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
-static VolumeLevel_t convert_volume_option_to_enum(int16_t option)
-{
-  static const VolumeLevel_t options[4] = {
-      [0] = VOL_ZERO,
-      [1] = VOL_LOW,
-      [2] = VOL_MEDIUM,
-      [3] = VOL_HIGH,
-  };
-
-  VolumeLevel_t vol = VOL_ZERO;
-  if ((0 <= option) && (option <= 3)) {
-    vol = options[option];
-  }
-
-  return vol;
-}
-
 static void event_handler(lv_obj_t *obj, lv_event_t event)
 {
   switch (event) {
@@ -118,20 +103,18 @@ static void save_button_handler(lv_obj_t *btn, lv_event_t e)
   if (e == LV_EVENT_SHORT_CLICKED || e == LV_EVENT_LONG_PRESSED_REPEAT) {
     uint32_t period = (uint32_t)lv_slider_get_value(period_slider);
     int32_t offset = (int32_t)lv_spinbox_get_value(utcoffset_spinbox);
-
-    SysParams_t params;
-    DbCfgSysParamsGet(&params);
-    params.screens.vario.chart_refresh_period = period * 1000;
-    params.location.utcOffset = offset;
-    DbCfgSysParamsSet(&params);
-
-    BeepSettings_t beep;
-    DbCfgBeepSettingsGet(&beep);
     int16_t option = lv_dropdown_get_selected(volume_list);
-    beep.volume = convert_volume_option_to_enum(option);
-    DbCfgBeepSettingsSet(&beep);
 
-    DbCfgSaveToEeprom();
+    Config::System system {config.system.get()};
+    system.location.utcOffset = offset;
+    system.beep.set(option);
+    config.system.set(system);
+
+    Config::Gui gui {config.gui.get()};
+    gui.screens.variometer.chartRefreshPeriod = period * 1000;
+    config.gui.set(gui);
+
+    config.save();
 
     SensorioLoadEncoderGroup();
   }
@@ -171,10 +154,9 @@ lv_obj_t *variometer_settings_screen_create(lv_style_t *style)
   lv_slider_set_range(period_slider, 1, 20);
   lv_obj_align(period_slider, period_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
 
-  SysParams_t params;
-  DbCfgSysParamsGet(&params);
+  Config::Gui params {config.gui.get()};
 
-  uint32_t period = params.screens.vario.chart_refresh_period / 1000;
+  uint32_t period = params.screens.variometer.chartRefreshPeriod / 1000;
   lv_slider_set_value(period_slider, (int16_t)period, LV_ANIM_OFF);
 
   period_text = lv_label_create(scr, NULL);
@@ -212,8 +194,7 @@ lv_obj_t *variometer_settings_screen_create(lv_style_t *style)
   lv_label_set_text(volume_label, "Volume");
   lv_obj_align(volume_label, qnh_spinbox, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
 
-  BeepSettings_t beep;
-  DbCfgBeepSettingsGet(&beep);
+  Config::System sysparams {config.system.get()};
 
   volume_list = lv_dropdown_create(scr, NULL);
   lv_dropdown_set_options(volume_list,
@@ -221,7 +202,7 @@ lv_obj_t *variometer_settings_screen_create(lv_style_t *style)
                           "Low\n"
                           "Medium\n"
                           "High");
-  lv_dropdown_set_selected(volume_list, (int16_t)beep.volume);
+  lv_dropdown_set_selected(volume_list, static_cast<int16_t>(sysparams.beep.level));
   lv_obj_align(volume_list, volume_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
 
   utcoffset_label = lv_label_create(scr, NULL);
@@ -232,7 +213,7 @@ lv_obj_t *variometer_settings_screen_create(lv_style_t *style)
   lv_spinbox_set_range(utcoffset_spinbox, -12, 12);
   lv_spinbox_set_digit_format(utcoffset_spinbox, 2, 0);
   lv_spinbox_step_prev(utcoffset_spinbox);
-  lv_spinbox_set_value(utcoffset_spinbox, params.location.utcOffset);
+  lv_spinbox_set_value(utcoffset_spinbox, sysparams.location.utcOffset);
   lv_obj_set_width(utcoffset_spinbox, 100);
   lv_obj_align(
       utcoffset_spinbox, utcoffset_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);

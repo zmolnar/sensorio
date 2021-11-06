@@ -8,7 +8,7 @@
 /*****************************************************************************/
 #include "GpsManagerThread.h"
 
-#include <dashboard/Dashboard.h>
+#include <dashboard/Dashboard.hpp>
 
 #include <MicroNMEA.h>
 
@@ -114,27 +114,26 @@ void GpsManagerThread(void *p)
         uint8_t c;
         while (0 < uart_read_bytes(GPS_UART, &c, 1, pdMS_TO_TICKS(10))) {
           if (nmea.process(c) && isValid) {
-            GpsData_t data;
-            memset(&data, 0, sizeof(data));
+            Dashboard::Gps gps {};
 
             long alt = 0;
             nmea.getAltitude(alt);
 
-            data.locked = 1 == gpio_get_level(GPS_3DFIX);
-            data.altitude = (uint32_t)alt;
-            data.course = nmea.getCourse();
-            data.latitude = nmea.getLatitude();
-            data.longitude = nmea.getLongitude();
-            data.numOfSatellites = nmea.getNumSatellites();
-            data.speed = nmea.getSpeed() * 0.001852;
-            data.time.year = nmea.getYear();
-            data.time.month = nmea.getMonth();
-            data.time.day = nmea.getDay();
-            data.time.hour = nmea.getHour();
-            data.time.minute = nmea.getMinute();
-            data.time.second = nmea.getSecond();
+            gps.locked = 1 == gpio_get_level(GPS_3DFIX);
+            gps.altitude = (uint32_t)alt;
+            gps.course = nmea.getCourse();
+            gps.latitude = nmea.getLatitude();
+            gps.longitude = nmea.getLongitude();
+            gps.numOfSatellites = nmea.getNumSatellites();
+            gps.speed = nmea.getSpeed() * 0.001852;
+            gps.gmt.year = nmea.getYear();
+            gps.gmt.month = nmea.getMonth();
+            gps.gmt.day = nmea.getDay();
+            gps.gmt.hour = nmea.getHour();
+            gps.gmt.minute = nmea.getMinute();
+            gps.gmt.second = nmea.getSecond();
 
-            DbDataGpsSet(&data);
+            dashboard.gps.set(gps);
             isValid = true;
           }
         }

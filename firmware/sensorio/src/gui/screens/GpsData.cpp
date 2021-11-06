@@ -7,7 +7,7 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "GpsData.h"
-#include "dashboard/Dashboard.h"
+#include "dashboard/Dashboard.hpp"
 
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
@@ -39,30 +39,29 @@ static void refresh_task(lv_task_t *p)
 {
   (void)p;
 
-  GpsData_t data;
-  DbDataGpsGet(&data);
+  Dashboard::Gps gps {dashboard.gps.get()};
 
-  lv_table_set_cell_value_fmt(gpsdata, 0, 1, "%s", data.locked ? "Yes" : "No");
-  lv_table_set_cell_value_fmt(gpsdata, 1, 1, "%.03f m", data.altitude / 1000.0);
-  lv_table_set_cell_value_fmt(gpsdata, 2, 1, "%.03f", data.course / 1000.0);
-  lv_table_set_cell_value_fmt(gpsdata, 3, 1, "%f", data.latitude / 1000000.0);
-  lv_table_set_cell_value_fmt(gpsdata, 4, 1, "%f", data.longitude / 1000000.0);
-  lv_table_set_cell_value_fmt(gpsdata, 5, 1, "%d", data.numOfSatellites);
-  lv_table_set_cell_value_fmt(gpsdata, 6, 1, "%d km/h", (int)data.speed);
+  lv_table_set_cell_value_fmt(gpsdata, 0, 1, "%s", gps.locked ? "Yes" : "No");
+  lv_table_set_cell_value_fmt(gpsdata, 1, 1, "%.03f m", gps.altitude / 1000.0);
+  lv_table_set_cell_value_fmt(gpsdata, 2, 1, "%.03f", gps.course / 1000.0);
+  lv_table_set_cell_value_fmt(gpsdata, 3, 1, "%f", gps.latitude / 1000000.0);
+  lv_table_set_cell_value_fmt(gpsdata, 4, 1, "%f", gps.longitude / 1000000.0);
+  lv_table_set_cell_value_fmt(gpsdata, 5, 1, "%d", gps.numOfSatellites);
+  lv_table_set_cell_value_fmt(gpsdata, 6, 1, "%d km/h", (int)gps.speed);
   lv_table_set_cell_value_fmt(gpsdata,
                               7,
                               1,
                               "%02d/%02d/%04d",
-                              data.time.day,
-                              data.time.month,
-                              data.time.year);
+                              gps.gmt.day,
+                              gps.gmt.month,
+                              gps.gmt.year);
   lv_table_set_cell_value_fmt(gpsdata,
                               8,
                               1,
                               "%02d:%02d:%02d",
-                              data.time.hour,
-                              data.time.minute,
-                              data.time.second);
+                              gps.gmt.hour,
+                              gps.gmt.minute,
+                              gps.gmt.second);
 }
 
 static void event_handler(lv_obj_t *obj, lv_event_t event)

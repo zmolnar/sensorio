@@ -9,7 +9,7 @@
 #include "Sensorio.h"
 #include "Power.h"
 #include "core/DataLoggerThread.h"
-#include "dashboard/Dashboard.h"
+// #include "dashboard/Dashboard.hpp"
 
 
 #if defined(SIMULATOR)
@@ -127,7 +127,7 @@ void SensorioStart(void)
 
 void SensorioStop(void)
 {
-  LogWaitToFinish();  
+  LogWaitToFinish();
   PowerStop();
 }
 

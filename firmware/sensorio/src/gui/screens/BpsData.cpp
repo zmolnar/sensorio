@@ -7,7 +7,7 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "BpsData.h"
-#include "dashboard/Dashboard.h"
+#include "dashboard/Dashboard.hpp"
 
 #include <stdio.h>
 
@@ -48,18 +48,17 @@ static void refresh_task(lv_task_t *p)
 {
   (void)p;
 
-  BpsData_t data;
-  DbDataBpsGet(&data);
+  Dashboard::Bps bps {dashboard.bps.get()};
 
   // Update temperature
   char value[20];
   lv_snprintf(
-      value, sizeof(value), "%04.02f C", (float)data.cooked.temp / 100.0);
+      value, sizeof(value), "%04.02f C", (float)bps.cooked.temp / 100.0);
   lv_table_set_cell_value(table, 0, 1, value);
 
   // Update pressure
   lv_snprintf(
-      value, sizeof(value), "%04.02f mb", (float)data.cooked.pressure / 100.0);
+      value, sizeof(value), "%04.02f mb", (float)bps.cooked.pressure / 100.0);
   lv_table_set_cell_value(table, 1, 1, value);
 
   // Update static variables
@@ -68,11 +67,11 @@ static void refresh_task(lv_task_t *p)
   }
 
   if (0 == offset) {
-    offset = data.cooked.pressure - (INT16_MAX / 2);
+    offset = bps.cooked.pressure - (INT16_MAX / 2);
   }
 
   // Add point to the data series
-  lv_coord_t point = (lv_coord_t)(data.cooked.pressure - offset);
+  lv_coord_t point = (lv_coord_t)(bps.cooked.pressure - offset);
   lv_chart_set_next(chart, pseries, point);
 
   // Search the minimum and maximum of the data series

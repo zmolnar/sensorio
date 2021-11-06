@@ -29,10 +29,6 @@
 /*****************************************************************************/
 /* DECLARATION OF GLOBAL FUNCTIONS                                           */
 /*****************************************************************************/
-#ifdef __cplusplus
-extern "C"
-{
-#endif
 
 void DataLoggerThread(void *p);
 
@@ -41,10 +37,6 @@ void DataLoggerThreadInit(void);
 void LogAppend(const char *fmt, ...);
 
 void LogWaitToFinish(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* DATA_LOGGER_THREAD_H */
 

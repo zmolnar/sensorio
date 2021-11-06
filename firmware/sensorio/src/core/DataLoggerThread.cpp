@@ -8,7 +8,7 @@
 /*****************************************************************************/
 #include "DataLoggerThread.h"
 
-#include <dashboard/Dashboard.h>
+#include <dashboard/Dashboard.hpp>
 
 #include <esp_err.h>
 #include <esp_log.h>
@@ -218,23 +218,24 @@ static bool fileExists(const char *path)
   return 0 == stat(path, &st);
 }
 
-static bool createLogFile(char *path, size_t length, GpsData_t *gps)
+static bool
+createLogFile(char *path, size_t length, Dashboard::Gps::DateTime &dt)
 {
-  size_t n = snprintf(path, length, "/sdcard/%04d", (int)gps->time.year);
+  size_t n = snprintf(path, length, "/sdcard/%04d", (int)dt.year);
   bool error = createDirectory(path);
 
-  n += snprintf(path + n, length - n, "/%02d", (int)gps->time.month);
+  n += snprintf(path + n, length - n, "/%02d", (int)dt.month);
   error = error || createDirectory(path);
 
-  n += snprintf(path + n, length - n, "/%02d", (int)gps->time.day);
+  n += snprintf(path + n, length - n, "/%02d", (int)dt.day);
   error = error || createDirectory(path);
 
   n += snprintf(path + n,
                 length - n,
                 "/%02d-%02d-%02d.dat",
-                (int)gps->time.hour,
-                (int)gps->time.minute,
-                (int)gps->time.second);
+                (int)dt.hour,
+                (int)dt.minute,
+                (int)dt.second);
 
   // Append running index if needed
   bool found = fileExists(path);
@@ -253,11 +254,11 @@ static bool createLogFile(char *path, size_t length, GpsData_t *gps)
   return error;
 }
 
-static bool isDateTimeValid(GpsData_t *gps)
+static bool isDateTimeValid(Dashboard::Gps::DateTime &lt)
 {
-  bool isvalid = 2000U < gps->time.year;
-  isvalid &= gps->time.month <= 12U;
-  isvalid &= gps->time.day <= 31U;
+  bool isvalid = 2000U < lt.year;
+  isvalid &= lt.month <= 12U;
+  isvalid &= lt.day <= 31U;
 
   return isvalid;
 }
@@ -274,10 +275,11 @@ static const char *getLogfileName(void)
 
   switch (state) {
   case NOT_INITED: {
-    GpsData_t gps;
-    DbDataGpsGet(&gps);
-    if (isDateTimeValid(&gps)) {
-      bool error = createLogFile(path, sizeof(path), &gps);
+    Dashboard::Gps gps{dashboard.gps.get()};
+    Dashboard::Gps::DateTime lt{gps.gmt};
+
+    if (isDateTimeValid(lt)) {
+      bool error = createLogFile(path, sizeof(path), lt);
       if (error) {
         path[0] = '\0';
         logfile = NULL;

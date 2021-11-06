@@ -5,15 +5,17 @@
 #include <core/DataFilterThread.h>
 #include <core/DataLoggerThread.h>
 #include <core/GpsManagerThread.h>
+#include <core/ImuManagerThread.h>
 #include <core/LvglThread.h>
 #include <core/PressureReaderThread.h>
-#include <core/ImuManagerThread.h>
-#include <dashboard/Dashboard.h>
+#include <dashboard/Config.hpp>
+#include <dashboard/Dashboard.hpp>
+#include <dashboard/NvsStorage.hpp>
+#include <dashboard/RawSerializer.hpp>
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <esp_log.h>
-
+#include <platform/Log.hpp>
 typedef enum {
   PRIO_0_INVALID = 0,
   PRIO_0_BATTMON,
@@ -32,12 +34,19 @@ typedef enum {
 
 static const char *tag = "MAIN";
 
-void app_main(void)
+Dashboard::Dashboard dashboard{};
+Config::RawSerializer serializer{};
+Config::NvsStorage storage{};
+Config::Config config{serializer, storage};
+
+using namespace Platform;
+
+extern "C" void app_main(void)
 {
-  ESP_LOGI(tag, "Sensorio started");
-  
+  Log::Base::setLevel(Log::Level::DEBUG);
+  Log::Info(tag) << "Sensorio started";
+
   PowerStart();
-  DbInit();
 
   PressureReaderThreadInit();
   ImuManagerThreadInit();
@@ -47,24 +56,17 @@ void app_main(void)
   BeepControlThreadInit();
   BatteryMonitorInit();
 
+  storage.init();
+  config.load();
+
 #if 1
-  xTaskCreatePinnedToCore(DataFilterThread,
-                          "data filter",
-                          8192,
-                          NULL,
-                          PRIO_0_FILTER,
-                          NULL,
-                          0);
+  xTaskCreatePinnedToCore(
+      DataFilterThread, "data filter", 8192, NULL, PRIO_0_FILTER, NULL, 0);
 #endif
 
 #if 1
-  xTaskCreatePinnedToCore(DataLoggerThread,
-                          "data logger",
-                          8192,
-                          NULL,
-                          PRIO_0_LOGGER,
-                          NULL,
-                          0);
+  xTaskCreatePinnedToCore(
+      DataLoggerThread, "data logger", 8192, NULL, PRIO_0_LOGGER, NULL, 0);
 #endif
 
 #if 1
@@ -77,7 +79,7 @@ void app_main(void)
                           0);
 #endif
 
-#if 1
+#if 0
   xTaskCreatePinnedToCore(BeepControlThread,
                           "beeper",
                           2048,
@@ -98,8 +100,13 @@ void app_main(void)
 #endif
 
 #if 1
-  xTaskCreatePinnedToCore(
-      BatteryMonitorThread, "Battery thread", 2048, NULL, PRIO_0_BATTMON, NULL, 0);
+  xTaskCreatePinnedToCore(BatteryMonitorThread,
+                          "Battery thread",
+                          2048,
+                          NULL,
+                          PRIO_0_BATTMON,
+                          NULL,
+                          0);
 #endif
 
 #if 1
@@ -107,7 +114,7 @@ void app_main(void)
       LvglThread, "LVGL thread", 16384, NULL, PRIO_1_LVGL, NULL, 1);
 #endif
 
-  while(1) {
+  while (1) {
     vTaskDelay(10000 / portTICK_RATE_MS);
   }
 }

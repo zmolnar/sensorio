@@ -9,7 +9,8 @@
 /*******************************************************************************/
 #include "BeepControlThread.h"
 
-#include <dashboard/Dashboard.h>
+#include <dashboard/Dashboard.hpp>
+#include <dashboard/Config.hpp>
 
 #include <driver/ledc.h>
 #include <driver/timer.h>
@@ -150,9 +151,8 @@ static void disableBeep(void)
 
 static void readMeasurementData(void)
 {
-  FilterOutput_t data;
-  DbDataFilterOutputGet(&data);
-  actualVario = data.vario.instant;
+  Dashboard::Filter filter {dashboard.filter.get()};
+  actualVario = filter.vario.instant;
 }
 
 static void calculateLiftFrequency(void)
@@ -363,11 +363,11 @@ static void updateLocalsFromConfig(void)
       VOLUME_HIGH,
   };
 
-  BeepSettings_t beep;
-  DbCfgBeepSettingsGet(&beep);
+  Config::System system {config.system.get()};
+  auto volume = static_cast<uint32_t>(system.beep.level);
 
-  if ((0 <= beep.volume) && (beep.volume <= 3)) {
-    beepVolume = conversion[beep.volume];
+  if (volume <= 3) {
+    beepVolume = conversion[volume];
   } else {
     beepVolume = VOLUME_MED;
   }
