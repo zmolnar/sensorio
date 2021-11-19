@@ -12,8 +12,8 @@
 #include <core/ImuManagerThread.h>
 #include <core/PressureReaderThread.h>
 #include <dashboard/Dashboard.hpp>
-#include <kalmanfilter/MerweScaledSigmaPoints.h>
-#include <kalmanfilter/Ukf.h>
+#include <kalmanfilter/MerweScaledSigmaPoints.hpp>
+#include <kalmanfilter/Ukf.hpp>
 
 #include <driver/timer.h>
 #include <esp_log.h>
@@ -46,8 +46,8 @@
 static const char *tag = "data-filter-thread";
 static SemaphoreHandle_t filterDataStart;
 
-static const size_t dim_x = 3;
-static const size_t dim_z = 2;
+static constexpr uint32_t dim_x = 3;
+static constexpr uint32_t dim_z = 2;
 static const double alpha = 0.3;
 static const double beta = 2.0;
 static const double kappa = 0.1;
@@ -60,36 +60,37 @@ static const double kappa = 0.1;
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
 // State transition function
-static Matrix fx(const Vector &x, double dt)
+const typename UnscentedKalmanFilter<dim_x,dim_z>::StateVector fx(
+  const typename UnscentedKalmanFilter<dim_x,dim_z>::StateVector &x, double dt)
 {
-  Matrix xout = Matrix(dim_x, 1);
+  typename UnscentedKalmanFilter<dim_x,dim_z>::StateVector xout{};
 
   // Position     = a*dt^2/2 + v*dt + x0
   // Speed        = a*dt + v
   // Acceleration = a
 
-  xout(0) = (x(2) * dt * dt / 2) + (x(1) * dt) + x(0);
-  xout(1) = (x(2) * dt) + x(1);
-  xout(2) = x(2);
+  xout[0][0] = (x[2][0] * dt * dt / 2) + (x[1][0] * dt) + x[0][0];
+  xout[1][0] = (x[2][0] * dt) + x[1][0];
+  xout[2][0] = x[2][0];
 
   return xout;
 }
 
 // Measurement function
-static Matrix hx(const Vector &x)
+typename UnscentedKalmanFilter<dim_x,dim_z>::MeasurementVector hx(
+  const typename UnscentedKalmanFilter<dim_x,dim_z>::StateVector &x)
 {
-  assert(dim_x == x.length);
-
   // Convert height to pressure at altitude using barometric formula
-  double press = 101325 * pow((1 - 2.25577 * pow(10, -5) * x(0)), 5.25588);
-  double acc = x(2);
+  double press = 101325 * pow((1 - 2.25577 * pow(10, -5) * x[0][0]), 5.25588);
+  double acc   = x[2][0];
 
-  Matrix zout = Matrix(2, 1);
-  zout(0) = press;
-  zout(1) = acc;
+  typename UnscentedKalmanFilter<3,2>::MeasurementVector zout{};
+  zout[0][0] = press;
+  zout[1][0] = acc;
 
   return zout;
 }
+
 
 static double calculateVerticalAcceleration(Dashboard::Imu &imu)
 {
@@ -200,7 +201,8 @@ static void lockSemaphore(SemaphoreHandle_t &sem)
 
 static void waitForImu()
 {
-  SemaphoreHandle_t sem = xSemaphoreCreateBinary();
+  StaticSemaphore_t alloc{};
+  SemaphoreHandle_t sem = xSemaphoreCreateBinaryStatic(&alloc);
   configASSERT(nullptr != sem);
   Mask mask = static_cast<Mask>(Dashboard::Dashboard::Data::IMU);
   dashboard.subscribe(mask, [&sem]() {
@@ -211,7 +213,8 @@ static void waitForImu()
 
 static void waitForBps()
 {
-  SemaphoreHandle_t sem = xSemaphoreCreateBinary();
+  StaticSemaphore_t alloc{};
+  SemaphoreHandle_t sem = xSemaphoreCreateBinaryStatic(&alloc);
   configASSERT(nullptr != sem);
   Mask mask = static_cast<Mask>(Dashboard::Dashboard::Data::BPS);
   dashboard.subscribe(mask, [&sem]() {
@@ -222,7 +225,8 @@ static void waitForBps()
 
 static void waitForImuAndBps()
 {
-  SemaphoreHandle_t sem = xSemaphoreCreateBinary();
+  StaticSemaphore_t alloc{};
+  SemaphoreHandle_t sem = xSemaphoreCreateBinaryStatic(&alloc);
   configASSERT(nullptr != sem);
   Mask mask = static_cast<Mask>(Dashboard::Dashboard::Data::BPS) |
               static_cast<Mask>(Dashboard::Dashboard::Data::IMU);
@@ -237,8 +241,8 @@ static void waitForImuAndBps()
 /*****************************************************************************/
 void DataFilterThread(void *p)
 {
-  MerweScaledSigmaPoints sigmas(dim_x, alpha, beta, kappa);
-  UnscentedKalmanFilter ukf(dim_x, dim_z, fx, hx, sigmas);
+  MerweScaledSigmaPoints<dim_x> sigmas(alpha, beta, kappa);
+  UnscentedKalmanFilter<dim_x, dim_z> ukf(fx, hx, sigmas);
 
   initAndStartSamplingTimer();
 
@@ -269,9 +273,9 @@ void DataFilterThread(void *p)
     if (0 < bps.cooked.pressure) {
       double p0 = bps.cooked.pressure;
       double height = 44330 * (1 - pow(p0 / 101325.0, 0.1902));
-      ukf.x(0) = height; // Initial height
-      ukf.x(1) = 0.0;    // Initial speed
-      ukf.x(2) = 0.0;    // Initial acceleration
+      ukf.x[0][0] = height; // Initial height
+      ukf.x[1][0] = 0.0;    // Initial speed
+      ukf.x[2][0] = 0.0;    // Initial acceleration
 
       ready = true;
     } else {
@@ -280,24 +284,22 @@ void DataFilterThread(void *p)
 
   } while (!ready);
 
-  // Initialize process state covariance matrix
-  ukf.P(0, 0) = 1, ukf.P(0, 1) = 0, ukf.P(0, 2) = 0;
-  ukf.P(1, 0) = 0, ukf.P(1, 1) = 1, ukf.P(1, 2) = 0;
-  ukf.P(2, 0) = 0, ukf.P(2, 1) = 0, ukf.P(2, 2) = 1;
+    // Initialize process state covariance matrix
+    ukf.P[0][0] = 1, ukf.P[0][1] = 0, ukf.P[0][2] = 0;
+    ukf.P[1][0] = 0, ukf.P[1][1] = 1, ukf.P[1][2] = 0;
+    ukf.P[2][0] = 0, ukf.P[2][1] = 0, ukf.P[2][2] = 1;
 
-  // Set measurement covariance matrix (based on previous measurement)
-  const double p_std = 3.74;
-  const double a_std = 0.2;
+    // Set measurement covariance matrix (based on previous measurement)
+    const double p_std = 3.74;
+    const double a_std = 0.02;
 
-  ukf.R(0, 0) = (p_std * p_std), ukf.R(0, 1) = 0.0;
-  ukf.R(1, 0) = 0.0, ukf.R(1, 1) = (a_std * a_std);
+    ukf.R[0][0] = (p_std * p_std), ukf.R[0][1] = 0.0;
+    ukf.R[1][0] = 0.0, ukf.R[1][1] = (a_std * a_std);
 
-  // Initialize process noise matrix
-  ukf.Q(0, 0) = 1.2e-09, ukf.Q(0, 1) = 1.2e-07, ukf.Q(0, 2) = 6.0e-06;
-  ukf.Q(1, 0) = 1.2e-07, ukf.Q(1, 1) = 1.2e-05, ukf.Q(1, 2) = 6.0e-04;
-  ukf.Q(2, 0) = 6.0e-06, ukf.Q(2, 1) = 6.0e-04, ukf.Q(2, 2) = 3.0e-02;
-
-  Matrix z(dim_z, 1);
+    // Initialize process noise matrix
+    ukf.Q[0][0] = 1.2e-09, ukf.Q[0][1] = 1.2e-07, ukf.Q[0][2] = 6.0e-06;
+    ukf.Q[1][0] = 1.2e-07, ukf.Q[1][1] = 1.2e-05, ukf.Q[1][2] = 6.0e-04;
+    ukf.Q[2][0] = 6.0e-06, ukf.Q[2][1] = 6.0e-04, ukf.Q[2][2] = 3.0e-02;
 
   ESP_LOGI(tag, "Kalman filter started");
 
@@ -315,8 +317,9 @@ void DataFilterThread(void *p)
     Dashboard::Imu imu {dashboard.imu.get()};
 
     // Update measurement vector
-    z(0) = bps.cooked.pressure;
-    z(1) = calculateVerticalAcceleration(imu);
+    typename UnscentedKalmanFilter<dim_x, dim_z>::MeasurementVector z{};
+    z[0][0] = bps.cooked.pressure;
+    z[1][0] = calculateVerticalAcceleration(imu);
 
     // Run epoche
     ukf.predict(dt);
@@ -324,8 +327,8 @@ void DataFilterThread(void *p)
 
     // Update the results in the database
     Dashboard::Filter filter {};
-    filter.height = ukf.x(0);
-    filter.vario.instant = ukf.x(1);
+    filter.height = ukf.x[0][0];
+    filter.vario.instant = ukf.x[1][0];
     filter.vario.averaged = 0;
     dashboard.filter.set(filter);
 
@@ -346,9 +349,9 @@ void DataFilterThread(void *p)
         imu.acceleration.x,
         imu.acceleration.y,
         imu.acceleration.z,
-        ukf.x(0),
-        ukf.x(1),
-        ukf.x(2));
+        ukf.x[0][0],
+        ukf.x[1][0],
+        ukf.x[2][0]);
   }
 }
 

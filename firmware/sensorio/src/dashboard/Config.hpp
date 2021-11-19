@@ -6,6 +6,7 @@
 #include <dashboard/Subject.hpp>
 #include <etl/vector.h>
 #include <platform/Assert.hpp>
+#include <platform/Log.hpp>
 
 namespace Config {
 
@@ -37,6 +38,10 @@ namespace Config {
         }
       }
     } beep;
+
+    void assign(const System& rhs) {
+      *this = rhs;
+    }
   };
 
   class Gui {
@@ -46,6 +51,10 @@ namespace Config {
         uint32_t chartRefreshPeriod;
       } variometer;
     } screens;
+
+    void assign(const Gui& rhs) {
+      *this = rhs;
+    }
   };
 
   class Imu {
@@ -90,6 +99,14 @@ namespace Config {
       uint8_t crc = crc8(data, length);
 
       return this->crc == crc;
+    }
+
+    void assign(const Imu& rhs) {
+      *this = rhs;
+      uint8_t *data = (uint8_t *)&offset;
+      size_t length = sizeof(offset);
+      auto crc = crc8(data, length);
+      this->crc = (0x00 == crc) ? 0xFF : crc;
     }
   };
 

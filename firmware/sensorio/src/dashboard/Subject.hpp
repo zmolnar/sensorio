@@ -28,7 +28,7 @@ public:
   void set(const T &value)
   {
     mutex.lock();
-    this->value = value;
+    this->value.assign(value);
     mutex.unlock();
     notify();
   }

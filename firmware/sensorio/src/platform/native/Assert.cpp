@@ -6,7 +6,8 @@ namespace Platform {
   namespace Assert {
     void Assert(bool expression)
     {
-      assert(expression);
+      if(expression)
+        assert(expression);
     }
   }
 }

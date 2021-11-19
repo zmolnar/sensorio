@@ -51,6 +51,10 @@ namespace Dashboard {
       double y{0};
       double z{0};
     } acceleration;
+
+    void assign(const Imu& rhs) {
+      *this = rhs;
+    }
   };
 
   class Bps {
@@ -63,6 +67,10 @@ namespace Dashboard {
       uint32_t pressure{0};
       uint32_t temp{0};
     } cooked;
+
+    void assign(const Bps& rhs) {
+      *this = rhs;
+    }
   };
 
   class Gps {
@@ -92,6 +100,10 @@ namespace Dashboard {
       return addOffset(utcOffset + dstOffset);
     }
 
+    void assign(const Gps& rhs) {
+      *this = rhs;
+    }
+
   private:
     uint32_t getDayOfWeek();
     bool isDaylightSavingTime();
@@ -101,6 +113,9 @@ namespace Dashboard {
   class Board {
   public:
     bool usbConnected{false};
+    void assign(const Board& rhs) {
+      *this = rhs;
+    }
   };
 
   class Battery {
@@ -116,6 +131,10 @@ namespace Dashboard {
     double voltage{0.0};
     uint32_t percentage{0};
     uint32_t adcValue{0};
+
+    void assign(const Battery& rhs) {
+      *this = rhs;
+    }
   };
 
   class Filter {
@@ -125,6 +144,10 @@ namespace Dashboard {
       double instant{0.0};
     } vario;
     double height{0.0};
+
+    void assign(const Filter& rhs) {
+      *this = rhs;
+    }
   };
 
   class Dashboard {

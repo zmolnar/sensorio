@@ -388,8 +388,10 @@ void ImuManagerThread(void *p)
   if (imucfg.isValid()) {
     error = sendCalibrationToDevice(imu, imucfg.offset);
     configASSERT(!error);
+    ESP_LOGI(tag, "IMU calibration values loaded");
     calibrationDataNeeded = false;
   } else {
+    ESP_LOGE(tag, "IMU calibration values not found");
     calibrationDataNeeded = true;
   }
 
@@ -423,6 +425,7 @@ void ImuManagerThread(void *p)
 
       calibrationDataNeeded = false;
 
+      imucfg = config.imu.get();
       if (imucfg.isValid()) {
         ESP_LOGI(tag, "IMU offsets updated in EEPROM");
       } else {

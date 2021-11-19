@@ -3,5 +3,5 @@
 
 void LogWaitToFinish(void)
 {
-  Platform::Log::Info("logger") << "wait to finishe";
+  Platform::Log::Info("logger") << "wait to finish";
 }
