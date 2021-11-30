@@ -2,8 +2,12 @@
 #ifndef LOG_H
 #define LOG_H
 
+#include <etl/mutex.h>
+#include <etl/span.h>
 #include <etl/string_stream.h>
 #include <platform/Assert.hpp>
+
+#include <functional>
 
 namespace Platform {
   namespace Log {
@@ -16,26 +20,22 @@ namespace Platform {
     protected:
       bool enabled{false};
       const char *tag;
-      etl::string<128> msg {};
+      etl::string<128> msg{};
       etl::string_stream ss{msg};
 
-      Base(const char *tag, Level level) :
-          enabled(level <= Base::level), tag(tag)
-      {
+      Base(const char *tag, Level level) : enabled(level <= Base::level), tag(tag) {
         Platform::Assert::Assert(nullptr != tag);
       }
 
       virtual ~Base(){};
 
     public:
-      static void setLevel(Level level)
-      {
+      static void setLevel(Level level) {
         Base::level = level;
       }
 
       template <typename T>
-      Base &operator<<(const T &v)
-      {
+      Base &operator<<(const T &v) {
         if (enabled) {
           ss << v;
         }
@@ -45,24 +45,21 @@ namespace Platform {
 
     class Error : public Base {
     public:
-      Error(const char *tag) : Base(tag, Level::ERROR)
-      {
+      Error(const char *tag) : Base(tag, Level::ERROR) {
       }
       ~Error();
     };
 
     class Info : public Base {
     public:
-      Info(const char *tag) : Base(tag, Level::INFO)
-      {
+      Info(const char *tag) : Base(tag, Level::INFO) {
       }
       ~Info();
     };
 
     class Debug : public Base {
     public:
-      Debug(const char *tag) : Base(tag, Level::DEBUG)
-      {
+      Debug(const char *tag) : Base(tag, Level::DEBUG) {
       }
       ~Debug();
     };

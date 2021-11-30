@@ -141,7 +141,6 @@ static void counterTick(TimerHandle_t xTimer)
 
 static void shutdownCallback(TimerHandle_t xTimer)
 {
-  ESP_LOGI(tag, "Shutting down ...");
   LvglShutdownRequested();
 }
 

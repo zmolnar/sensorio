@@ -43,6 +43,7 @@ using namespace Platform;
 
 extern "C" void app_main(void)
 {
+
   Log::Base::setLevel(Log::Level::DEBUG);
   Log::Info(tag) << "Sensorio started";
 
@@ -72,7 +73,7 @@ extern "C" void app_main(void)
 #if 1
   xTaskCreatePinnedToCore(PressureReaderThread,
                           "pressure reader",
-                          2048,
+                          4096,
                           NULL,
                           PRIO_0_PRESS,
                           NULL,

@@ -10,6 +10,7 @@
 #include <core/DataFilterThread.h>
 #include <core/DataLoggerThread.h>
 #include <core/ImuManagerThread.h>
+#include <core/LogFile.hpp>
 #include <core/PressureReaderThread.h>
 #include <dashboard/Dashboard.hpp>
 #include <kalmanfilter/MerweScaledSigmaPoints.hpp>
@@ -22,6 +23,8 @@
 #include <freertos/task.h>
 #include <math.h>
 
+#include <platform/Log.hpp>
+
 /*****************************************************************************/
 /* DEFINED CONSTANTS                                                         */
 /*****************************************************************************/
@@ -29,8 +32,7 @@
 #define SAMPLING_TIMER_GROUP   TIMER_GROUP_0
 #define SAMPLING_TIMER         TIMER_1
 #define SAMPLING_TIMER_DIVIDER (8U)
-#define MS_TO_TIMER_TICK(ms)                                                   \
-  ((ms) * ((TIMER_BASE_CLK / SAMPLING_TIMER_DIVIDER) / 1000))
+#define MS_TO_TIMER_TICK(ms)   ((ms) * ((TIMER_BASE_CLK / SAMPLING_TIMER_DIVIDER) / 1000))
 
 /*****************************************************************************/
 /* TYPE DEFINITIONS                                                          */
@@ -60,10 +62,9 @@ static const double kappa = 0.1;
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
 // State transition function
-const typename UnscentedKalmanFilter<dim_x,dim_z>::StateVector fx(
-  const typename UnscentedKalmanFilter<dim_x,dim_z>::StateVector &x, double dt)
-{
-  typename UnscentedKalmanFilter<dim_x,dim_z>::StateVector xout{};
+const typename UnscentedKalmanFilter<dim_x, dim_z>::StateVector
+fx(const typename UnscentedKalmanFilter<dim_x, dim_z>::StateVector &x, double dt) {
+  typename UnscentedKalmanFilter<dim_x, dim_z>::StateVector xout{};
 
   // Position     = a*dt^2/2 + v*dt + x0
   // Speed        = a*dt + v
@@ -77,23 +78,20 @@ const typename UnscentedKalmanFilter<dim_x,dim_z>::StateVector fx(
 }
 
 // Measurement function
-typename UnscentedKalmanFilter<dim_x,dim_z>::MeasurementVector hx(
-  const typename UnscentedKalmanFilter<dim_x,dim_z>::StateVector &x)
-{
+typename UnscentedKalmanFilter<dim_x, dim_z>::MeasurementVector
+hx(const typename UnscentedKalmanFilter<dim_x, dim_z>::StateVector &x) {
   // Convert height to pressure at altitude using barometric formula
   double press = 101325 * pow((1 - 2.25577 * pow(10, -5) * x[0][0]), 5.25588);
-  double acc   = x[2][0];
+  double acc = x[2][0];
 
-  typename UnscentedKalmanFilter<3,2>::MeasurementVector zout{};
+  typename UnscentedKalmanFilter<3, 2>::MeasurementVector zout{};
   zout[0][0] = press;
   zout[1][0] = acc;
 
   return zout;
 }
 
-
-static double calculateVerticalAcceleration(Dashboard::Imu &imu)
-{
+static double calculateVerticalAcceleration(Dashboard::Imu &imu) {
   double gx = imu.gravity.x;
   double gy = imu.gravity.y;
   double gz = imu.gravity.z;
@@ -117,8 +115,7 @@ static double calculateVerticalAcceleration(Dashboard::Imu &imu)
   return acc;
 }
 
-static double calculateDt(void)
-{
+static double calculateDt(void) {
   static TickType_t last;
   TickType_t current = xTaskGetTickCount();
 
@@ -142,8 +139,7 @@ static double calculateDt(void)
   return dt;
 }
 
-static bool IRAM_ATTR timerCallback(void *args)
-{
+static bool IRAM_ATTR timerCallback(void *args) {
   (void)args;
 
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -161,8 +157,7 @@ static bool IRAM_ATTR timerCallback(void *args)
   return false;
 }
 
-static void initAndStartSamplingTimer(void)
-{
+static void initAndStartSamplingTimer(void) {
   timer_config_t config = {
       .alarm_en = TIMER_ALARM_EN,
       .counter_en = TIMER_PAUSE,
@@ -173,87 +168,71 @@ static void initAndStartSamplingTimer(void)
   };
   timer_init(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, &config);
   timer_set_counter_value(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, 0);
-  timer_set_alarm_value(SAMPLING_TIMER_GROUP,
-                        SAMPLING_TIMER,
-                        MS_TO_TIMER_TICK(SAMPLE_PERIOD_IN_MS));
+  timer_set_alarm_value(
+      SAMPLING_TIMER_GROUP, SAMPLING_TIMER, MS_TO_TIMER_TICK(SAMPLE_PERIOD_IN_MS));
   timer_enable_intr(SAMPLING_TIMER_GROUP, SAMPLING_TIMER);
-  timer_isr_callback_add(
-      SAMPLING_TIMER_GROUP, SAMPLING_TIMER, timerCallback, NULL, 0);
+  timer_isr_callback_add(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, timerCallback, NULL, 0);
   timer_set_counter_value(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, 0);
   timer_start(SAMPLING_TIMER_GROUP, SAMPLING_TIMER);
 }
 
-static void unlockSemaphore(SemaphoreHandle_t &sem)
-{
+static void unlockSemaphore(SemaphoreHandle_t &sem) {
   BaseType_t res{pdFALSE};
   do {
     res = xSemaphoreGive(sem);
   } while (pdTRUE != res);
 }
 
-static void lockSemaphore(SemaphoreHandle_t &sem)
-{
+static void lockSemaphore(SemaphoreHandle_t &sem) {
   BaseType_t res{pdFALSE};
   do {
     res = xSemaphoreTake(sem, portMAX_DELAY);
   } while (pdTRUE != res);
 }
 
-static void waitForImu()
-{
+static void waitForImu() {
   StaticSemaphore_t alloc{};
   SemaphoreHandle_t sem = xSemaphoreCreateBinaryStatic(&alloc);
   configASSERT(nullptr != sem);
   Mask mask = static_cast<Mask>(Dashboard::Dashboard::Data::IMU);
-  dashboard.subscribe(mask, [&sem]() {
-    unlockSemaphore(sem);
-  });
+  dashboard.subscribe(mask, [&sem]() { unlockSemaphore(sem); });
   lockSemaphore(sem);
 }
 
-static void waitForBps()
-{
+static void waitForBps() {
   StaticSemaphore_t alloc{};
   SemaphoreHandle_t sem = xSemaphoreCreateBinaryStatic(&alloc);
   configASSERT(nullptr != sem);
   Mask mask = static_cast<Mask>(Dashboard::Dashboard::Data::BPS);
-  dashboard.subscribe(mask, [&sem]() {
-    unlockSemaphore(sem);
-  });
+  dashboard.subscribe(mask, [&sem]() { unlockSemaphore(sem); });
   lockSemaphore(sem);
 }
 
-static void waitForImuAndBps()
-{
+static void waitForImuAndBps() {
   StaticSemaphore_t alloc{};
   SemaphoreHandle_t sem = xSemaphoreCreateBinaryStatic(&alloc);
   configASSERT(nullptr != sem);
   Mask mask = static_cast<Mask>(Dashboard::Dashboard::Data::BPS) |
               static_cast<Mask>(Dashboard::Dashboard::Data::IMU);
-  dashboard.subscribe(mask, [&sem]() {
-    unlockSemaphore(sem);
-  });
+  dashboard.subscribe(mask, [&sem]() { unlockSemaphore(sem); });
   lockSemaphore(sem);
 }
 
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
-void DataFilterThread(void *p)
-{
+void DataFilterThread(void *p) {
   MerweScaledSigmaPoints<dim_x> sigmas(alpha, beta, kappa);
   UnscentedKalmanFilter<dim_x, dim_z> ukf(fx, hx, sigmas);
 
   initAndStartSamplingTimer();
-
-  ESP_LOGE("zzzz", "wait for IMU");
 
   // Wait for the sensors to start up properly
   bool ready = false;
   do {
     waitForImu();
 
-    Dashboard::Imu imu {dashboard.imu.get()};
+    Dashboard::Imu imu{dashboard.imu.get()};
 
     ready = (Dashboard::Imu::Status::RUNNING_FUSION == imu.system.status);
     ready &= (3 == imu.calibration.mag);
@@ -261,14 +240,12 @@ void DataFilterThread(void *p)
 
   } while (!ready);
 
-  ESP_LOGE("zzzz", "wait for BPS");
-
   // Set initial conditions
   ready = false;
   do {
     waitForBps();
 
-    Dashboard::Bps bps {dashboard.bps.get()};
+    Dashboard::Bps bps{dashboard.bps.get()};
 
     if (0 < bps.cooked.pressure) {
       double p0 = bps.cooked.pressure;
@@ -284,37 +261,60 @@ void DataFilterThread(void *p)
 
   } while (!ready);
 
-    // Initialize process state covariance matrix
-    ukf.P[0][0] = 1, ukf.P[0][1] = 0, ukf.P[0][2] = 0;
-    ukf.P[1][0] = 0, ukf.P[1][1] = 1, ukf.P[1][2] = 0;
-    ukf.P[2][0] = 0, ukf.P[2][1] = 0, ukf.P[2][2] = 1;
+  // Initialize process state covariance matrix
+  ukf.P[0][0] = 1, ukf.P[0][1] = 0, ukf.P[0][2] = 0;
+  ukf.P[1][0] = 0, ukf.P[1][1] = 1, ukf.P[1][2] = 0;
+  ukf.P[2][0] = 0, ukf.P[2][1] = 0, ukf.P[2][2] = 1;
 
-    // Set measurement covariance matrix (based on previous measurement)
-    const double p_std = 3.74;
-    const double a_std = 0.02;
+  // Set measurement covariance matrix (based on previous measurement)
+  const double p_std = 3.74;
+  const double a_std = 0.02;
 
-    ukf.R[0][0] = (p_std * p_std), ukf.R[0][1] = 0.0;
-    ukf.R[1][0] = 0.0, ukf.R[1][1] = (a_std * a_std);
+  ukf.R[0][0] = (p_std * p_std), ukf.R[0][1] = 0.0;
+  ukf.R[1][0] = 0.0, ukf.R[1][1] = (a_std * a_std);
 
-    // Initialize process noise matrix
-    ukf.Q[0][0] = 1.2e-09, ukf.Q[0][1] = 1.2e-07, ukf.Q[0][2] = 6.0e-06;
-    ukf.Q[1][0] = 1.2e-07, ukf.Q[1][1] = 1.2e-05, ukf.Q[1][2] = 6.0e-04;
-    ukf.Q[2][0] = 6.0e-06, ukf.Q[2][1] = 6.0e-04, ukf.Q[2][2] = 3.0e-02;
+  // Initialize process noise matrix
+  ukf.Q[0][0] = 1.2e-09, ukf.Q[0][1] = 1.2e-07, ukf.Q[0][2] = 6.0e-06;
+  ukf.Q[1][0] = 1.2e-07, ukf.Q[1][1] = 1.2e-05, ukf.Q[1][2] = 6.0e-04;
+  ukf.Q[2][0] = 6.0e-06, ukf.Q[2][1] = 6.0e-04, ukf.Q[2][2] = 3.0e-02;
 
   ESP_LOGI(tag, "Kalman filter started");
 
-  LogAppend("ts dt p gx gy gz ax ay az h v a\n\n");
+  LogFile::File<1024> logfile{"sensorio.dat"};
+  logfile.setCallback(DataLoggerSave);
+
+  logfile << "ts dt p gx gy gz ax ay az h v a\n";
 
   while (1) {
     waitForImuAndBps();
 
     TickType_t timeStamp = xTaskGetTickCount();
-
-    // Calculate dt
     double dt = calculateDt();
 
-    Dashboard::Bps bps {dashboard.bps.get()};
-    Dashboard::Imu imu {dashboard.imu.get()};
+    static uint32_t counter{0};
+    static double min{25.0};
+    static double max{};
+    static double avg{};
+
+    if (dt < min) {
+      min = dt;
+    }
+
+    if (max < dt) {
+      max = dt;
+    }
+
+    avg += dt;
+
+    if (++counter == 50) {
+      ESP_LOGE("zzzz", "%lf %lf %lf", min, max, avg / 50.0);
+      max = avg = 0.0;
+      min = 25.0;
+      counter = 0;
+    }
+
+    Dashboard::Bps bps{dashboard.bps.get()};
+    Dashboard::Imu imu{dashboard.imu.get()};
 
     // Update measurement vector
     typename UnscentedKalmanFilter<dim_x, dim_z>::MeasurementVector z{};
@@ -326,7 +326,7 @@ void DataFilterThread(void *p)
     ukf.update(z);
 
     // Update the results in the database
-    Dashboard::Filter filter {};
+    Dashboard::Filter filter{};
     filter.height = ukf.x[0][0];
     filter.vario.instant = ukf.x[1][0];
     filter.vario.averaged = 0;
@@ -334,29 +334,22 @@ void DataFilterThread(void *p)
 
     BeepControlUpdate();
 
-    LogAppend(
-        "%d %d "
-        "%d "
-        "%3.2f %3.2f %3.2f "
-        "%3.2f %3.2f %3.2f "
-        "%5.1f %3.2f %3.2f\n",
-        (int)timeStamp,
-        (int)(dt * 1000),
-        (int)bps.cooked.pressure,
-        imu.gravity.x,
-        imu.gravity.y,
-        imu.gravity.z,
-        imu.acceleration.x,
-        imu.acceleration.y,
-        imu.acceleration.z,
-        ukf.x[0][0],
-        ukf.x[1][0],
-        ukf.x[2][0]);
+    logfile << timeStamp << " ";
+    logfile << dt * 1000 << " ";
+    logfile << bps.cooked.pressure << " ";
+    logfile << imu.gravity.x << " ";
+    logfile << imu.gravity.y << " ";
+    logfile << imu.gravity.z << " ";
+    logfile << imu.acceleration.x << " ";
+    logfile << imu.acceleration.y << " ";
+    logfile << imu.acceleration.z << " ";
+    logfile << ukf.x[0][0] << " ";
+    logfile << ukf.x[1][0] << " ";
+    logfile << ukf.x[2][0] << "\n";
   }
 }
 
-void DataFilterThreadInit(void)
-{
+void DataFilterThreadInit(void) {
   filterDataStart = xSemaphoreCreateBinary();
 }
 
