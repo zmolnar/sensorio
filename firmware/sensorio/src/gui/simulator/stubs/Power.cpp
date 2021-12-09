@@ -1,22 +1,22 @@
 
-#include "Power.h"
+#include "Power.hpp"
 #include <platform/Log.hpp>
 
 static const char tag[]{"power"};
 
 using namespace Platform;
 
-void PowerStart(void)
+void Power::start(void)
 {
   Log::Info(tag) << "start";
 }
 
-void PowerStartupFinished(void)
+void Power::startupFinished(void)
 {
   Log::Info(tag) << "startup finished";
 }
 
-void PowerStop(void)
+void Power::stop(void)
 {
   Log::Info(tag) << "stop";
 }

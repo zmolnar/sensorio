@@ -7,7 +7,9 @@
 #include <dashboard/RawSerializer.hpp>
 
 #include "FileStorage.hpp"
+#include <Power.hpp>
 
+Power Power::obj{};
 Config::RawSerializer serializer{};
 Config::FileStorage storage{};
 Config::Config config(serializer, storage);

@@ -7,7 +7,7 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "Sensorio.h"
-#include "Power.h"
+#include "Power.hpp"
 #include "core/DataLoggerThread.h"
 // #include "dashboard/Dashboard.hpp"
 
@@ -128,7 +128,7 @@ void SensorioStart(void)
 void SensorioStop(void)
 {
   LogWaitToFinish();
-  PowerStop();
+  Power::get().stop();
 }
 
 void SensorioStartupFinished(void)
@@ -144,7 +144,7 @@ void SensorioStartupFinished(void)
   SensorioLoadEncoderGroup();
   lv_group_focus_obj(vario);
 
-  PowerStartupFinished();
+  Power::get().startupFinished();
 }
 
 lv_group_t *SensorioGetEncoderGroup(void)

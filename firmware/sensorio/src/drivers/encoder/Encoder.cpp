@@ -8,7 +8,6 @@
 /*****************************************************************************/
 #include "Encoder.h"
 
-#include <Power.h>
 #include <lvgl.h>
 
 #include <core/LvglThread.h>
@@ -74,7 +73,6 @@ typedef enum {
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
 static Encoder_t encoder;
-static const char *tag = "ENC";
 
 /*****************************************************************************/
 /* DECLARATION OF LOCAL FUNCTIONS                                            */
