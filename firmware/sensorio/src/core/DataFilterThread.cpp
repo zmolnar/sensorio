@@ -17,7 +17,7 @@
 
 #include <core/BeepControlThread.h>
 #include <core/DataFilterThread.hpp>
-#include <core/DataLoggerThread.h>
+#include <core/DataLoggerThread.hpp>
 #include <core/ImuManagerThread.h>
 #include <core/LogFile.hpp>
 #include <core/PressureReaderThread.h>

@@ -19,7 +19,7 @@
 #include <core/BatteryMonitorThread.hpp>
 #include <core/BeepControlThread.h>
 #include <core/DataFilterThread.hpp>
-#include <core/DataLoggerThread.h>
+#include <core/DataLoggerThread.hpp>
 #include <core/GpsManagerThread.h>
 #include <core/ImuManagerThread.h>
 #include <core/LvglThread.h>

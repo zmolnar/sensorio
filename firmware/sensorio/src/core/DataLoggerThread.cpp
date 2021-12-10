@@ -1,6 +1,21 @@
+//
+//  This file is part of Sensorio.
+//
+//  Sensorio is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  Sensorio is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
+//
 
-#include "DataLoggerThread.h"
-
+#include <core/DataLoggerThread.hpp>
 #include <core/LogFile.hpp>
 #include <core/SysLog.hpp>
 #include <dashboard/Dashboard.hpp>
@@ -122,8 +137,8 @@ public:
 private:
   enum class State {
     INIT,
-    PREPARED,
-    READY,
+    TMP,
+    FINAL,
   };
 
   State state;
@@ -232,18 +247,18 @@ public:
       if (isDateTimeValid(dt)) {
         error = generateFinal(dt, root);
         if (!error) {
-          state = State::READY;
+          state = State::FINAL;
         }
       } else {
         error = generateTmp(root);
         if (!error) {
-          state = State::PREPARED;
+          state = State::TMP;
         }
       }
 
       break;
     }
-    case State::PREPARED: {
+    case State::TMP: {
       Dashboard::Gps gps{dashboard.gps.get()};
       Dashboard::Gps::DateTime &dt{gps.gmt};
 
@@ -255,12 +270,12 @@ public:
         if (!error) {
           moveFromTo(tmp, root);
           deleteDirectory(tmp);
-          state = State::READY;
+          state = State::FINAL;
         }
       }
       break;
     }
-    case State::READY: {
+    case State::FINAL: {
       // No need to do anything, root has already been generated
       break;
     }

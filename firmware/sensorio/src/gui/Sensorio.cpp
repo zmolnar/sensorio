@@ -8,7 +8,7 @@
 /*****************************************************************************/
 #include "Sensorio.h"
 #include "Power.hpp"
-#include "core/DataLoggerThread.h"
+#include "core/DataLoggerThread.hpp"
 // #include "dashboard/Dashboard.hpp"
 
 

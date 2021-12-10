@@ -2,7 +2,7 @@
 #ifndef SYSLOG_H
 #define SYSLOG_H
 
-#include <core/DataLoggerThread.h>
+#include <core/DataLoggerThread.hpp>
 #include <core/LogFile.hpp>
 #include <esp_log.h>
 

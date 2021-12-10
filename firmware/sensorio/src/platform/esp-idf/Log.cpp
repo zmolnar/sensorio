@@ -2,7 +2,7 @@
 #include <driver/uart.h>
 #include <esp_log.h>
 
-#include <core/DataLoggerThread.h>
+#include <core/DataLoggerThread.hpp>
 #include <platform/Log.hpp>
 
 #include <stdio.h>
