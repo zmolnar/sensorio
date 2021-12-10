@@ -16,7 +16,7 @@
 //
 
 #include <Power.hpp>
-#include <core/BatteryMonitorThread.h>
+#include <core/BatteryMonitorThread.hpp>
 #include <core/BeepControlThread.h>
 #include <core/DataFilterThread.h>
 #include <core/DataLoggerThread.h>

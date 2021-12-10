@@ -1,12 +1,21 @@
-/**
- * @file BatteryMonitorThread.cpp
- * @brief
- */
+//
+//  This file is part of Sensorio.
+//
+//  Sensorio is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  Sensorio is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
+//
 
-/*****************************************************************************/
-/* INCLUDES                                                                  */
-/*****************************************************************************/
-#include "BatteryMonitorThread.h"
+#include <core/BatteryMonitorThread.hpp>
 
 #include <driver/adc.h>
 #include <driver/gpio.h>
@@ -16,50 +25,24 @@
 
 #include <dashboard/Dashboard.hpp>
 
-/*****************************************************************************/
-/* DEFINED CONSTANTS                                                         */
-/*****************************************************************************/
-#define BAT_ADC_CHANNEL      ADC1_CHANNEL_4
-#define BAT_ADC_WIDTH        ADC_WIDTH_BIT_12
-#define BAT_ADC_ATTEN        ADC_ATTEN_DB_11
-#define BAT_AVG_SAMPLE_COUNT 10
+static constexpr adc1_channel_t BAT_ADC_CHANNEL{ADC1_CHANNEL_4};
+static constexpr adc_bits_width_t BAT_ADC_WIDTH{ADC_WIDTH_BIT_12};
+static constexpr adc_atten_t BAT_ADC_ATTEN{ADC_ATTEN_DB_11};
 
-#define USB_PRESENT     GPIO_NUM_34
-#define USB_PRESENT_SEL GPIO_SEL_34
-#define BAT_STATUS      GPIO_NUM_39
-#define BAT_STATUS_SEL  GPIO_SEL_39
+static constexpr gpio_num_t USB_PRESENT{GPIO_NUM_34};
+static constexpr uint64_t USB_PRESENT_SEL{GPIO_SEL_34};
+static constexpr gpio_num_t BAT_STATUS{GPIO_NUM_39};
+static constexpr uint64_t BAT_STATUS_SEL{GPIO_SEL_39};
 
-/*****************************************************************************/
-/* TYPE DEFINITIONS                                                          */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* MACRO DEFINITIONS                                                         */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DECLARATION OF LOCAL FUNCTIONS                                            */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF LOCAL FUNCTIONS                                             */
-/*****************************************************************************/
-static inline bool detectUSB(void)
-{
+static inline bool detectUSB(void) {
   return (1 == gpio_get_level(USB_PRESENT));
 }
 
-static inline bool detectSTAT(void)
-{
+static inline bool detectSTAT(void) {
   return (1 == gpio_get_level(BAT_STATUS));
 }
 
-static Dashboard::Battery::Status decodeStatus(void)
-{
+static Dashboard::Battery::Status decodeStatus(void) {
   Dashboard::Battery::Status status;
 
   bool usbPresent = detectUSB();
@@ -78,8 +61,7 @@ static Dashboard::Battery::Status decodeStatus(void)
   return status;
 }
 
-static uint32_t voltage2percentage(double voltage)
-{
+static uint32_t voltage2percentage(double voltage) {
   uint32_t p = 0;
 
   if (4.15 <= voltage) {
@@ -129,8 +111,7 @@ static uint32_t voltage2percentage(double voltage)
   return p;
 }
 
-static void configurePins(void)
-{
+static void configurePins(void) {
   gpio_config_t conf;
   conf.pin_bit_mask = USB_PRESENT_SEL | BAT_STATUS_SEL;
   conf.intr_type = GPIO_INTR_DISABLE;
@@ -140,11 +121,7 @@ static void configurePins(void)
   gpio_config(&conf);
 }
 
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL FUNCTIONS                                            */
-/*****************************************************************************/
-void BatteryMonitorThread(void *p)
-{
+void BatteryMonitorThread(void *p) {
   configurePins();
 
   adc1_config_width(BAT_ADC_WIDTH);
@@ -156,6 +133,7 @@ void BatteryMonitorThread(void *p)
 
   while (1) {
     int raw = 0;
+    static constexpr size_t BAT_AVG_SAMPLE_COUNT{10};
     for (size_t i = 0; i < BAT_AVG_SAMPLE_COUNT; ++i) {
       raw += adc1_get_raw(BAT_ADC_CHANNEL);
     }
@@ -180,8 +158,5 @@ void BatteryMonitorThread(void *p)
   }
 }
 
-void BatteryMonitorInit(void)
-{
+void BatteryMonitorInit(void) {
 }
-
-/****************************** END OF FILE **********************************/
