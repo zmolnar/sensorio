@@ -7,7 +7,7 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "PressureReaderThread.h"
-#include "DataFilterThread.h"
+#include "DataFilterThread.hpp"
 #include "ImuManagerThread.h"
 
 #include "dashboard/Dashboard.hpp"

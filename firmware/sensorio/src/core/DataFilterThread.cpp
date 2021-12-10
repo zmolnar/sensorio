@@ -1,13 +1,22 @@
-/**
- * @file DataFilterThread.cpp
- * @brief
- */
+//
+//  This file is part of Sensorio.
+//
+//  Sensorio is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  Sensorio is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
+//
 
-/*****************************************************************************/
-/* INCLUDES                                                                  */
-/*****************************************************************************/
 #include <core/BeepControlThread.h>
-#include <core/DataFilterThread.h>
+#include <core/DataFilterThread.hpp>
 #include <core/DataLoggerThread.h>
 #include <core/ImuManagerThread.h>
 #include <core/LogFile.hpp>
@@ -25,45 +34,28 @@
 
 #include <platform/Log.hpp>
 
-/*****************************************************************************/
-/* DEFINED CONSTANTS                                                         */
-/*****************************************************************************/
-#define SAMPLE_PERIOD_IN_MS    20U
-#define SAMPLING_TIMER_GROUP   TIMER_GROUP_0
-#define SAMPLING_TIMER         TIMER_1
-#define SAMPLING_TIMER_DIVIDER (8U)
-#define MS_TO_TIMER_TICK(ms)   ((ms) * ((TIMER_BASE_CLK / SAMPLING_TIMER_DIVIDER) / 1000))
+static constexpr uint32_t SAMPLE_PERIOD_IN_MS{20U};
+static constexpr auto SAMPLING_TIMER_GROUP{TIMER_GROUP_0};
+static constexpr auto SAMPLING_TIMER{TIMER_1};
+static constexpr uint64_t SAMPLING_TIMER_DIVIDER{8U};
 
-/*****************************************************************************/
-/* TYPE DEFINITIONS                                                          */
-/*****************************************************************************/
+static inline uint64_t MillisecToTimerTick(uint64_t ms) {
+  return ms * ((TIMER_BASE_CLK / SAMPLING_TIMER_DIVIDER) / 1000);
+}
 
-/*****************************************************************************/
-/* MACRO DEFINITIONS                                                         */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
-/*****************************************************************************/
 static const char *tag = "data-filter-thread";
 static SemaphoreHandle_t filterDataStart;
 
 static constexpr uint32_t dim_x = 3;
 static constexpr uint32_t dim_z = 2;
-static const double alpha = 0.3;
-static const double beta = 2.0;
-static const double kappa = 0.1;
+static constexpr double alpha = 0.3;
+static constexpr double beta = 2.0;
+static constexpr double kappa = 0.1;
 
-/*****************************************************************************/
-/* DECLARATION OF LOCAL FUNCTIONS                                            */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF LOCAL FUNCTIONS                                             */
-/*****************************************************************************/
 // State transition function
 const typename UnscentedKalmanFilter<dim_x, dim_z>::StateVector
-fx(const typename UnscentedKalmanFilter<dim_x, dim_z>::StateVector &x, double dt) {
+fx(const typename UnscentedKalmanFilter<dim_x, dim_z>::StateVector &x,
+   double dt) {
   typename UnscentedKalmanFilter<dim_x, dim_z>::StateVector xout{};
 
   // Position     = a*dt^2/2 + v*dt + x0
@@ -108,31 +100,30 @@ static double calculateVerticalAcceleration(Dashboard::Imu &imu) {
     double skag = (gx * ax) + (gy * ay) + (gz * az);
     acc = skag / absg;
   } else {
-    // Sensor error, the gravity vector is reported to be (0,0,0)
+    // Sensor error, the gravity vector is reported to be invalid
     acc = 0;
   }
 
   return acc;
 }
 
-static double calculateDt(void) {
+static double calculateDtInSec(void) {
   static TickType_t last;
   TickType_t current = xTaskGetTickCount();
 
   double dt;
   if (0 == last) {
-    dt = 0.025;
+    dt = SAMPLE_PERIOD_IN_MS;
   } else if (last < current) {
     dt = current - last;
     dt = portTICK_RATE_MS * dt;
-    dt /= 1000.0;
-  } else if (current == last) {
-    dt = 0.025;
   } else {
     dt = (TickType_t)(-1) - last + current;
     dt = portTICK_RATE_MS * dt;
-    dt /= 1000.0;
   }
+
+  // Millisec to second
+  dt /= 1000;
 
   last = current;
 
@@ -168,10 +159,12 @@ static void initAndStartSamplingTimer(void) {
   };
   timer_init(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, &config);
   timer_set_counter_value(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, 0);
-  timer_set_alarm_value(
-      SAMPLING_TIMER_GROUP, SAMPLING_TIMER, MS_TO_TIMER_TICK(SAMPLE_PERIOD_IN_MS));
+  timer_set_alarm_value(SAMPLING_TIMER_GROUP,
+                        SAMPLING_TIMER,
+                        MillisecToTimerTick(SAMPLE_PERIOD_IN_MS));
   timer_enable_intr(SAMPLING_TIMER_GROUP, SAMPLING_TIMER);
-  timer_isr_callback_add(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, timerCallback, NULL, 0);
+  timer_isr_callback_add(
+      SAMPLING_TIMER_GROUP, SAMPLING_TIMER, timerCallback, NULL, 0);
   timer_set_counter_value(SAMPLING_TIMER_GROUP, SAMPLING_TIMER, 0);
   timer_start(SAMPLING_TIMER_GROUP, SAMPLING_TIMER);
 }
@@ -218,16 +211,13 @@ static void waitForImuAndBps() {
   lockSemaphore(sem);
 }
 
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL FUNCTIONS                                            */
-/*****************************************************************************/
 void DataFilterThread(void *p) {
   MerweScaledSigmaPoints<dim_x> sigmas(alpha, beta, kappa);
   UnscentedKalmanFilter<dim_x, dim_z> ukf(fx, hx, sigmas);
 
   initAndStartSamplingTimer();
 
-  // Wait for the sensors to start up properly
+  // Wait for the IMU to start up properly
   bool ready = false;
   do {
     waitForImu();
@@ -289,7 +279,7 @@ void DataFilterThread(void *p) {
     waitForImuAndBps();
 
     TickType_t timeStamp = xTaskGetTickCount();
-    double dt = calculateDt();
+    double dt = calculateDtInSec();
 
     static uint32_t counter{0};
     static double min{25.0};
@@ -352,5 +342,3 @@ void DataFilterThread(void *p) {
 void DataFilterThreadInit(void) {
   filterDataStart = xSemaphoreCreateBinary();
 }
-
-/****************************** END OF FILE **********************************/
