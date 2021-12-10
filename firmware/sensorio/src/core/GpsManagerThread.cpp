@@ -1,16 +1,22 @@
-/**
- * @file GpsManagerThread.cpp
- * @brief
- */
+//
+//  This file is part of Sensorio.
+//
+//  Sensorio is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  Sensorio is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
+//
 
-/*****************************************************************************/
-/* INCLUDES                                                                  */
-/*****************************************************************************/
-#include "GpsManagerThread.h"
-
+#include <core/GpsManagerThread.hpp>
 #include <dashboard/Dashboard.hpp>
-
-#include <MicroNMEA.h>
 
 #include <driver/gpio.h>
 #include <driver/uart.h>
@@ -20,53 +26,29 @@
 
 #include <string.h>
 
-/*****************************************************************************/
-/* DEFINED CONSTANTS                                                         */
-/*****************************************************************************/
-#define GPS_3DFIX           GPIO_NUM_18
-#define GPS_3DFIX_SEL       GPIO_SEL_18
-#define GPS_UART            UART_NUM_1
-#define GPS_RX              GPIO_NUM_26
-#define GPS_TX              GPIO_NUM_27
-#define GPS_TX_BUF_IN_BYTES 0U
-#define GPS_RX_BUF_IN_BYTES 1024U
+#include <MicroNMEA.h>
 
-#define UART_TX GPS_RX
-#define UART_RX GPS_TX
+static constexpr auto GPS_3DFIX{GPIO_NUM_18};
+static constexpr auto GPS_3DFIX_SEL{GPIO_SEL_18};
+static constexpr auto GPS_UART{UART_NUM_1};
+static constexpr auto GPS_RX{GPIO_NUM_26};
+static constexpr auto GPS_TX{GPIO_NUM_27};
 
-/*****************************************************************************/
-/* TYPE DEFINITIONS                                                          */
-/*****************************************************************************/
+static constexpr auto UART_TX{GPS_RX};
+static constexpr auto UART_RX{GPS_TX};
 
-/*****************************************************************************/
-/* MACRO DEFINITIONS                                                         */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
-/*****************************************************************************/
-static bool isValid = true;
+static bool isValid{true};
 static const char *tag = "gps-thread";
 
-/*****************************************************************************/
-/* DECLARATION OF LOCAL FUNCTIONS                                            */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF LOCAL FUNCTIONS                                             */
-/*****************************************************************************/
-static void badChecksumHandler(MicroNMEA &nmea)
-{
+static void badChecksumHandler(MicroNMEA &nmea) {
   ESP_LOGE(tag, "bad checksum: %s", nmea.getSentence());
   isValid = false;
 }
 
-static void unknownSentenceHandler(MicroNMEA &nmea)
-{
+static void unknownSentenceHandler(MicroNMEA &nmea) {
 }
 
-static void configure3dFixPin(void)
-{
+static void configure3dFixPin(void) {
   gpio_config_t conf;
   conf.intr_type = GPIO_INTR_DISABLE;
   conf.mode = GPIO_MODE_INPUT;
@@ -76,12 +58,9 @@ static void configure3dFixPin(void)
   gpio_config(&conf);
 }
 
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL FUNCTIONS                                            */
-/*****************************************************************************/
-void GpsManagerThread(void *p)
-{
+void GpsManagerThread(void *p) {
   static QueueHandle_t uartEventQueue;
+  static constexpr int GPS_RX_BUF_IN_BYTES{1024U};
   uart_driver_install(GPS_UART, GPS_RX_BUF_IN_BYTES, 0, 20, &uartEventQueue, 0);
 
   uart_config_t gpsConfig = {
@@ -114,7 +93,7 @@ void GpsManagerThread(void *p)
         uint8_t c;
         while (0 < uart_read_bytes(GPS_UART, &c, 1, pdMS_TO_TICKS(10))) {
           if (nmea.process(c) && isValid) {
-            Dashboard::Gps gps {};
+            Dashboard::Gps gps{};
 
             long alt = 0;
             nmea.getAltitude(alt);
@@ -145,8 +124,5 @@ void GpsManagerThread(void *p)
   }
 }
 
-void GpsManagerThreadInit(void)
-{
+void GpsManagerThreadInit(void) {
 }
-
-/****************************** END OF FILE **********************************/
