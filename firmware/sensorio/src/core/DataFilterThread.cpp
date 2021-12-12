@@ -20,7 +20,7 @@
 #include <core/DataLoggerThread.hpp>
 #include <core/ImuManagerThread.hpp>
 #include <core/LogFile.hpp>
-#include <core/PressureReaderThread.h>
+#include <core/PressureReaderThread.hpp>
 #include <dashboard/Dashboard.hpp>
 #include <kalmanfilter/MerweScaledSigmaPoints.hpp>
 #include <kalmanfilter/Ukf.hpp>

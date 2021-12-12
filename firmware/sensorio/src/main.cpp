@@ -21,9 +21,9 @@
 #include <core/DataFilterThread.hpp>
 #include <core/DataLoggerThread.hpp>
 #include <core/GpsManagerThread.hpp>
-#include <core/ImuManagerThread.h>
+#include <core/ImuManagerThread.hpp>
 #include <core/LvglThread.h>
-#include <core/PressureReaderThread.h>
+#include <core/PressureReaderThread.hpp>
 #include <dashboard/Config.hpp>
 #include <dashboard/Dashboard.hpp>
 #include <dashboard/NvsStorage.hpp>
