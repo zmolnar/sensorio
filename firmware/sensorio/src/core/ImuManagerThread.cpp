@@ -1,98 +1,78 @@
-/**
- * @file ImuManagerThread.cpp
- * @brief
- */
+//
+//  This file is part of Sensorio.
+//
+//  Sensorio is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  Sensorio is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
+//
 
-/*****************************************************************************/
-/* INCLUDES                                                                  */
-/*****************************************************************************/
-#include "ImuManagerThread.h"
+#include <core/ImuManagerThread.hpp>
 
 #include <driver/i2c.h>
-#include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
-#include "drivers/bno055/bno055.h"
-#include "gui/Sensorio.h"
 #include <dashboard/Config.hpp>
 #include <dashboard/Dashboard.hpp>
+#include <drivers/bno055/bno055.h>
+#include <gui/Sensorio.h>
+#include <platform/Log.hpp>
 
+using namespace Dashboard;
+using namespace Platform;
 
-/*****************************************************************************/
-/* DEFINED CONSTANTS                                                         */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* TYPE DEFINITIONS                                                          */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* MACRO DEFINITIONS                                                         */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
-/*****************************************************************************/
 static const char *tag = "imu-thread";
-static SemaphoreHandle_t readImu;
 
-static gpio_num_t i2c_gpio_sda = GPIO_NUM_17;
-static gpio_num_t i2c_gpio_scl = GPIO_NUM_16;
-static uint32_t i2c_frequency = 400000;
-static i2c_port_t i2c_port = I2C_NUM_1;
+static constexpr auto I2C_SDA{GPIO_NUM_17};
+static constexpr auto I2C_SCL{GPIO_NUM_16};
+static constexpr uint32_t I2C_FREQ{400000};
+static constexpr auto I2C_PORT{I2C_NUM_1};
 
-static bool calibrationDataNeeded = false;
-
-/*****************************************************************************/
-/* DECLARATION OF LOCAL FUNCTIONS                                            */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF LOCAL FUNCTIONS                                             */
-/*****************************************************************************/
-static inline bool installMasterDriver(i2c_port_t port)
-{
+static inline bool installMasterDriver(i2c_port_t port) {
   return ESP_OK != i2c_driver_install(port, I2C_MODE_MASTER, 0, 0, 0);
 }
 
-static inline bool paramConfig(i2c_port_t port, const i2c_config_t *conf)
-{
+static inline bool paramConfig(i2c_port_t port, const i2c_config_t *conf) {
   return ESP_OK != i2c_param_config(port, conf);
 }
 
-static inline uint8_t readAddress(uint8_t addr)
-{
+static inline uint8_t readAddress(uint8_t addr) {
   return (addr << 1) | I2C_MASTER_READ;
 }
 
-static inline uint8_t writeAddress(uint8_t addr)
-{
+static inline uint8_t writeAddress(uint8_t addr) {
   return (addr << 1) | I2C_MASTER_WRITE;
 }
 
-static bool i2c_init(void)
-{
+static bool i2c_init(void) {
   i2c_config_t conf = {.mode = I2C_MODE_MASTER,
-                       .sda_io_num = i2c_gpio_sda,
-                       .scl_io_num = i2c_gpio_scl,
+                       .sda_io_num = I2C_SDA,
+                       .scl_io_num = I2C_SCL,
                        .sda_pullup_en = GPIO_PULLUP_ENABLE,
                        .scl_pullup_en = GPIO_PULLUP_ENABLE,
                        .master = {
-                           .clk_speed = i2c_frequency,
+                           .clk_speed = I2C_FREQ,
                        }};
 
-  bool error = paramConfig(i2c_port, &conf);
-  error = error || installMasterDriver(i2c_port);
+  bool error = paramConfig(I2C_PORT, &conf);
+  error = error || installMasterDriver(I2C_PORT);
 
   // Set timeout to 10 ms to mimic clock stretching.
-  i2c_set_timeout(i2c_port, I2C_APB_CLK_FREQ * 10 / 1000);
+  i2c_set_timeout(I2C_PORT, I2C_APB_CLK_FREQ * 10 / 1000);
 
   return error;
 }
 
-static s8 i2c_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
-{
+static s8 i2c_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt) {
   configASSERT(1 == cnt);
 
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
@@ -102,14 +82,13 @@ static s8 i2c_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
   i2c_master_write(cmd, reg_data, cnt, true);
   i2c_master_stop(cmd);
 
-  esp_err_t error = i2c_master_cmd_begin(i2c_port, cmd, portMAX_DELAY);
+  esp_err_t error = i2c_master_cmd_begin(I2C_PORT, cmd, portMAX_DELAY);
   i2c_cmd_link_delete(cmd);
 
   return ESP_OK == error ? BNO055_SUCCESS : BNO055_ERROR;
 }
 
-static s8 i2c_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
-{
+static s8 i2c_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt) {
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
   i2c_master_start(cmd);
   i2c_master_write_byte(cmd, writeAddress(dev_addr), true);
@@ -119,41 +98,29 @@ static s8 i2c_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
   i2c_master_read(cmd, reg_data, cnt, I2C_MASTER_LAST_NACK);
   i2c_master_stop(cmd);
 
-  esp_err_t error = i2c_master_cmd_begin(i2c_port, cmd, portMAX_DELAY);
+  esp_err_t error = i2c_master_cmd_begin(I2C_PORT, cmd, portMAX_DELAY);
   i2c_cmd_link_delete(cmd);
 
   return ESP_OK == error ? BNO055_SUCCESS : BNO055_ERROR;
 }
 
-static void delay(uint32_t ms)
-{
+static void delay(uint32_t ms) {
   vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
-static bool resetAndInitializeImu(BNO055 &imu)
-{
-  static const uint32_t maxNumOfRetries = 5;
-
+static bool startAndResetImu(BNO055 &imu) {
   bool error = true;
-  for (uint32_t i = 0; error && (i < maxNumOfRetries); ++i) {
-    error = imu.start();
-    error = error || imu.reset();
-    error = error || imu.setPowerMode(BNO055::PowerMode::NORMAL);
-    error = error || imu.setClockSource(BNO055::ClockSource::EXT);
-    error = error || !imu.isExternalClockInUse();
-    error = error || imu.setOperationMode(BNO055::OperationMode::NDOF);
-
-    if (error) {
-      ESP_LOGE(tag, "BNO055 device init failed #%d", (int)i);
-      vTaskDelay(pdMS_TO_TICKS(500));
-    }
-  }
+  error = imu.start();
+  error = error || imu.reset();
+  error = error || imu.setPowerMode(BNO055::PowerMode::NORMAL);
+  error = error || imu.setClockSource(BNO055::ClockSource::EXT);
+  error = error || !imu.isExternalClockInUse();
+  error = error || imu.setOperationMode(BNO055::OperationMode::NDOF);
 
   return error;
 }
 
-static bool sendCalibrationToDevice(BNO055 &imu, Config::Imu::Offset &offset)
-{
+static bool sendCalibrationToImu(BNO055 &imu, Config::Imu::Offset &offset) {
   BNO055::AccelOffset_t accoffset;
   accoffset.x = offset.acc.x;
   accoffset.y = offset.acc.y;
@@ -177,15 +144,13 @@ static bool sendCalibrationToDevice(BNO055 &imu, Config::Imu::Offset &offset)
   return error;
 }
 
-static bool isImuFullyCalibrated(const Dashboard::Imu &data)
-{
+static bool isImuFullyCalibrated(const Dashboard::Imu &data) {
   return (3 == data.calibration.acc) && (3 == data.calibration.gyro) &&
          (3 == data.calibration.mag) && (3 == data.calibration.sys);
 }
 
-static bool receiveCalibrationFromDevice(BNO055 &imu,
-                                         Config::Imu::Offset &offset)
-{
+static bool receiveCalibrationFromImu(BNO055 &imu,
+                                      Config::Imu::Offset &offset) {
   bool error = imu.setOperationMode(BNO055::OperationMode::CONFIG);
 
   BNO055::AccelOffset_t accoffset;
@@ -217,34 +182,28 @@ static bool receiveCalibrationFromDevice(BNO055 &imu,
 }
 
 static void checkImuStatusAndResetIfNeeded(BNO055 &imu,
-                                           Dashboard::Imu::Status status)
-{
+                                           Dashboard::Imu::Status status) {
   static uint32_t errorCounter = 0;
 
   errorCounter =
       (Dashboard::Imu::Status::ERROR == status) ? (errorCounter + 1) : 0;
 
   if (4 < errorCounter) {
-    bool error = resetAndInitializeImu(imu);
+    bool error = startAndResetImu(imu);
     configASSERT(!error);
   }
 }
 
-static Dashboard::Imu::Status deviceStatusToImuStatus(BNO055::Status devstatus)
-{
-  static const Dashboard::Imu::Status statusMap[] = {
-      [BNO055::Status::SYS_IDLE] = Dashboard::Imu::Status::IDLE,
-      [BNO055::Status::SYS_ERROR] = Dashboard::Imu::Status::ERROR,
-      [BNO055::Status::SYS_PERIPHERAL_INIT] =
-          Dashboard::Imu::Status::PERIPHERAL_INIT,
-      [BNO055::Status::SYS_INITIALIZING] = Dashboard::Imu::Status::INITIALIZING,
-      [BNO055::Status::SYS_RUNNING_SELFTEST] =
-          Dashboard::Imu::Status::RUNNING_SELFTEST,
-      [BNO055::Status::SYS_RUNNING_FUSION] =
-          Dashboard::Imu::Status::RUNNING_FUSION,
-      [BNO055::Status::SYS_RUNNING_NO_FUSION] =
-          Dashboard::Imu::Status::RUNNING_NO_FUSION,
-      [BNO055::Status::SYS_UNKNOWN] = Dashboard::Imu::Status::UNKNOWN,
+static Imu::Status deviceStatusToImuStatus(BNO055::Status devstatus) {
+  static const Imu::Status statusMap[] = {
+      [BNO055::Status::SYS_IDLE] = Imu::Status::IDLE,
+      [BNO055::Status::SYS_ERROR] = Imu::Status::ERROR,
+      [BNO055::Status::SYS_PERIPHERAL_INIT] = Imu::Status::PERIPHERAL_INIT,
+      [BNO055::Status::SYS_INITIALIZING] = Imu::Status::INITIALIZING,
+      [BNO055::Status::SYS_RUNNING_SELFTEST] = Imu::Status::RUNNING_SELFTEST,
+      [BNO055::Status::SYS_RUNNING_FUSION] = Imu::Status::RUNNING_FUSION,
+      [BNO055::Status::SYS_RUNNING_NO_FUSION] = Imu::Status::RUNNING_NO_FUSION,
+      [BNO055::Status::SYS_UNKNOWN] = Imu::Status::UNKNOWN,
   };
 
   if ((devstatus < 0) || (BNO055::Status::SYS_UNKNOWN < devstatus)) {
@@ -254,13 +213,11 @@ static Dashboard::Imu::Status deviceStatusToImuStatus(BNO055::Status devstatus)
   return statusMap[devstatus];
 }
 
-static Dashboard::Imu::ClockSource
-deviceClockSourceToImuClockSource(BNO055::ClockSource src)
-{
-  static const Dashboard::Imu::ClockSource sourceMap[] = {
-      [BNO055::ClockSource::INT] = Dashboard::Imu::ClockSource::INTERNAL,
-      [BNO055::ClockSource::EXT] = Dashboard::Imu::ClockSource::EXTERNAL,
-      [BNO055::ClockSource::UNDEF] = Dashboard::Imu::ClockSource::UNKNOWN,
+static Imu::ClockSource deviceClkSrcToImuClkSrc(BNO055::ClockSource src) {
+  static const Imu::ClockSource sourceMap[] = {
+      [BNO055::ClockSource::INT] = Imu::ClockSource::INTERNAL,
+      [BNO055::ClockSource::EXT] = Imu::ClockSource::EXTERNAL,
+      [BNO055::ClockSource::UNDEF] = Imu::ClockSource::UNKNOWN,
   };
 
   if ((src < 0) || (BNO055::ClockSource::UNDEF < src)) {
@@ -270,34 +227,23 @@ deviceClockSourceToImuClockSource(BNO055::ClockSource src)
   return sourceMap[src];
 }
 
-static bool updateDeviceStatus(BNO055 &imu, Dashboard::Imu &data)
-{
+static bool updateDeviceStatus(BNO055 &imu, Dashboard::Imu &data) {
   BNO055::Status devstatus = BNO055::Status::SYS_UNKNOWN;
-  bool error = imu.getDeviceStatus(devstatus);
-  if (error) {
-    data.system.status = Dashboard::Imu::Status::UNKNOWN;
-  } else {
-    data.system.status = deviceStatusToImuStatus(devstatus);
-  }
+  bool error{imu.getDeviceStatus(devstatus)};
+  data.system.status = deviceStatusToImuStatus(devstatus);
 
   return error;
 }
 
-static bool updateClockSource(BNO055 &imu, Dashboard::Imu &data)
-{
+static bool updateClockSource(BNO055 &imu, Dashboard::Imu &data) {
   BNO055::ClockSource clk = BNO055::ClockSource::UNDEF;
-  bool error = imu.getClockSource(clk);
-  if (error) {
-    data.system.clock = Dashboard::Imu::ClockSource::UNKNOWN;
-  } else {
-    data.system.clock = deviceClockSourceToImuClockSource(clk);
-  }
+  bool error{imu.getClockSource(clk)};
+  data.system.clock = deviceClkSrcToImuClkSrc(clk);
 
   return error;
 }
 
-static bool updateEulerAngles(BNO055 &imu, Dashboard::Imu &data)
-{
+static bool updateEulerAngles(BNO055 &imu, Dashboard::Imu &data) {
   BNO055::Euler_t euler;
   bool error = imu.getEulerAngles(euler, BNO055::Unit::DEG);
 
@@ -308,8 +254,7 @@ static bool updateEulerAngles(BNO055 &imu, Dashboard::Imu &data)
   return error;
 }
 
-static bool updateGravityVector(BNO055 &imu, Dashboard::Imu &data)
-{
+static bool updateGravityVector(BNO055 &imu, Dashboard::Imu &data) {
   BNO055::Gravity_t gravity;
   bool error = imu.getGravity(gravity);
 
@@ -320,8 +265,7 @@ static bool updateGravityVector(BNO055 &imu, Dashboard::Imu &data)
   return error;
 }
 
-static bool updateAccelerationVector(BNO055 &imu, Dashboard::Imu &data)
-{
+static bool updateAccelerationVector(BNO055 &imu, Dashboard::Imu &data) {
   BNO055::LinearAccel_t acc;
   bool error = imu.getLinearAcceleration(acc);
 
@@ -332,8 +276,7 @@ static bool updateAccelerationVector(BNO055 &imu, Dashboard::Imu &data)
   return error;
 }
 
-static bool updateAccCalibrationStatus(BNO055 &imu, Dashboard::Imu &data)
-{
+static bool updateAccCalibrationStatus(BNO055 &imu, Dashboard::Imu &data) {
   uint8_t byte = 0;
   bool error = imu.getAccCalibrationStatus(byte);
 
@@ -342,8 +285,7 @@ static bool updateAccCalibrationStatus(BNO055 &imu, Dashboard::Imu &data)
   return error;
 }
 
-static bool updateGyroCalibrationStatus(BNO055 &imu, Dashboard::Imu &data)
-{
+static bool updateGyroCalibrationStatus(BNO055 &imu, Dashboard::Imu &data) {
   uint8_t byte = 0;
   bool error = imu.getGyroCalibrationStatus(byte);
 
@@ -352,8 +294,7 @@ static bool updateGyroCalibrationStatus(BNO055 &imu, Dashboard::Imu &data)
   return error;
 }
 
-static bool updateMagCalibrationStatus(BNO055 &imu, Dashboard::Imu &data)
-{
+static bool updateMagCalibrationStatus(BNO055 &imu, Dashboard::Imu &data) {
   uint8_t byte = 0;
   bool error = imu.getMagCalibrationStatus(byte);
 
@@ -362,8 +303,7 @@ static bool updateMagCalibrationStatus(BNO055 &imu, Dashboard::Imu &data)
   return error;
 }
 
-static bool updateSysCalibrationStatus(BNO055 &imu, Dashboard::Imu &data)
-{
+static bool updateSysCalibrationStatus(BNO055 &imu, Dashboard::Imu &data) {
   uint8_t byte = 0;
   bool error = imu.getSystemCalibrationStatus(byte);
 
@@ -372,35 +312,47 @@ static bool updateSysCalibrationStatus(BNO055 &imu, Dashboard::Imu &data)
   return error;
 }
 
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL FUNCTIONS                                            */
-/*****************************************************************************/
-void ImuManagerThread(void *p)
-{
+static SemaphoreHandle_t readImu;
+static bool calibrationDataNeeded{false};
+
+void ImuManagerThread(void *p) {
   BNO055 imu = BNO055(i2c_init, i2c_bus_read, i2c_bus_write, delay);
 
   bool error = imu.init();
-  error = error || resetAndInitializeImu(imu);
-  configASSERT(!error);
+  Assert::Assert(!error);
+
+  while ((error = startAndResetImu(imu))) {
+    Log::Error(tag) << "failed to start IMU";
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
 
   Config::Imu imucfg{config.imu.get()};
 
   if (imucfg.isValid()) {
-    error = sendCalibrationToDevice(imu, imucfg.offset);
+    error = sendCalibrationToImu(imu, imucfg.offset);
     configASSERT(!error);
-    ESP_LOGI(tag, "IMU calibration values loaded");
+    Log::Info(tag) << "IMU calibration values loaded";
     calibrationDataNeeded = false;
   } else {
-    ESP_LOGE(tag, "IMU calibration values not found");
+    Log::Error(tag) << "IMU calibration values not found";
     calibrationDataNeeded = true;
   }
 
   while (1) {
     xSemaphoreTake(readImu, portMAX_DELAY);
 
-    Dashboard::Imu data {};
+    Dashboard::Imu data{};
 
     error = updateDeviceStatus(imu, data);
+
+    while (error || (Imu::Status::ERROR == data.system.status)) {
+      dashboard.imu.set(data);
+      while ((error = startAndResetImu(imu))) {
+        Log::Error(tag) << "failed to restart IMU, status is";
+        vTaskDelay(pdMS_TO_TICKS(1000));
+      }
+      error = error || updateDeviceStatus(imu, data);
+    }
 
     checkImuStatusAndResetIfNeeded(imu, data.system.status);
 
@@ -416,37 +368,31 @@ void ImuManagerThread(void *p)
     dashboard.imu.set(data);
 
     if ((!error) && calibrationDataNeeded && isImuFullyCalibrated(data)) {
-      Config::Imu imucfg {};
-
-      error = receiveCalibrationFromDevice(imu, imucfg.offset);
-
-      config.imu.set(imucfg);
-      config.save();
-
-      calibrationDataNeeded = false;
+      Config::Imu imucfg{};
+      if (!receiveCalibrationFromImu(imu, imucfg.offset)) {
+        config.imu.set(imucfg);
+        config.save();
+        calibrationDataNeeded = false;
+      }
 
       imucfg = config.imu.get();
       if (imucfg.isValid()) {
-        ESP_LOGI(tag, "IMU offsets updated in EEPROM");
+        Log::Info(tag) << "IMU offsets updated in EEPROM";
       } else {
-        ESP_LOGI(tag, "Failed to update IMU offsets in EEPROM");
+        Log::Error(tag) << "Failed to update IMU offsets in EEPROM";
       }
     }
   }
 }
 
-void ImuManagerThreadInit(void)
-{
+void ImuManagerThreadInit(void) {
   readImu = xSemaphoreCreateBinary();
 }
 
-void SampleImu(void)
-{
+void SampleImu(void) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   xSemaphoreGiveFromISR(readImu, &xHigherPriorityTaskWoken);
   if (pdTRUE == xHigherPriorityTaskWoken) {
     portYIELD_FROM_ISR();
   }
 }
-
-/****************************** END OF FILE ********************************/
