@@ -202,7 +202,7 @@ lv_obj_t *variometer_settings_screen_create(lv_style_t *style)
                           "Low\n"
                           "Medium\n"
                           "High");
-  lv_dropdown_set_selected(volume_list, static_cast<int16_t>(sysparams.beep.level));
+  lv_dropdown_set_selected(volume_list, static_cast<int16_t>(sysparams.beep.volume));
   lv_obj_align(volume_list, volume_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
 
   utcoffset_label = lv_label_create(scr, NULL);

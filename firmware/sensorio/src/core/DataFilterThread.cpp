@@ -15,7 +15,6 @@
 //  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-#include <core/BeepControlThread.h>
 #include <core/DataFilterThread.hpp>
 #include <core/DataLoggerThread.hpp>
 #include <core/ImuManagerThread.hpp>
@@ -321,8 +320,6 @@ void DataFilterThread(void *p) {
     filter.vario.instant = ukf.x[1][0];
     filter.vario.averaged = 0;
     dashboard.filter.set(filter);
-
-    BeepControlUpdate();
 
     logfile << timeStamp << " ";
     logfile << dt * 1000 << " ";

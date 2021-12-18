@@ -15,7 +15,7 @@ using RawSystem = struct __attribute__((packed)) {
     int32_t utcOffset;
   } location;
   struct {
-    uint32_t level;
+    uint32_t volume;
   } beep;
 };
 
@@ -90,7 +90,7 @@ bool RawSerializer::serialize(etl::vector_ext<uint8_t> &blob)
 
     data->raw.magic = MAGIC;
     data->raw.system.location.utcOffset = system.location.utcOffset;
-    data->raw.system.beep.level = static_cast<uint32_t>(system.beep.level);
+    data->raw.system.beep.volume = static_cast<uint32_t>(system.beep.volume);
     data->raw.gui.screens.variometer.chartRefreshPeriod =
         gui.screens.variometer.chartRefreshPeriod;
     data->raw.imu.acc.x = imu.offset.acc.x;
@@ -128,7 +128,7 @@ bool RawSerializer::deserialize(const etl::vector_ext<uint8_t> &blob)
     if (data->isValid()) {
       System system{};
       system.location.utcOffset = data->raw.system.location.utcOffset;
-      system.beep.set(data->raw.system.beep.level);
+      system.beep.set(data->raw.system.beep.volume);
       config->system.set(system);
 
       Gui gui{};

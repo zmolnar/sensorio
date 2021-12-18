@@ -18,8 +18,8 @@ namespace Config {
 
   class System {
   public:
-    enum class Level {
-      OFF,
+    enum class Volume {
+      ZERO,
       LOW,
       MED,
       HIGH,
@@ -28,13 +28,13 @@ namespace Config {
       int32_t utcOffset{0};
     } location;
     struct {
-      Level level{Level::OFF};
+      Volume volume{Volume::ZERO};
       void set(int16_t value)
       {
-        int16_t off = static_cast<int16_t>(Level::OFF);
-        int16_t high = static_cast<int16_t>(Level::HIGH);
+        int16_t off = static_cast<int16_t>(Volume::ZERO);
+        int16_t high = static_cast<int16_t>(Volume::HIGH);
         if ((off <= value) && (value <= high)) {
-          level = static_cast<Level>(value);
+          volume = static_cast<Volume>(value);
         }
       }
     } beep;

@@ -17,7 +17,7 @@
 
 #include <Power.hpp>
 #include <core/BatteryMonitorThread.hpp>
-#include <core/BeepControlThread.h>
+#include <core/BeepControlThread.hpp>
 #include <core/DataFilterThread.hpp>
 #include <core/DataLoggerThread.hpp>
 #include <core/GpsManagerThread.hpp>
@@ -96,10 +96,10 @@ extern "C" void app_main(void) {
                           0);
 #endif
 
-#if 0
+#if 1
   xTaskCreatePinnedToCore(BeepControlThread,
                           "beeper",
-                          2048,
+                          4096,
                           NULL,
                           PRIO_0_BEEPER,
                           NULL,

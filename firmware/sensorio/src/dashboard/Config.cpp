@@ -8,7 +8,7 @@ void Config::Config::loadDefault() {
   Log::Info(tag) << "loading default config";
   System system {};
   system.location.utcOffset = 1;
-  system.beep.level = System::Level::HIGH;
+  system.beep.volume = System::Volume::HIGH;
   this->system.set(system);
 
   Gui gui {};
