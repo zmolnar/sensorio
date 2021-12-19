@@ -16,7 +16,7 @@
 //
 
 #include <Power.hpp>
-#include <core/LvglThread.h>
+#include <core/LvglThread.hpp>
 
 #include <driver/gpio.h>
 

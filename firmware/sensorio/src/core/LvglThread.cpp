@@ -1,54 +1,41 @@
-/**
- * @file LvglThread.cpp
- * @brief
- */
+//
+//  This file is part of Sensorio.
+//
+//  Sensorio is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  Sensorio is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
+//
 
-/*****************************************************************************/
-/* INCLUDES                                                                  */
-/*****************************************************************************/
-#include "LvglThread.h"
+#include "LvglThread.hpp"
 
 #include <drivers/encoder/Encoder.h>
 #include <drivers/lcd/SharpLcd.h>
 #include <gui/Sensorio.h>
+#include <platform/Log.hpp>
 
-#include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/timers.h>
 
 #include <lvgl.h>
 
-/*****************************************************************************/
-/* DEFINED CONSTANTS                                                         */
-/*****************************************************************************/
-#define LVGL_TICK_IN_MS 20
+static constexpr uint32_t LVGL_TICK_IN_MS{20U};
+static constexpr char *tag = "lvgl-thread";
 
-/*****************************************************************************/
-/* TYPE DEFINITIONS                                                          */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* MACRO DEFINITIONS                                                         */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
-/*****************************************************************************/
 static TaskHandle_t lvglTask = NULL;
 static TimerHandle_t timerHandle;
 static bool shutdownRequested = false;
-static const char *tag = "lvgl-thread";
 
-/*****************************************************************************/
-/* DECLARATION OF LOCAL FUNCTIONS                                            */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF LOCAL FUNCTIONS                                             */
-/*****************************************************************************/
-static void tick(TimerHandle_t xTimer)
-{
+static void tick(TimerHandle_t xTimer) {
   (void)xTimer;
 
   static uint32_t counter = 0;
@@ -66,14 +53,8 @@ static void tick(TimerHandle_t xTimer)
   }
 }
 
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL FUNCTIONS                                            */
-/*****************************************************************************/
-void LvglThread(void *p)
-{
+void LvglThread(void *p) {
   (void)p;
-
-  ESP_LOGI(tag, "LVGL thread started");
 
   // Initialize LVGL
   lv_init();
@@ -105,20 +86,16 @@ void LvglThread(void *p)
       }
       SharpLcdSendVcomIfNeeded();
     } else {
-      ESP_LOGE(tag, "lvgl timeout");
+      Platform::Log::Error(tag) << "lvgl notification timeout";
     }
   }
 }
 
-void LvglStartupFinished(void)
-{
+void LvglStartupFinished(void) {
   EncoderInit();
   EncoderRegisterDriver(SensorioGetEncoderGroup());
 }
 
-void LvglShutdownRequested(void)
-{
+void LvglShutdownRequested(void) {
   shutdownRequested = true;
 }
-
-/****************************** END OF FILE **********************************/

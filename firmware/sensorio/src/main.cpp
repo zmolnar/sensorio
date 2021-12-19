@@ -22,16 +22,16 @@
 #include <core/DataLoggerThread.hpp>
 #include <core/GpsManagerThread.hpp>
 #include <core/ImuManagerThread.hpp>
-#include <core/LvglThread.h>
+#include <core/LvglThread.hpp>
 #include <core/PressureReaderThread.hpp>
 #include <dashboard/Config.hpp>
 #include <dashboard/Dashboard.hpp>
 #include <dashboard/NvsStorage.hpp>
 #include <dashboard/RawSerializer.hpp>
+#include <platform/Log.hpp>
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <platform/Log.hpp>
 
 typedef enum {
   PRIO_0_INVALID = 0,
@@ -97,13 +97,8 @@ extern "C" void app_main(void) {
 #endif
 
 #if 1
-  xTaskCreatePinnedToCore(BeepControlThread,
-                          "beeper",
-                          4096,
-                          NULL,
-                          PRIO_0_BEEPER,
-                          NULL,
-                          0);
+  xTaskCreatePinnedToCore(
+      BeepControlThread, "beeper", 4096, NULL, PRIO_0_BEEPER, NULL, 0);
 #endif
 
 #if 1

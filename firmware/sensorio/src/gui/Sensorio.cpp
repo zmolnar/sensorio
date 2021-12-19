@@ -15,7 +15,7 @@
 #if defined(SIMULATOR)
 #include <stdio.h>
 #else
-#include "core/LvglThread.h"
+#include "core/LvglThread.hpp"
 #endif
 
 #include "screens/BpsData.h"

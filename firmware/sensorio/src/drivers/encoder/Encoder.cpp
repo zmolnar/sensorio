@@ -10,7 +10,7 @@
 
 #include <lvgl.h>
 
-#include <core/LvglThread.h>
+#include <core/LvglThread.hpp>
 
 #include <driver/gpio.h>
 #include <esp_log.h>
