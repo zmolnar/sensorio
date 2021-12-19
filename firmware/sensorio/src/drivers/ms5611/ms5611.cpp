@@ -1,50 +1,35 @@
-/**
- * @file ms5611.cpp
- * @brief
- */
+//
+//  This file is part of Sensorio.
+//
+//  Sensorio is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  Sensorio is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
+//
 
-/*****************************************************************************/
-/* INCLUDES                                                                  */
-/*****************************************************************************/
-#include "ms5611.h"
-#include <esp_log.h>
+#include <drivers/ms5611/ms5611.hpp>
+#include <platform/Log.hpp>
 
-/*****************************************************************************/
-/* DEFINED CONSTANTS                                                         */
-/*****************************************************************************/
-// Cx compensation parameter in the PROM
-#define C(x) prom[(x)]
+using namespace Platform;
 
-/*****************************************************************************/
-/* TYPE DEFINITIONS                                                          */
-/*****************************************************************************/
+static constexpr auto *tag = "ms5611";
 
-/*****************************************************************************/
-/* MACRO DEFINITIONS                                                         */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
-/*****************************************************************************/
-static const char *tag = "ms5611";
-
-/*****************************************************************************/
-/* DEFINITION OF LOCAL FUNCTIONS                                             */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL FUNCTIONS                                            */
-/*****************************************************************************/
-bool MS5611::start(void)
-{
+bool MS5611::start(void) {
   bool error = init();
   error = error || reset();
   error = error || readCalibration();
   return error;
 }
 
-bool MS5611::update(Osr osr)
-{
+bool MS5611::update(Osr osr) {
   bool error = doConversion(CONV_PRESSURE, osr, p_raw);
   error = error || doConversion(CONV_TEMP, osr, t_raw);
   error = error || processData();
@@ -52,42 +37,37 @@ bool MS5611::update(Osr osr)
   return error;
 }
 
-bool MS5611::checkRange(void)
-{
+bool MS5611::checkRange(void) {
   bool invalid = (p_comp < 1000) || (120000 < p_comp);
   if (invalid) {
-    ESP_LOGE(tag, "pressure out of range: %d", (int)p_comp);
+    Log::Error(tag) << "pressure out of range: " << p_comp;
   }
 
   return invalid;
 }
 
-bool MS5611::sendCmd(uint8_t buf[], size_t length)
-{
+bool MS5611::sendCmd(uint8_t buf[], size_t length) {
   return length != write(addr, buf, length);
 }
 
-bool MS5611::receiveData(uint8_t buf[], size_t length)
-{
+bool MS5611::receiveData(uint8_t buf[], size_t length) {
   return length != read(addr, buf, length);
 }
 
-bool MS5611::reset(void)
-{
+bool MS5611::reset(void) {
   uint8_t cmd = RESET;
   bool error = sendCmd(&cmd, 1);
 
   if (!error) {
     delay(250);
   } else {
-    ESP_LOGE(tag, "failed to reset");
+    Log::Error(tag) << "failed to reset";
   }
 
   return error;
 }
 
-bool MS5611::readCalibration(void)
-{
+bool MS5611::readCalibration(void) {
   bool error = false;
   for (size_t i = 0; (i < 8) && !error; ++i) {
     uint8_t cmd = READ_PROM + (i << 1);
@@ -99,10 +79,10 @@ bool MS5611::readCalibration(void)
     if (!error) {
       prom[i] = ((uint16_t)data[0] << 8) + data[1];
     } else {
-      ESP_LOGE(tag, "reading PROM failed");
+      Log::Error(tag) << "reading PROM failed";
     }
 
-    ESP_LOGD(tag, "PROM[%d] = %x", (int)i, (int)prom[i]);
+    Log::Debug(tag) << "PROM[" << i << "] = " << prom[i];
   }
 
   error = error || validateProm(prom);
@@ -110,8 +90,7 @@ bool MS5611::readCalibration(void)
   return error;
 }
 
-bool MS5611::validateProm(uint16_t prom[8])
-{
+bool MS5611::validateProm(uint16_t prom[8]) {
   uint16_t p7_backup = prom[7];
   uint16_t crc_read = prom[7] & 0x000f;
   uint16_t remainder = 0;
@@ -137,13 +116,13 @@ bool MS5611::validateProm(uint16_t prom[8])
   remainder = (0x000F & (remainder >> 12));
 
   bool isValid = remainder == crc_read;
-  ESP_LOGI(tag, "calibration constants are %svalid", isValid ? "" : "in");
+  auto prefix = (isValid ? "" : "in");
+  Log::Info(tag) << "calibration constants are " << prefix << "valid";
 
   return !isValid;
 }
 
-bool MS5611::doConversion(Command cmd, Osr osr, uint32_t &data)
-{
+bool MS5611::doConversion(Command cmd, Osr osr, uint32_t &data) {
   static const uint32_t conv_time_array[5] = {
       [OSR_256] = 1,
       [OSR_512] = 2,
@@ -174,8 +153,7 @@ bool MS5611::doConversion(Command cmd, Osr osr, uint32_t &data)
   return error;
 }
 
-bool MS5611::processData(void)
-{
+bool MS5611::processData(void) {
   int64_t dT = (int64_t)t_raw - ((uint64_t)C(5) << 8);
   int64_t temp = 2000 + ((dT * (int64_t)C(6)) >> 23);
   int64_t off = ((uint64_t)C(2) << 16) + (((int64_t)C(4) * dT) >> 7);
@@ -211,5 +189,3 @@ bool MS5611::processData(void)
 
   return false;
 }
-
-/****************************** END OF FILE **********************************/

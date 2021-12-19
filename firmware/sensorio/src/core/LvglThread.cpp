@@ -29,7 +29,7 @@
 #include <lvgl.h>
 
 static constexpr uint32_t LVGL_TICK_IN_MS{20U};
-static constexpr char *tag = "lvgl-thread";
+static constexpr auto *tag = "lvgl-thread";
 
 static TaskHandle_t lvglTask = NULL;
 static TimerHandle_t timerHandle;

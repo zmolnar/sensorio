@@ -17,7 +17,7 @@
 
 #include <core/PressureReaderThread.hpp>
 #include <dashboard/Dashboard.hpp>
-#include <drivers/ms5611/ms5611.h>
+#include <drivers/ms5611/ms5611.hpp>
 #include <platform/Log.hpp>
 
 #include <driver/gpio.h>
