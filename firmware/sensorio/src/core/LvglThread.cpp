@@ -17,7 +17,7 @@
 
 #include "LvglThread.hpp"
 
-#include <drivers/encoder/Encoder.h>
+#include <drivers/encoder/Encoder.hpp>
 #include <drivers/lcd/SharpLcd.h>
 #include <gui/Sensorio.h>
 #include <platform/Log.hpp>
