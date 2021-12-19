@@ -1,68 +1,56 @@
-/**
- * @file SharpLcd.cpp
- * @brief
- */
+//
+//  This file is part of Sensorio.
+//
+//  Sensorio is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  Sensorio is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
+//
 
-/*****************************************************************************/
-/* INCLUDES                                                                  */
-/*****************************************************************************/
-#include "SharpLcd.h"
+#include <drivers/lcd/SharpLcd.hpp>
 
 #include <driver/gpio.h>
 #include <driver/spi_master.h>
 
 #include "lvgl.h"
 
-/*****************************************************************************/
-/* DEFINED CONSTANTS                                                         */
-/*****************************************************************************/
-#define SHARP_LCD_HOR_RES     400
-#define SHARP_LCD_VER_RES     240
-#define SHARP_LCD_PIXEL_COUNT (SHARP_LCD_VER_RES * SHARP_LCD_HOR_RES)
+static constexpr auto HORIZONTAL_RES{400};
+static constexpr auto VERTICAL_RES{240};
+static constexpr auto PIXEL_COUNT{(VERTICAL_RES * HORIZONTAL_RES)};
 
-#define LCD_MOSI     GPIO_NUM_21
-#define LCD_MISO     -1
-#define LCD_SCLK     GPIO_NUM_22
-#define LCD_CS       GPIO_NUM_19
-#define LCD_CS_SEL   GPIO_SEL_19
-#define LCD_SPI_FREQ 2000000
-#define LCD_SPI_MODE 0
+static constexpr auto LCD_MOSI{GPIO_NUM_21};
+static constexpr auto LCD_MISO{-1};
+static constexpr auto LCD_SCLK{GPIO_NUM_22};
+static constexpr auto LCD_CS{GPIO_NUM_19};
+static constexpr auto LCD_CS_SEL{GPIO_SEL_19};
+static constexpr auto LCD_SPI_FREQ{2000000};
+static constexpr auto LCD_SPI_MODE{0};
 
-#define BIT_WRITECMD (0x01) // 0x80 in LSB format
-#define BIT_VCOM     (0x02) // 0x40 in LSB format
-#define BIT_CLEAR    (0x04) // 0x20 in LSB format
+static constexpr auto BIT_WRITECMD{0x01}; // 0x80 in LSB format
+static constexpr auto BIT_VCOM{0x02};     // 0x40 in LSB format
+static constexpr auto BIT_CLEAR{0x04};    // 0x20 in LSB format
 
-/*****************************************************************************/
-/* TYPE DEFINITIONS                                                          */
-/*****************************************************************************/
 typedef enum {
   LOW = 0,
   HIGH = 1,
-} Level_t;
+} Level;
 
-/*****************************************************************************/
-/* MACRO DEFINITIONS                                                         */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
-/*****************************************************************************/
 static spi_device_handle_t lcd_spi;
 static lv_disp_buf_t disp_buf;
-static lv_color_t frame_buffer[SHARP_LCD_PIXEL_COUNT / 8];
+static lv_color_t frame_buffer[PIXEL_COUNT / 8];
 
 static uint8_t vcom = 0;
 static bool vcomUpdateNeeded = false;
 
-/*****************************************************************************/
-/* DECLARATION OF LOCAL FUNCTIONS                                            */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* DEFINITION OF LOCAL FUNCTIONS                                             */
-/*****************************************************************************/
-static void spiSendByte(spi_device_handle_t spi, uint8_t byte)
-{
+static void spiSendByte(spi_device_handle_t spi, uint8_t byte) {
   spi_transaction_t trans;
   memset(&trans, 0, sizeof(trans));
   trans.length = 8;
@@ -71,8 +59,8 @@ static void spiSendByte(spi_device_handle_t spi, uint8_t byte)
   configASSERT(ESP_OK == err);
 }
 
-static void spiSendBuffer(spi_device_handle_t spi, uint8_t *buf, size_t length)
-{
+static void
+spiSendBuffer(spi_device_handle_t spi, uint8_t *buf, size_t length) {
   spi_transaction_t trans;
   memset(&trans, 0, sizeof(trans));
   trans.length = length * 8;
@@ -83,15 +71,14 @@ static void spiSendBuffer(spi_device_handle_t spi, uint8_t *buf, size_t length)
 
 static void SharpLcdFlushCb(lv_disp_drv_t *disp_drv,
                             const lv_area_t *area,
-                            lv_color_t *color_p)
-{
+                            lv_color_t *color_p) {
   // Transform area from LVGL's coordinate system to the drivers' coordinate
   // system.
   lv_area_t t_area;
   t_area.x1 = area->y1;
-  t_area.y1 = SHARP_LCD_VER_RES - 1 - area->x2;
+  t_area.y1 = VERTICAL_RES - 1 - area->x2;
   t_area.x2 = area->y2;
-  t_area.y2 = SHARP_LCD_VER_RES - 1 - area->x1;
+  t_area.y2 = VERTICAL_RES - 1 - area->x1;
 
   // Start transaction
   gpio_set_level(LCD_CS, HIGH);
@@ -104,7 +91,7 @@ static void SharpLcdFlushCb(lv_disp_drv_t *disp_drv,
     size_t length = (t_area.x2 - t_area.x1 + 1) / 8;
     uint8_t *data = (uint8_t *)color_p + ((line - t_area.y1) * length);
 
-    configASSERT(length == (SHARP_LCD_HOR_RES / 8));
+    configASSERT(length == (HORIZONTAL_RES / 8));
 
     spiSendByte(lcd_spi, (uint8_t)line);  // Line address
     spiSendBuffer(lcd_spi, data, length); // Line data
@@ -128,12 +115,11 @@ static void SharpLcdSetPxCb(lv_disp_drv_t *disp_drv,
                             lv_coord_t x,
                             lv_coord_t y,
                             lv_color_t color,
-                            lv_opa_t opa)
-{
+                            lv_opa_t opa) {
   lv_coord_t xf = y;
   lv_coord_t yf = buf_w - 1 - x;
 
-  size_t i = (yf * (SHARP_LCD_HOR_RES / 8)) + (xf >> 3);
+  size_t i = (yf * (HORIZONTAL_RES / 8)) + (xf >> 3);
   uint8_t mask = 0b00000001 << (xf % 8);
 
   if (lv_color_brightness(color) > 128) {
@@ -143,14 +129,12 @@ static void SharpLcdSetPxCb(lv_disp_drv_t *disp_drv,
   }
 }
 
-static void SharpLcdRounderCb(struct _disp_drv_t *disp_drv, lv_area_t *a)
-{
+static void SharpLcdRounderCb(struct _disp_drv_t *disp_drv, lv_area_t *a) {
   a->y1 = 0;
-  a->y2 = SHARP_LCD_HOR_RES - 1;
+  a->y2 = HORIZONTAL_RES - 1;
 }
 
-static void clearScreen(void)
-{
+static void clearScreen(void) {
   uint8_t cmd[2] = {
       BIT_CLEAR,
       0x00,
@@ -161,8 +145,7 @@ static void clearScreen(void)
   gpio_set_level(LCD_CS, LOW);
 }
 
-static void sendVcom(void)
-{
+static void sendVcom(void) {
   uint8_t cmd[2] = {
       BIT_VCOM,
       0x00,
@@ -173,20 +156,18 @@ static void sendVcom(void)
   gpio_set_level(LCD_CS, LOW);
 }
 
-/*****************************************************************************/
-/* DEFINITION OF GLOBAL FUNCTIONS                                            */
-/*****************************************************************************/
-void SharpLcdInit(void)
-{
+void SharpLcdInit(void) {
   // Configure SPI interface
-  spi_bus_config_t buscfg = {.mosi_io_num = LCD_MOSI,
-                             .miso_io_num = LCD_MISO,
-                             .sclk_io_num = LCD_SCLK,
-                             .quadwp_io_num = -1,
-                             .quadhd_io_num = -1,
-                             .max_transfer_sz = 0,
-                             .flags = 0,
-                             .intr_flags = 0};
+  spi_bus_config_t buscfg = {
+      .mosi_io_num = LCD_MOSI,
+      .miso_io_num = LCD_MISO,
+      .sclk_io_num = LCD_SCLK,
+      .quadwp_io_num = -1,
+      .quadhd_io_num = -1,
+      .max_transfer_sz = 0,
+      .flags = 0,
+      .intr_flags = 0,
+  };
 
   spi_device_interface_config_t devcfg = {
       .command_bits = 0,
@@ -224,10 +205,9 @@ void SharpLcdInit(void)
   clearScreen();
 }
 
-void SharpLcdRegisterDriver(void)
-{
+void SharpLcdRegisterDriver(void) {
   memset(frame_buffer, 0, sizeof(frame_buffer));
-  lv_disp_buf_init(&disp_buf, frame_buffer, NULL, SHARP_LCD_PIXEL_COUNT);
+  lv_disp_buf_init(&disp_buf, frame_buffer, NULL, PIXEL_COUNT);
 
   lv_disp_drv_t disp_drv;
   lv_disp_drv_init(&disp_drv);
@@ -239,18 +219,14 @@ void SharpLcdRegisterDriver(void)
   lv_disp_drv_register(&disp_drv);
 }
 
-void SharpLcdToggleVcom(void)
-{
+void SharpLcdToggleVcom(void) {
   vcom ^= BIT_VCOM;
   vcomUpdateNeeded = true;
 }
 
-void SharpLcdSendVcomIfNeeded(void)
-{
+void SharpLcdSendVcomIfNeeded(void) {
   if (vcomUpdateNeeded) {
     sendVcom();
     vcomUpdateNeeded = false;
   }
 }
-
-/****************************** END OF FILE **********************************/
