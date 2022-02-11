@@ -2,7 +2,6 @@
 # without default 'CMakeLists.txt' file.
 
 idf_component_register(SRCS "main.cpp"
-                            "MicroNMEA.cpp"
                             "Power.cpp"
                             "core/BatteryMonitorThread.cpp"
                             "core/BeepControlThread.cpp"
@@ -12,6 +11,9 @@ idf_component_register(SRCS "main.cpp"
                             "core/PressureReaderThread.cpp"
                             "core/DataFilterThread.cpp"
                             "core/DataLoggerThread.cpp"
+                            "core/nmea/Message.cpp"
+                            "core/nmea/Parser.cpp"
+                            "core/nmea/Processor.cpp"
                             "dashboard/Dashboard.cpp"
                             "dashboard/Config.cpp"
                             "dashboard/NvsStorage.cpp"

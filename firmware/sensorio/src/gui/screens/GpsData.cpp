@@ -42,16 +42,16 @@ static void refresh_task(lv_task_t *p)
   Dashboard::Gps gps {dashboard.gps.get()};
 
   lv_table_set_cell_value_fmt(gpsdata, 0, 1, "%s", gps.locked ? "Yes" : "No");
-  lv_table_set_cell_value_fmt(gpsdata, 1, 1, "%.03f m", gps.altitude / 1000.0);
-  lv_table_set_cell_value_fmt(gpsdata, 2, 1, "%.03f", gps.course / 1000.0);
-  lv_table_set_cell_value_fmt(gpsdata, 3, 1, "%f", gps.latitude / 1000000.0);
-  lv_table_set_cell_value_fmt(gpsdata, 4, 1, "%f", gps.longitude / 1000000.0);
+  lv_table_set_cell_value_fmt(gpsdata, 1, 1, "%.03f m", gps.altitude);
+  lv_table_set_cell_value_fmt(gpsdata, 2, 1, "%.03f", gps.course);
+  lv_table_set_cell_value_fmt(gpsdata, 3, 1, "%f", gps.latitude);
+  lv_table_set_cell_value_fmt(gpsdata, 4, 1, "%f", gps.longitude);
   lv_table_set_cell_value_fmt(gpsdata, 5, 1, "%d", gps.numOfSatellites);
   lv_table_set_cell_value_fmt(gpsdata, 6, 1, "%d km/h", (int)gps.speed);
   lv_table_set_cell_value_fmt(gpsdata,
                               7,
                               1,
-                              "%02d/%02d/%04d",
+                              "%02d/%02d/%02d",
                               gps.gmt.day,
                               gps.gmt.month,
                               gps.gmt.year);

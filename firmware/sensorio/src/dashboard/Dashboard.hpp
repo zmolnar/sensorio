@@ -76,12 +76,12 @@ namespace Dashboard {
   class Gps {
   public:
     bool locked{0};
-    uint32_t altitude{0};
-    uint32_t course{0};
-    uint32_t latitude{0};
-    uint32_t longitude{0};
+    double altitude{0};
+    double course{0};
+    double latitude{0};
+    double longitude{0};
     uint32_t numOfSatellites{0};
-    uint32_t speed{0};
+    double speed{0};
 
     struct DateTime {
       uint32_t year{0};

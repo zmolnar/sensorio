@@ -16,7 +16,9 @@
 //
 
 #include <core/GpsManagerThread.hpp>
+#include <core/nmea/Processor.hpp>
 #include <dashboard/Dashboard.hpp>
+#include <platform/Log.hpp>
 
 #include <driver/gpio.h>
 #include <driver/uart.h>
@@ -25,8 +27,6 @@
 #include <freertos/queue.h>
 
 #include <string.h>
-
-#include <MicroNMEA.h>
 
 static constexpr auto GPS_3DFIX{GPIO_NUM_18};
 static constexpr auto GPS_3DFIX_SEL{GPIO_SEL_18};
@@ -37,16 +37,7 @@ static constexpr auto GPS_TX{GPIO_NUM_27};
 static constexpr auto UART_TX{GPS_RX};
 static constexpr auto UART_RX{GPS_TX};
 
-static bool isValid{true};
 static const char *tag = "gps-thread";
-
-static void badChecksumHandler(MicroNMEA &nmea) {
-  ESP_LOGE(tag, "bad checksum: %s", nmea.getSentence());
-  isValid = false;
-}
-
-static void unknownSentenceHandler(MicroNMEA &nmea) {
-}
 
 static void configure3dFixPin(void) {
   gpio_config_t conf;
@@ -78,11 +69,39 @@ void GpsManagerThread(void *p) {
   configure3dFixPin();
 
   // Setup NMEA parser
-  char buffer[100];
-  MicroNMEA nmea(buffer, sizeof(buffer));
-  nmea.setBadChecksumHandler(badChecksumHandler);
-  nmea.setUnknownSentenceHandler(unknownSentenceHandler);
-  nmea.clear();
+  bool clearNeeded{false};
+  using namespace Nmea0183;
+  auto receiveCb = [&clearNeeded](const Data &data, const char *str) {
+    Dashboard::Gps gps{};
+
+    gps.locked = 1 == gpio_get_level(GPS_3DFIX);
+    gps.altitude = data.altitude;
+    gps.course = data.course;
+    gps.latitude = data.latitude.degrees;
+    gps.longitude = data.longitude.degrees;
+    gps.numOfSatellites = data.numOfSats;
+    gps.speed = data.speed * 1.852;
+    gps.gmt.year = data.date.year;
+    gps.gmt.month = data.date.month;
+    gps.gmt.day = data.date.day;
+    gps.gmt.hour = data.time.hour;
+    gps.gmt.minute = data.time.minute;
+    gps.gmt.second = data.time.second;
+
+    dashboard.gps.set(gps);
+
+    clearNeeded = true;
+  };
+
+  auto errorCb = [&clearNeeded](Processor::ErrorCode code, const char *str) {
+    using namespace Platform;
+    if (Processor::ErrorCode::UNKNOWN_SENTENCE != code) {
+      Log::Error(tag) << "NMEA error: " << (int)code << " " << str;
+    }
+    clearNeeded = true;
+  };
+
+  Nmea0183::Processor nmea(receiveCb, errorCb);
 
   while (1) {
     uart_event_t event;
@@ -92,28 +111,10 @@ void GpsManagerThread(void *p) {
       if (UART_DATA == event.type) {
         uint8_t c;
         while (0 < uart_read_bytes(GPS_UART, &c, 1, pdMS_TO_TICKS(10))) {
-          if (nmea.process(c) && isValid) {
-            Dashboard::Gps gps{};
-
-            long alt = 0;
-            nmea.getAltitude(alt);
-
-            gps.locked = 1 == gpio_get_level(GPS_3DFIX);
-            gps.altitude = (uint32_t)alt;
-            gps.course = nmea.getCourse();
-            gps.latitude = nmea.getLatitude();
-            gps.longitude = nmea.getLongitude();
-            gps.numOfSatellites = nmea.getNumSatellites();
-            gps.speed = nmea.getSpeed() * 0.001852;
-            gps.gmt.year = nmea.getYear();
-            gps.gmt.month = nmea.getMonth();
-            gps.gmt.day = nmea.getDay();
-            gps.gmt.hour = nmea.getHour();
-            gps.gmt.minute = nmea.getMinute();
-            gps.gmt.second = nmea.getSecond();
-
-            dashboard.gps.set(gps);
-            isValid = true;
+          nmea.process(c);
+          if (clearNeeded) {
+            nmea.clear();
+            clearNeeded = false;
           }
         }
       } else {
