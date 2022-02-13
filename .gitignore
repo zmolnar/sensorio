@@ -7,3 +7,4 @@ firmware/model/.vscode
 firmware/model/data
 firmware/sensorio/.vscode
 firmware/.vscode
+firmware/sensorio/model/__pycache__
