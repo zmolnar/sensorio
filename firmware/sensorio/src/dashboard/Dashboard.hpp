@@ -1,160 +1,40 @@
+//
+//  This file is part of Sensorio.
+//
+//  Sensorio is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  Sensorio is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
+//
 
-#ifndef DASHBOARD_H
-#define DASHBOARD_H
+#ifndef DASHBOARD_HPP
+#define DASHBOARD_HPP
 
-#include <dashboard/Subject.hpp>
 #include <dashboard/Observer.hpp>
+#include <dashboard/Subject.hpp>
+
+#include <dashboard/Battery.hpp>
+#include <dashboard/Board.hpp>
+#include <dashboard/Bps.hpp>
+#include <dashboard/Filter.hpp>
+#include <dashboard/Gps.hpp>
+#include <dashboard/Imu.hpp>
 #include <platform/Assert.hpp>
+
 namespace Dashboard {
-
-  class Imu {
-  public:
-    enum class Status {
-      IDLE = 0,
-      ERROR = 1,
-      PERIPHERAL_INIT = 2,
-      INITIALIZING = 3,
-      RUNNING_SELFTEST = 4,
-      RUNNING_FUSION = 5,
-      RUNNING_NO_FUSION = 6,
-      UNKNOWN = 7,
-    };
-
-    enum class ClockSource {
-      INTERNAL = 0,
-      EXTERNAL = 1,
-      UNKNOWN = 2,
-    };
-
-    struct {
-      Status status{Status::UNKNOWN};
-      ClockSource clock{ClockSource::UNKNOWN};
-    } system;
-    struct {
-      uint32_t acc{0};
-      uint32_t gyro{0};
-      uint32_t mag{0};
-      uint32_t sys{0};
-    } calibration;
-    struct {
-      double yaw{0.0};
-      double pitch{0.0};
-      double roll{0.0};
-    } euler;
-    struct {
-      double x{0.0};
-      double y{0.0};
-      double z{0.0};
-    } gravity;
-    struct {
-      double x{0};
-      double y{0};
-      double z{0};
-    } acceleration;
-
-    void assign(const Imu& rhs) {
-      *this = rhs;
-    }
-  };
-
-  class Bps {
-  public:
-    struct {
-      uint32_t pressure{0};
-      uint32_t temp{0};
-    } raw;
-    struct {
-      uint32_t pressure{0};
-      uint32_t temp{0};
-    } cooked;
-
-    void assign(const Bps& rhs) {
-      *this = rhs;
-    }
-  };
-
-  class Gps {
-  public:
-    bool locked{0};
-    double altitude{0};
-    double course{0};
-    double latitude{0};
-    double longitude{0};
-    uint32_t numOfSatellites{0};
-    double speed{0};
-
-    struct DateTime {
-      uint32_t year{0};
-      uint32_t month{0};
-      uint32_t day{0};
-      uint32_t hour{0};
-      uint32_t minute{0};
-      uint32_t second{0};
-    };
-
-    DateTime gmt;
-
-    DateTime getLocalTime(int utcOffset)
-    {
-      int dstOffset = isDaylightSavingTime() ? 1 : 0;
-      return addOffset(utcOffset + dstOffset);
-    }
-
-    void assign(const Gps& rhs) {
-      *this = rhs;
-    }
-
-  private:
-    uint32_t getDayOfWeek();
-    bool isDaylightSavingTime();
-    DateTime addOffset(int offset);
-  };
-
-  class Board {
-  public:
-    bool usbConnected{false};
-    void assign(const Board& rhs) {
-      *this = rhs;
-    }
-  };
-
-  class Battery {
-  public:
-    enum class Status {
-      DISCHARGING,
-      CHARGING,
-      CHARGED,
-      UNKNOWN,
-    };
-
-    Status status{Status::UNKNOWN};
-    double voltage{0.0};
-    uint32_t percentage{0};
-    uint32_t adcValue{0};
-
-    void assign(const Battery& rhs) {
-      *this = rhs;
-    }
-  };
-
-  class Filter {
-  public:
-    struct {
-      double averaged{0.0};
-      double instant{0.0};
-    } vario;
-    double height{0.0};
-
-    void assign(const Filter& rhs) {
-      *this = rhs;
-    }
-  };
 
   class Dashboard {
     Observers<10> observers{};
 
-    void notify(Flag flag)
-    {
+    void notify(Flag flag) {
       observers.notify(flag);
     }
 
@@ -181,12 +61,10 @@ namespace Dashboard {
         gps{[this]() { notify(static_cast<Flag>(Data::GPS)); }},
         board{[this]() { notify(static_cast<Flag>(Data::BOARD)); }},
         battery{[this]() { notify(static_cast<Flag>(Data::BATTERY)); }},
-        filter{[this]() { notify(static_cast<Flag>(Data::FILTER)); }}
-    {
+        filter{[this]() { notify(static_cast<Flag>(Data::FILTER)); }} {
     }
 
-    void subscribe(Mask subjects, Notification cb)
-    {
+    void subscribe(Mask subjects, Notification cb) {
       Platform::Assert::Assert(nullptr != cb);
       Platform::Assert::Assert(0U < subjects);
       observers.add(subjects, cb);

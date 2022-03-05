@@ -15,47 +15,36 @@
 //  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-#ifndef SUBJECT_HPP
-#define SUBJECT_HPP
+#ifndef SYSTEM_HPP
+#define SYSTEM_HPP
 
-#include <functional>
-#include <platform/Assert.hpp>
-#include <etl/mutex.h>
+namespace Config {
+  class System {
+  public:
+    enum class Volume {
+      ZERO,
+      LOW,
+      MED,
+      HIGH,
+    };
+    struct {
+      int32_t utcOffset{0};
+    } location;
+    struct {
+      Volume volume{Volume::ZERO};
+      void set(int16_t value) {
+        int16_t off = static_cast<int16_t>(Volume::ZERO);
+        int16_t high = static_cast<int16_t>(Volume::HIGH);
+        if ((off <= value) && (value <= high)) {
+          volume = static_cast<Volume>(value);
+        }
+      }
+    } beep;
 
-template <typename T>
-class Subject {
-  using Notification = std::function<void(void)>;
-
-  etl::mutex mutex {};
-  Notification cb;
-  T value{};
-
-  void notify()
-  {
-    cb();
-  }
-
-public:
-  Subject(Notification cb) : mutex{}, cb{cb}, value{}
-  {
-    Platform::Assert::Assert(nullptr != cb);
-  }
-
-  void set(const T &value)
-  {
-    mutex.lock();
-    this->value.assign(value);
-    mutex.unlock();
-    notify();
-  }
-
-  T get()
-  {
-    mutex.lock();
-    T tmp{value};
-    mutex.unlock();
-    return tmp;
-  }
-};
+    void assign(const System &rhs) {
+      *this = rhs;
+    }
+  };
+}
 
 #endif

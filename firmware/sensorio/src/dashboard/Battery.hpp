@@ -15,47 +15,28 @@
 //  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-#ifndef SUBJECT_HPP
-#define SUBJECT_HPP
+#ifndef BATTERY_HPP
+#define BATTERY_HPP
 
-#include <functional>
-#include <platform/Assert.hpp>
-#include <etl/mutex.h>
+namespace Dashboard {
+  class Battery {
+  public:
+    enum class Status {
+      DISCHARGING,
+      CHARGING,
+      CHARGED,
+      UNKNOWN,
+    };
 
-template <typename T>
-class Subject {
-  using Notification = std::function<void(void)>;
+    Status status{Status::UNKNOWN};
+    double voltage{0.0};
+    uint32_t percentage{0};
+    uint32_t adcValue{0};
 
-  etl::mutex mutex {};
-  Notification cb;
-  T value{};
-
-  void notify()
-  {
-    cb();
-  }
-
-public:
-  Subject(Notification cb) : mutex{}, cb{cb}, value{}
-  {
-    Platform::Assert::Assert(nullptr != cb);
-  }
-
-  void set(const T &value)
-  {
-    mutex.lock();
-    this->value.assign(value);
-    mutex.unlock();
-    notify();
-  }
-
-  T get()
-  {
-    mutex.lock();
-    T tmp{value};
-    mutex.unlock();
-    return tmp;
-  }
-};
+    void assign(const Battery &rhs) {
+      *this = rhs;
+    }
+  };
+}
 
 #endif

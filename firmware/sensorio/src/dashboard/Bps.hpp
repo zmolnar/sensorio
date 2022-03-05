@@ -15,47 +15,27 @@
 //  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-#ifndef SUBJECT_HPP
-#define SUBJECT_HPP
+#ifndef BPS_HPP
+#define BPS_HPP
 
-#include <functional>
-#include <platform/Assert.hpp>
-#include <etl/mutex.h>
+#include <cstdint>
 
-template <typename T>
-class Subject {
-  using Notification = std::function<void(void)>;
+namespace Dashboard {
+  class Bps {
+  public:
+    struct {
+      uint32_t pressure{0};
+      uint32_t temp{0};
+    } raw;
+    struct {
+      uint32_t pressure{0};
+      uint32_t temp{0};
+    } cooked;
 
-  etl::mutex mutex {};
-  Notification cb;
-  T value{};
-
-  void notify()
-  {
-    cb();
-  }
-
-public:
-  Subject(Notification cb) : mutex{}, cb{cb}, value{}
-  {
-    Platform::Assert::Assert(nullptr != cb);
-  }
-
-  void set(const T &value)
-  {
-    mutex.lock();
-    this->value.assign(value);
-    mutex.unlock();
-    notify();
-  }
-
-  T get()
-  {
-    mutex.lock();
-    T tmp{value};
-    mutex.unlock();
-    return tmp;
-  }
-};
+    void assign(const Bps &rhs) {
+      *this = rhs;
+    }
+  };
+}
 
 #endif

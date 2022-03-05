@@ -15,47 +15,22 @@
 //  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
 //
 
-#ifndef SUBJECT_HPP
-#define SUBJECT_HPP
+#ifndef GUI_HPP
+#define GUI_HPP
 
-#include <functional>
-#include <platform/Assert.hpp>
-#include <etl/mutex.h>
+namespace Config {
+  class Gui {
+  public:
+    struct {
+      struct {
+        uint32_t chartRefreshPeriod;
+      } variometer;
+    } screens;
 
-template <typename T>
-class Subject {
-  using Notification = std::function<void(void)>;
-
-  etl::mutex mutex {};
-  Notification cb;
-  T value{};
-
-  void notify()
-  {
-    cb();
-  }
-
-public:
-  Subject(Notification cb) : mutex{}, cb{cb}, value{}
-  {
-    Platform::Assert::Assert(nullptr != cb);
-  }
-
-  void set(const T &value)
-  {
-    mutex.lock();
-    this->value.assign(value);
-    mutex.unlock();
-    notify();
-  }
-
-  T get()
-  {
-    mutex.lock();
-    T tmp{value};
-    mutex.unlock();
-    return tmp;
-  }
-};
+    void assign(const Gui &rhs) {
+      *this = rhs;
+    }
+  };
+}
 
 #endif

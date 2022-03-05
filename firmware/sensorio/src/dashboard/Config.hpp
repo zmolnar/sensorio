@@ -1,10 +1,32 @@
+//
+//  This file is part of Sensorio.
+//
+//  Sensorio is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  Sensorio is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with Sensorio.  If not, see <https://www.gnu.org/licenses/>.
+//
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef CONFIG_HPP
+#define CONFIG_HPP
 
 #include <dashboard/Observer.hpp>
 #include <dashboard/Subject.hpp>
+
+#include <dashboard/Gui.hpp>
+#include <dashboard/Imu.hpp>
+#include <dashboard/System.hpp>
+
 #include <etl/vector.h>
+
 #include <platform/Assert.hpp>
 #include <platform/Log.hpp>
 
@@ -16,108 +38,13 @@ namespace Config {
     IMU = 0x01 << 2,
   };
 
-  class System {
-  public:
-    enum class Volume {
-      ZERO,
-      LOW,
-      MED,
-      HIGH,
-    };
-    struct {
-      int32_t utcOffset{0};
-    } location;
-    struct {
-      Volume volume{Volume::ZERO};
-      void set(int16_t value)
-      {
-        int16_t off = static_cast<int16_t>(Volume::ZERO);
-        int16_t high = static_cast<int16_t>(Volume::HIGH);
-        if ((off <= value) && (value <= high)) {
-          volume = static_cast<Volume>(value);
-        }
-      }
-    } beep;
-
-    void assign(const System& rhs) {
-      *this = rhs;
-    }
-  };
-
-  class Gui {
-  public:
-    struct {
-      struct {
-        uint32_t chartRefreshPeriod;
-      } variometer;
-    } screens;
-
-    void assign(const Gui& rhs) {
-      *this = rhs;
-    }
-  };
-
-  class Imu {
-  public:
-    struct Offset {
-      struct {
-        int16_t x;
-        int16_t y;
-        int16_t z;
-        int16_t r;
-      } acc;
-      struct {
-        int16_t x;
-        int16_t y;
-        int16_t z;
-      } gyro;
-      struct {
-        int16_t x;
-        int16_t y;
-        int16_t z;
-        int16_t r;
-      } mag;
-    };
-
-    Offset offset{};
-    uint8_t crc{};
-
-    static uint8_t crc8(const uint8_t data[], size_t length)
-    {
-      uint8_t crc = 0;
-      for (size_t i = 0; i < length; ++i) {
-        crc ^= data[i];
-      }
-
-      return crc;
-    }
-
-    bool isValid()
-    {
-      uint8_t *data = (uint8_t *)&offset;
-      size_t length = sizeof(offset);
-      uint8_t crc = crc8(data, length);
-
-      return this->crc == crc;
-    }
-
-    void assign(const Imu& rhs) {
-      *this = rhs;
-      uint8_t *data = (uint8_t *)&offset;
-      size_t length = sizeof(offset);
-      auto crc = crc8(data, length);
-      this->crc = (0x00 == crc) ? 0xFF : crc;
-    }
-  };
-
   class Config;
   class Plugin {
   protected:
     Config *config{};
 
   public:
-    void bind(Config *config)
-    {
+    void bind(Config *config) {
       this->config = config;
     }
   };
@@ -140,8 +67,7 @@ namespace Config {
     ASerializer &serializer;
     AStorage &storage;
 
-    void notify(Flag flag)
-    {
+    void notify(Flag flag) {
       observers.notify(flag);
     }
 
@@ -157,8 +83,7 @@ namespace Config {
         storage{storage},
         system{[this]() { notify(static_cast<Flag>(Component::SYSTEM)); }},
         gui{[this]() { notify(static_cast<Flag>(Component::GUI)); }},
-        imu{[this]() { notify(static_cast<Flag>(Component::IMU)); }}
-    {
+        imu{[this]() { notify(static_cast<Flag>(Component::IMU)); }} {
       serializer.bind(this);
       storage.bind(this);
     }
@@ -167,8 +92,7 @@ namespace Config {
 
     void save();
 
-    void subscribe(Mask subjects, Notification cb)
-    {
+    void subscribe(Mask subjects, Notification cb) {
       Platform::Assert::Assert(nullptr != cb);
       Platform::Assert::Assert(0U < subjects);
       observers.add(subjects, cb);
