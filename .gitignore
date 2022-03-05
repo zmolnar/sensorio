@@ -8,3 +8,4 @@ firmware/model/data
 firmware/sensorio/.vscode
 firmware/.vscode
 firmware/sensorio/model/__pycache__
+firmware/sensorio/.vscode/extensions.json

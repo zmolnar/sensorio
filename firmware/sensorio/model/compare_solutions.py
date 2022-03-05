@@ -21,8 +21,14 @@ input.load()
 
 # Setup model parameters
 dt = .02
-p_std = stats.tstd(input.p)
-a_std = stats.tstd(input.a)
+# p_std = stats.tstd(input.p)
+# a_std = stats.tstd(input.a)
+p_std = 3.74
+a_std = 0.02
+
+for i in range(len(input.a)):
+    if((0 < input.a[i]) and (input.a[i] < 0.1)):
+        input.a[i] = 0
 
 # Print statistics
 print('1. Statistics')
@@ -71,36 +77,55 @@ h_noacc_3, v_noacc_3 = ukf_noacc.run(input.p)
 end = time.time()
 print(f'{end - start} seconds')
 
-# Difference in vario
-v_diff = []
-for i in range(len(v_wacc)):
-    v_diff.append(v_wacc[i] - v_noacc_1[i])
+# Calculate the difference in vario
+v_diff = [v_wacc[i] - v_noacc_1[i] for i in range(len(v_wacc))]
+
+# Calculate plot parameters
+n = int(len(input.p) * dt)
+x_ticks = [(1 / dt) * i for i in range(n)]
+x_tick_labels = [i for i in range(n)]
 
 # Visualize results
 fig, ax = plt.subplots(3,1)
 fig.suptitle('Sensorio')
-ax[0].set_title('Height')
+# ax[0].set_title('Height')
 ax[0].plot(h_wacc, label='With acceleration')
 ax[0].plot(h_noacc_1, label='No acceleration, std=3.0')
 ax[0].plot(h_noacc_2, label='No acceleration, std=1.5')
 ax[0].plot(h_noacc_3, label='No acceleration, std=0.5')
+ax[0].set_xticks(x_ticks)
+ax[0].set_xticklabels(x_tick_labels)
+ax[0].set_xlabel('Time [sec]')
+ax[0].set_ylabel('Height [m]')
 ax[0].legend()
 
-ax[1].set_title('Vario')
+# ax[1].set_title('Vario')
 ax[1].plot(v_wacc, label='With acceleration')
 ax[1].plot(v_noacc_1, label='No acceleration, std=3.0')
 ax[1].plot(v_noacc_2, label='No acceleration, std=1.5')
 ax[1].plot(v_noacc_3, label='No acceleration, std=0.5')
+ax[1].set_xticks(x_ticks)
+ax[1].set_xticklabels(x_tick_labels)
+ax[1].set_xlabel('Time [sec]')
+ax[1].set_ylabel('Vario [m/s]')
 ax[1].legend()
 
-ax[2].set_title('Difference in vario')
+# ax[2].set_title('Difference in vario')
 ax[2].plot(v_diff, label='Diff')
+ax[2].set_xticks(x_ticks)
+ax[2].set_xticklabels(x_tick_labels)
+ax[2].set_xlabel('Time [s]')
+ax[2].set_ylabel('Difference in vario [m/s]')
 ax[2].legend()
 
 fig2, ax2 = plt.subplots(2,1)
 fig2.suptitle('Raw data')
 ax2[0].plot(input.p, label='pressure')
 ax2[1].plot(input.a, label='acceleration')
+ax2[0].set_xticks(x_ticks)
+ax2[0].set_xticklabels(x_tick_labels)
+ax2[1].set_xticks(x_ticks)
+ax2[1].set_xticklabels(x_tick_labels)
 ax2[0].legend()
 ax2[1].legend()
 
