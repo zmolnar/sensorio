@@ -7,3 +7,7 @@
 [submodule "firmware/sensorio/lib/etl"]
 	path = firmware/sensorio/lib/etl
 	url = https://github.com/ETLCPP/etl.git
+[submodule "firmware/sensorio/lib/lvgl"]
+	path = firmware/sensorio/lib/lvgl
+	url = https://github.com/lvgl/lvgl.git
+	
