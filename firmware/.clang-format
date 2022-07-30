@@ -1,7 +1,7 @@
 ﻿---
 AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: 'true'
-AlignConsecutiveDeclarations: 'true'
+AlignConsecutiveAssignments: 'false'
+AlignConsecutiveDeclarations: 'false'
 AlignConsecutiveMacros: 'true'
 AlignEscapedNewlines: Right
 AlignOperands: 'true'
@@ -21,13 +21,13 @@ BinPackParameters: 'false'
 BreakBeforeBraces: Custom
 BraceWrapping:
   AfterExternBlock : 'true'
-  AfterFunction : 'true'
+  AfterFunction : 'false'
   BeforeCatch : 'true'
   SplitEmptyFunction : 'true'
   SplitEmptyRecord : 'true'
 BreakBeforeTernaryOperators: 'true'
 BreakConstructorInitializers: AfterColon
-ColumnLimit: '100'
+ColumnLimit: '80'
 CompactNamespaces: 'false'
 ConstructorInitializerAllOnOneLineOrOnePerLine: 'true'
 Cpp11BracedListStyle: 'true'
