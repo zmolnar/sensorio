@@ -81,7 +81,7 @@ void GpsManagerThread(void *p) {
     gps.longitude = data.longitude.degrees;
     gps.numOfSatellites = data.numOfSats;
     gps.speed = data.speed * 1.852;
-    gps.gmt.year = data.date.year;
+    gps.gmt.year = data.date.year + 2000U;
     gps.gmt.month = data.date.month;
     gps.gmt.day = data.date.day;
     gps.gmt.hour = data.time.hour;

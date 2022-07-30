@@ -55,10 +55,10 @@ static bool isDateTimeValid(Dashboard::Gps::DateTime &dt) {
 }
 
 DWORD get_fattime() {
-  Dashboard::Gps gps {dashboard.gps.get()};
-  DWORD timestamp {0};
+  Dashboard::Gps gps{dashboard.gps.get()};
+  DWORD timestamp{0};
 
-  if(isDateTimeValid(gps.gmt)) {
+  if (isDateTimeValid(gps.gmt)) {
     timestamp |= (DWORD)(gps.gmt.year - 1980) << 25;
     timestamp |= (DWORD)(gps.gmt.month) << 21;
     timestamp |= (DWORD)(gps.gmt.day) << 16;
@@ -114,7 +114,8 @@ public:
     Log::Info(tag) << "Initializing SD card";
 
     sdmmc_card_t *card;
-    esp_err_t ret = esp_vfs_fat_sdmmc_mount("/sdcard", &host, &slot_config, &mount_config, &card);
+    esp_err_t ret = esp_vfs_fat_sdmmc_mount(
+        "/sdcard", &host, &slot_config, &mount_config, &card);
 
     if (ret != ESP_OK) {
       if (ret == ESP_FAIL) {
@@ -205,6 +206,12 @@ private:
       }
     }
 
+    if (error) {
+      Platform::Log::Error(tag) << "failed to create final " << path.c_str();
+    } else {
+      Platform::Log::Info(tag) << "final folder created " << path.c_str();
+    }
+
     return error;
   }
 
@@ -229,6 +236,12 @@ private:
       }
     }
 
+    if (error) {
+      Platform::Log::Error(tag) << "failed to create tmp " << path.c_str();
+    } else {
+      Platform::Log::Info(tag) << "tmp folder created " << path.c_str();
+    }
+
     return error;
   }
 
@@ -237,6 +250,8 @@ public:
   }
 
   bool generateRoot() {
+    using namespace Platform;
+
     bool error{false};
 
     switch (state) {
@@ -271,6 +286,8 @@ public:
           moveFromTo(tmp, root);
           deleteDirectory(tmp);
           state = State::FINAL;
+          Log::Info(tag) << "files were moved from " << tmp.c_str() << " to "
+                         << root.c_str();
         }
       }
       break;
@@ -315,18 +332,16 @@ void DataLoggerThread(void *p) {
     if (pdTRUE == result) {
       sdcard.lock();
 
-      block.lock();
-
       if (!manager.generateRoot()) {
+        block.lock();
         FileManager::Path path = manager.getPath(block.filename);
 
         FILE *file = fopen(path.c_str(), "a");
         fprintf(file, "%s", block.storage().data());
         fclose(file);
+        block.clear();
+        block.unlock();
       }
-
-      block.clear();
-      block.unlock();
 
       sdcard.unlock();
     }

@@ -105,8 +105,8 @@ static void refresh_task(lv_task_t *p)
 
   // Set time
   Dashboard::Gps gps {dashboard.gps.get()};
-#warning Update UTC offset
-  Dashboard::Gps::DateTime lt {gps.getLocalTime(0)};
+  Config::System system {config.system.get()};
+  Dashboard::Gps::DateTime lt {gps.getLocalTime(system.location.utcOffset)};
 
   lv_table_set_cell_value_fmt(data_table,
                               0,
