@@ -40,25 +40,11 @@ static const char *tag = "data-logger-thread";
 static constexpr uint32_t QUEUE_LENGTH{10};
 static QueueHandle_t queue{xQueueCreate(QUEUE_LENGTH, sizeof(LogFile::Block))};
 
-static bool isDateTimeValid(Dashboard::Gps::DateTime &dt) {
-  static uint32_t count{0};
-
-  if (5 < count) {
-    bool isvalid = 2000U < dt.year;
-    isvalid &= dt.month <= 12U;
-    isvalid &= dt.day <= 31U;
-    return isvalid;
-  } else {
-    ++count;
-    return false;
-  }
-}
-
 DWORD get_fattime() {
   Dashboard::Gps gps{dashboard.gps.get()};
   DWORD timestamp{0};
 
-  if (isDateTimeValid(gps.gmt)) {
+  if (gps.locked) {
     timestamp |= (DWORD)(gps.gmt.year - 1980) << 25;
     timestamp |= (DWORD)(gps.gmt.month) << 21;
     timestamp |= (DWORD)(gps.gmt.day) << 16;
@@ -259,7 +245,7 @@ public:
       Dashboard::Gps gps{dashboard.gps.get()};
       Dashboard::Gps::DateTime &dt{gps.gmt};
 
-      if (isDateTimeValid(dt)) {
+      if (gps.locked) {
         error = generateFinal(dt, root);
         if (!error) {
           state = State::FINAL;
@@ -279,7 +265,7 @@ public:
 
       Path tmp{root};
 
-      if (isDateTimeValid(dt)) {
+      if (gps.locked) {
         error = generateFinal(dt, root);
 
         if (!error) {
