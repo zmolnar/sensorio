@@ -228,11 +228,18 @@ public:
   }
 
   Duration calcBeepDuration(double vario) {
-    if (vario < 0)
+    double maximumVario = maximumLift;
+
+    if (vario < 0) {
       vario *= (-1);
+      maximumVario = maximumSink * (-1);
+    }
+
+    if (maximumVario < vario)
+      vario = maximumVario;
 
     double range = beepDurationMaxLift - beepDurationMinLift;
-    double unit = range / maximumLift;
+    double unit = range / maximumVario;
     double offset = vario * unit;
     return (Duration)(beepDurationMinLift + offset);
   }
@@ -278,6 +285,7 @@ class Beeper {
   Pwm pwm{};
   Timer timer{};
 
+  bool startupFinished{false};
   Frequency beepFreq{0U};
   Duration beepDuration{0U};
   Duration silenceDuration{0U};
@@ -318,6 +326,14 @@ public:
   void updateState(double vario) {
     this->vario = vario;
 
+    if (!startupFinished) {
+      state = State::DISABLED;
+      if (Pwm::State::ON == pwm.state) {
+        pwm.disable();
+      }
+      return;
+    }
+
     switch (state) {
     case State::CLIMBING: {
       if (vario < params.liftOffThreshold)
@@ -353,8 +369,13 @@ public:
     config.update(system);
   }
 
+  void enable() {
+    startupFinished = true;
+    updateState(vario);
+  }
+
   void updateBeep() {
-    if (State::DISABLED == state) {
+    if (!startupFinished || (State::DISABLED == state)) {
       if (Pwm::State::ON == pwm.state) {
         pwm.disable();
       }
@@ -403,6 +424,7 @@ public:
 
 enum class Command {
   SHUTDOWN,
+  STARTUP_FINISHED,
   UPDATE_CONFIG,
   UPDATE_STATE,
   UPDATE_BEEP,
@@ -459,6 +481,10 @@ void BeepControlThread(void *p) {
         beeper.stop();
         break;
       }
+      case Command::STARTUP_FINISHED: {
+        beeper.enable();
+        break;
+      }
       case Command::UPDATE_CONFIG: {
         auto system{config.system.get()};
         beeper.updateConfig(system);
@@ -484,4 +510,11 @@ void BeepControlThread(void *p) {
 
 void BeepControlThreadInit(void) {
   beepQueue = xQueueCreate(50, sizeof(Command));
+}
+
+void BeepControlStartupFinished(void) {
+  if (nullptr != beepQueue) {
+    Command cmd = Command::STARTUP_FINISHED;
+    (void)xQueueSend(beepQueue, &cmd, pdMS_TO_TICKS(5));
+  }
 }

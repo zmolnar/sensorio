@@ -22,4 +22,6 @@ void BeepControlThread(void *p);
 
 void BeepControlThreadInit(void);
 
+void BeepControlStartupFinished(void);
+
 #endif

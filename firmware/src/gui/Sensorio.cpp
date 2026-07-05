@@ -15,6 +15,7 @@
 #if defined(SIMULATOR)
 #include <stdio.h>
 #else
+#include "core/BeepControlThread.hpp"
 #include "core/LvglThread.hpp"
 #endif
 
@@ -144,6 +145,9 @@ void SensorioStartupFinished(void)
   SensorioLoadEncoderGroup();
   lv_group_focus_obj(vario);
 
+#if !defined(SIMULATOR)
+  BeepControlStartupFinished();
+#endif
   Power::get().startupFinished();
 }
 
