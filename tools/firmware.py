@@ -19,10 +19,24 @@ DOCKERFILE = ROOT / "docker" / "firmware.Dockerfile"
 DEFAULT_IMAGE = "sensorio-firmware:idf-v4.4.8"
 DEFAULT_PLATFORM = "linux/amd64"
 DEFAULT_BAUD = 115200
+DEFAULT_USB_VID = 0x0403
+DEFAULT_USB_PID = 0x6015
 
 
 def env_value(name: str, default: str) -> str:
     return os.environ.get(name, default)
+
+
+def usb_id(value: str) -> int:
+    try:
+        base = 16 if not value.lower().startswith("0x") else 0
+        return int(value, base)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid USB id: {value}") from exc
+
+
+def format_usb_id(value: int) -> str:
+    return f"{value:04x}"
 
 
 def docker_platform() -> str:
@@ -154,10 +168,106 @@ def ensure_host_module(module: str, package: str) -> None:
         )
 
 
+def host_serial_ports() -> list[dict[str, object]]:
+    ensure_host_module("serial", "pyserial")
+
+    completed = subprocess.run(
+        [
+            host_python(),
+            "-c",
+            (
+                "import json; "
+                "from serial.tools import list_ports; "
+                "print(json.dumps([{"
+                "'device': p.device, "
+                "'description': p.description, "
+                "'hwid': p.hwid, "
+                "'vid': p.vid, "
+                "'pid': p.pid, "
+                "'serial_number': p.serial_number, "
+                "'location': p.location"
+                "} for p in list_ports.comports()]))"
+            ),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(completed.stderr.strip() or "failed to list serial ports")
+
+    return json.loads(completed.stdout)
+
+
+def serial_port_description(port: dict[str, object]) -> str:
+    vid = port.get("vid")
+    pid = port.get("pid")
+    usb_id = (
+        f" VID:PID={format_usb_id(vid)}:{format_usb_id(pid)}"
+        if isinstance(vid, int) and isinstance(pid, int)
+        else ""
+    )
+    description = port.get("description") or "n/a"
+    hwid = port.get("hwid") or "n/a"
+    return f"  {port.get('device')} - {description}{usb_id} ({hwid})"
+
+
+def auto_detect_port(vid: int, pid: int) -> str:
+    ports = host_serial_ports()
+    matches = [
+        port
+        for port in ports
+        if port.get("vid") == vid and port.get("pid") == pid
+    ]
+
+    cu_matches = [
+        port
+        for port in matches
+        if isinstance(port.get("device"), str)
+        and str(port.get("device")).startswith("/dev/cu.")
+    ]
+    if len(cu_matches) == 1:
+        matches = cu_matches
+
+    usb_name = f"{format_usb_id(vid)}:{format_usb_id(pid)}"
+    if not matches:
+        available = "\n".join(serial_port_description(port) for port in ports)
+        raise RuntimeError(
+            f"no serial port found for USB VID:PID={usb_name}.\n"
+            f"Available serial ports:\n{available or '  none'}"
+        )
+    if len(matches) > 1:
+        available = "\n".join(serial_port_description(port) for port in matches)
+        raise RuntimeError(
+            f"multiple serial ports match USB VID:PID={usb_name}; "
+            f"use --port to choose one.\n{available}"
+        )
+
+    port = matches[0]
+    device = port.get("device")
+    if not isinstance(device, str):
+        raise RuntimeError(f"invalid serial port entry: {port!r}")
+
+    print(
+        "auto-detected serial port "
+        f"{device} for USB VID:PID={usb_name}",
+        flush=True,
+    )
+    return device
+
+
+def serial_port(args: argparse.Namespace) -> str:
+    if args.port:
+        return str(args.port)
+    return auto_detect_port(args.usb_vid, args.usb_pid)
+
+
 def flash(args: argparse.Namespace) -> int:
     ensure_host_module("esptool", "esptool")
+    port = serial_port(args)
     build(args)
-    return host_esptool_flash(args)
+    return host_esptool_flash(args, port)
 
 
 def flasher_args() -> dict[str, object]:
@@ -203,20 +313,21 @@ def esptool_flash_command(
     return command
 
 
-def host_esptool_flash(args: argparse.Namespace) -> int:
-    command = esptool_flash_command(args, args.port, [host_python(), "-m", "esptool"])
+def host_esptool_flash(args: argparse.Namespace, port: str) -> int:
+    command = esptool_flash_command(args, port, [host_python(), "-m", "esptool"])
     return run(command, cwd=FIRMWARE_DIR)
 
 
 def monitor(args: argparse.Namespace) -> int:
     ensure_host_module("serial", "pyserial")
+    port = serial_port(args)
     return run(
         [
             host_python(),
             "-m",
             "serial.tools.miniterm",
             "--raw",
-            args.port,
+            port,
             str(args.baud),
         ]
     )
@@ -225,8 +336,29 @@ def monitor(args: argparse.Namespace) -> int:
 def add_serial_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--port",
-        required=True,
-        help="Serial device, for example /dev/cu.usbserial-0001",
+        default=None,
+        help=(
+            "Serial device override, for example /dev/cu.usbserial-0001. "
+            "If omitted, the Sensorio USB serial port is auto-detected."
+        ),
+    )
+    parser.add_argument(
+        "--usb-vid",
+        type=usb_id,
+        default=DEFAULT_USB_VID,
+        help=(
+            "USB VID used for serial port auto-detection, "
+            f"default {format_usb_id(DEFAULT_USB_VID)}"
+        ),
+    )
+    parser.add_argument(
+        "--usb-pid",
+        type=usb_id,
+        default=DEFAULT_USB_PID,
+        help=(
+            "USB PID used for serial port auto-detection, "
+            f"default {format_usb_id(DEFAULT_USB_PID)}"
+        ),
     )
     parser.add_argument(
         "--baud",
