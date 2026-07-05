@@ -61,6 +61,7 @@ static void monitor_sdl_clean_up(void);
 static void monitor_sdl_init(void);
 static void monitor_sdl_refr_core(void);
 static void monitor_sdl_refr_thread(lv_task_t * t);
+static void monitor_capture_if_requested(monitor_t * m);
 
 /***********************
  *   GLOBAL PROTOTYPES
@@ -77,6 +78,8 @@ monitor_t monitor2;
 
 static volatile bool sdl_inited = false;
 static volatile bool sdl_quit_qry = false;
+static bool capture_done = false;
+static Uint32 capture_start_ms = 0;
 
 
 /**********************
@@ -285,6 +288,7 @@ static void monitor_sdl_refr_core(void)
         monitor.sdl_refr_qry = false;
         window_update(&monitor);
     }
+    monitor_capture_if_requested(&monitor);
 
 #if MONITOR_DUAL
     if(monitor2.sdl_refr_qry != false) {
@@ -358,6 +362,50 @@ static void window_update(monitor_t * m)
     /*Update the renderer with the texture containing the rendered image*/
     SDL_RenderCopy(m->renderer, m->texture, NULL, NULL);
     SDL_RenderPresent(m->renderer);
+}
+
+static void monitor_capture_if_requested(monitor_t * m)
+{
+    const char * path = getenv("SENSORIO_SIM_SCREENSHOT");
+    if(path == NULL || path[0] == '\0' || capture_done) {
+        return;
+    }
+
+    if(capture_start_ms == 0) {
+        capture_start_ms = SDL_GetTicks();
+    }
+
+    const char * delay_env = getenv("SENSORIO_SIM_SCREENSHOT_DELAY_MS");
+    Uint32 delay_ms = delay_env != NULL ? (Uint32)strtoul(delay_env, NULL, 10) : 0;
+    if(SDL_GetTicks() - capture_start_ms < delay_ms) {
+        return;
+    }
+
+#if MONITOR_DOUBLE_BUFFERED
+    uint32_t * pixels = m->tft_fb_act;
+#else
+    uint32_t * pixels = m->tft_fb;
+#endif
+    if(pixels == NULL) {
+        return;
+    }
+
+    SDL_Surface * surface = SDL_CreateRGBSurfaceWithFormatFrom(
+        pixels,
+        MONITOR_HOR_RES,
+        MONITOR_VER_RES,
+        32,
+        MONITOR_HOR_RES * sizeof(uint32_t),
+        SDL_PIXELFORMAT_ARGB8888);
+    if(surface != NULL) {
+        SDL_SaveBMP(surface, path);
+        SDL_FreeSurface(surface);
+    }
+
+    capture_done = true;
+    if(getenv("SENSORIO_SIM_EXIT_AFTER_SCREENSHOT") != NULL) {
+        exit(0);
+    }
 }
 
 #endif /*USE_MONITOR*/

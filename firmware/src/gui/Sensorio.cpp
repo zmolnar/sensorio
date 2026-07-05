@@ -13,6 +13,8 @@
 
 #if defined(SIMULATOR)
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 void LogWaitToFinish(void);
 #else
 #include "core/DataLoggerThread.hpp"
@@ -106,6 +108,40 @@ static void exit_msgbox_event_handler(lv_obj_t *obj, lv_event_t event)
   }
 }
 
+static void load_main_screens(void)
+{
+  vario = variometer_screen_create(&no_border_style);
+  bpsdata = bps_data_screen_create(&no_border_style);
+  imudata = imu_data_screen_create(&no_border_style);
+  gpsdata = gps_data_screen_create(&no_border_style);
+  sysstat = system_status_screen_create(&no_border_style);
+
+  SensorioLoadEncoderGroup();
+
+  lv_obj_t *initial_screen = vario;
+#if defined(SIMULATOR)
+  const char *screen = getenv("SENSORIO_SIM_SCREEN");
+  if (screen) {
+    if (0 == strcmp(screen, "bps")) {
+      initial_screen = bpsdata;
+    } else if (0 == strcmp(screen, "imu")) {
+      initial_screen = imudata;
+    } else if (0 == strcmp(screen, "gps")) {
+      initial_screen = gpsdata;
+    } else if (0 == strcmp(screen, "system")) {
+      initial_screen = sysstat;
+    }
+  }
+#endif
+
+  lv_group_focus_obj(initial_screen);
+
+#if !defined(SIMULATOR)
+  BeepControlStartupFinished();
+#endif
+  Power::get().startupFinished();
+}
+
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
@@ -113,8 +149,6 @@ void SensorioStart(void)
 {
   lv_style_init(&no_border_style);
   lv_style_set_border_width(&no_border_style, LV_STATE_DEFAULT, 0);
-
-  startup = startup_screen_create(&no_border_style);
 
 #if defined(SIMULATOR)
   // In the simulator app_hal.c will create the group.
@@ -124,6 +158,15 @@ void SensorioStart(void)
 
   lv_group_set_focus_cb(encgroup, group_focus_cb);
 
+#if defined(SIMULATOR)
+  const char *skip_startup = getenv("SENSORIO_SIM_SKIP_STARTUP");
+  if (skip_startup && skip_startup[0]) {
+    load_main_screens();
+    return;
+  }
+#endif
+
+  startup = startup_screen_create(&no_border_style);
   lv_scr_load(startup);
 }
 
@@ -136,20 +179,8 @@ void SensorioStop(void)
 void SensorioStartupFinished(void)
 {
   lv_obj_del(startup);
-
-  vario = variometer_screen_create(&no_border_style);
-  bpsdata = bps_data_screen_create(&no_border_style);
-  imudata = imu_data_screen_create(&no_border_style);
-  gpsdata = gps_data_screen_create(&no_border_style);
-  sysstat = system_status_screen_create(&no_border_style);
-
-  SensorioLoadEncoderGroup();
-  lv_group_focus_obj(vario);
-
-#if !defined(SIMULATOR)
-  BeepControlStartupFinished();
-#endif
-  Power::get().startupFinished();
+  startup = NULL;
+  load_main_screens();
 }
 
 lv_group_t *SensorioGetEncoderGroup(void)

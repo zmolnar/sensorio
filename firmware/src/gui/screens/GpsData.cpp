@@ -7,30 +7,22 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "GpsData.h"
+#include "Ui.h"
 #include "dashboard/Dashboard.hpp"
-
-/*****************************************************************************/
-/* DEFINED CONSTANTS                                                         */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* TYPE DEFINITIONS                                                          */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* MACRO DEFINITIONS                                                         */
-/*****************************************************************************/
 
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static lv_obj_t * label;
-static lv_obj_t * gpsdata;
+static lv_obj_t * lock_value;
+static lv_obj_t * speed_value;
+static lv_obj_t * altitude_value;
+static lv_obj_t * course_value;
+static lv_obj_t * satellites_value;
+static lv_obj_t * latitude_value;
+static lv_obj_t * longitude_value;
+static lv_obj_t * date_value;
+static lv_obj_t * time_value;
 static lv_task_t *task;
-
-/*****************************************************************************/
-/* DECLARATION OF LOCAL FUNCTIONS                                            */
-/*****************************************************************************/
 
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
@@ -41,27 +33,23 @@ static void refresh_task(lv_task_t *p)
 
   Dashboard::Gps gps {dashboard.gps.get()};
 
-  lv_table_set_cell_value_fmt(gpsdata, 0, 1, "%s", gps.locked ? "Yes" : "No");
-  lv_table_set_cell_value_fmt(gpsdata, 1, 1, "%.03f m", gps.altitude);
-  lv_table_set_cell_value_fmt(gpsdata, 2, 1, "%.03f", gps.course);
-  lv_table_set_cell_value_fmt(gpsdata, 3, 1, "%f", gps.latitude);
-  lv_table_set_cell_value_fmt(gpsdata, 4, 1, "%f", gps.longitude);
-  lv_table_set_cell_value_fmt(gpsdata, 5, 1, "%d", gps.numOfSatellites);
-  lv_table_set_cell_value_fmt(gpsdata, 6, 1, "%d km/h", (int)gps.speed);
-  lv_table_set_cell_value_fmt(gpsdata,
-                              7,
-                              1,
-                              "%02d/%02d/%02d",
-                              gps.gmt.day,
-                              gps.gmt.month,
-                              gps.gmt.year);
-  lv_table_set_cell_value_fmt(gpsdata,
-                              8,
-                              1,
-                              "%02d:%02d:%02d",
-                              gps.gmt.hour,
-                              gps.gmt.minute,
-                              gps.gmt.second);
+  lv_label_set_text(lock_value, gps.locked ? "LOCKED" : "NO FIX");
+  lv_label_set_text_fmt(speed_value, "%d", (int)gps.speed);
+  lv_label_set_text_fmt(altitude_value, "%.0f", gps.altitude);
+  lv_label_set_text_fmt(course_value, "%03d", (int)gps.course);
+  lv_label_set_text_fmt(satellites_value, "%d", gps.numOfSatellites);
+  lv_label_set_text_fmt(latitude_value, "%.5f", gps.latitude);
+  lv_label_set_text_fmt(longitude_value, "%.5f", gps.longitude);
+  lv_label_set_text_fmt(date_value,
+                        "%02d/%02d/%02d",
+                        gps.gmt.day,
+                        gps.gmt.month,
+                        gps.gmt.year);
+  lv_label_set_text_fmt(time_value,
+                        "%02d:%02d:%02d",
+                        gps.gmt.hour,
+                        gps.gmt.minute,
+                        gps.gmt.second);
 }
 
 static void event_handler(lv_obj_t *obj, lv_event_t event)
@@ -87,90 +75,90 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
 /*****************************************************************************/
 lv_obj_t *gps_data_screen_create(lv_style_t *style)
 {
-  lv_obj_t *scr = lv_obj_create(NULL, NULL);
-  lv_obj_add_style(scr, LV_STATE_DEFAULT, style);
+  using namespace Gui;
+
+  lv_obj_t *scr = Ui::screen(style);
   lv_obj_set_event_cb(scr, event_handler);
 
-  static lv_style_t lstyle;
-  lv_style_init(&lstyle);
-  lv_style_set_text_font(&lstyle, LV_STATE_DEFAULT, &lv_font_montserrat_24);
-  label = lv_label_create(scr, NULL);
-  lv_label_set_text(label, "GPS");
-  lv_obj_add_style(label, LV_STATE_DEFAULT, style);
-  lv_obj_add_style(label, LV_STATE_DEFAULT, &lstyle);
-  lv_obj_align(label, scr, LV_ALIGN_IN_TOP_MID, 0, 0);
+  Ui::header(scr, "GPS");
 
-  static lv_style_t hstyle;
-  lv_style_init(&hstyle);
-  lv_style_set_text_font(&hstyle, LV_STATE_DEFAULT, &lv_font_montserrat_18);
+  lv_obj_t *speed_panel = Ui::panel(scr, Ui::Margin, 40, 108, 84, nullptr);
+  Ui::label(speed_panel, LV_SYMBOL_RIGHT, Ui::icon_style(), 8, 5, 24,
+            LV_LABEL_ALIGN_CENTER);
+  speed_value = Ui::label(
+      speed_panel, "0", Ui::large_value_style(), 0, 26, 108, LV_LABEL_ALIGN_CENTER);
+  Ui::label(speed_panel, "km/h", Ui::unit_style(), 0, 58, 108, LV_LABEL_ALIGN_CENTER);
 
-  static lv_style_t tstyle;
-  lv_style_init(&tstyle);
-  lv_style_set_pad_all(&tstyle, LV_STATE_DEFAULT, 2);
+  lv_obj_t *alt_panel = Ui::panel(scr, 124, 40, 108, 84, nullptr);
+  Ui::label(alt_panel, LV_SYMBOL_UPLOAD, Ui::icon_style(), 8, 5, 24,
+            LV_LABEL_ALIGN_CENTER);
+  altitude_value = Ui::label(
+      alt_panel, "0", Ui::large_value_style(), 0, 26, 108, LV_LABEL_ALIGN_CENTER);
+  Ui::label(alt_panel, "m", Ui::unit_style(), 0, 58, 108, LV_LABEL_ALIGN_CENTER);
 
-  gpsdata = lv_table_create(scr, NULL);
-  lv_obj_add_style(gpsdata, LV_TABLE_PART_BG, style);
-  lv_obj_add_style(gpsdata, LV_TABLE_PART_BG, &tstyle);
-  lv_obj_add_style(gpsdata, LV_TABLE_PART_CELL1, style);
-  lv_obj_add_style(gpsdata, LV_TABLE_PART_CELL1, &tstyle);
-  lv_obj_add_style(gpsdata, LV_TABLE_PART_CELL2, style);
-  lv_obj_add_style(gpsdata, LV_TABLE_PART_CELL2, &tstyle);
-  lv_obj_add_style(gpsdata, LV_TABLE_PART_CELL2, &hstyle);
+  lv_obj_t *fix_panel =
+      Ui::panel(scr, Ui::Margin, 134, Ui::ScreenWidth - 2 * Ui::Margin, 78,
+                nullptr);
+  Ui::label(fix_panel, LV_SYMBOL_GPS, Ui::icon_style(), 8, 5, 24,
+            LV_LABEL_ALIGN_CENTER);
+  Ui::label(fix_panel, "Status", Ui::body_style(), 10, 26, 74);
+  lock_value = Ui::label(
+      fix_panel, "NO FIX", Ui::body_right_style(), 102, 26, 112,
+      LV_LABEL_ALIGN_RIGHT);
+  Ui::label(fix_panel, "Satellites", Ui::body_style(), 10, 50, 90);
+  satellites_value = Ui::label(
+      fix_panel, "0", Ui::body_right_style(), 102, 50, 112, LV_LABEL_ALIGN_RIGHT);
 
-  lv_table_set_col_cnt(gpsdata, 2);
-  lv_table_set_row_cnt(gpsdata, 9);
+  lv_obj_t *course_panel =
+      Ui::panel(scr, Ui::Margin, 222, Ui::ScreenWidth - 2 * Ui::Margin, 46,
+                nullptr);
+  Ui::label(course_panel, LV_SYMBOL_RIGHT, Ui::icon_style(), 8, 13, 24,
+            LV_LABEL_ALIGN_CENTER);
+  course_value = Ui::label(course_panel,
+                           "000",
+                           Ui::value_style(),
+                           0,
+                           17,
+                           Ui::ScreenWidth - 2 * Ui::Margin,
+                           LV_LABEL_ALIGN_CENTER);
+  Ui::label(course_panel,
+            "deg",
+            Ui::unit_style(),
+            150,
+            25,
+            60,
+            LV_LABEL_ALIGN_LEFT);
 
-  lv_table_set_col_width(gpsdata, 0, lv_obj_get_width(scr) * 0.4);
-  lv_table_set_col_width(gpsdata, 1, lv_obj_get_width(scr) * 0.6);
+  lv_obj_t *position_panel =
+      Ui::panel(scr, Ui::Margin, 278, Ui::ScreenWidth - 2 * Ui::Margin, 68,
+                nullptr);
+  Ui::label(position_panel, LV_SYMBOL_GPS, Ui::icon_style(), 8, 5, 24,
+            LV_LABEL_ALIGN_CENTER);
+  Ui::label(position_panel, "LAT", Ui::caption_style(), 10, 25, 42);
+  latitude_value = Ui::label(position_panel,
+                             "0.00000",
+                             Ui::body_right_style(),
+                             62,
+                             23,
+                             150,
+                             LV_LABEL_ALIGN_RIGHT);
+  Ui::label(position_panel, "LON", Ui::caption_style(), 10, 47, 42);
+  longitude_value = Ui::label(position_panel,
+                              "0.00000",
+                              Ui::body_right_style(),
+                              62,
+                              45,
+                              150,
+                              LV_LABEL_ALIGN_RIGHT);
 
-  lv_table_set_cell_type(gpsdata, 0, 0, 1);
-  lv_table_set_cell_type(gpsdata, 0, 1, 1);
-  lv_table_set_cell_type(gpsdata, 1, 0, 1);
-  lv_table_set_cell_type(gpsdata, 1, 1, 1);
-  lv_table_set_cell_type(gpsdata, 2, 0, 1);
-  lv_table_set_cell_type(gpsdata, 2, 1, 1);
-  lv_table_set_cell_type(gpsdata, 3, 0, 1);
-  lv_table_set_cell_type(gpsdata, 3, 1, 1);
-  lv_table_set_cell_type(gpsdata, 4, 0, 1);
-  lv_table_set_cell_type(gpsdata, 4, 1, 1);
-  lv_table_set_cell_type(gpsdata, 5, 0, 1);
-  lv_table_set_cell_type(gpsdata, 5, 1, 1);
-  lv_table_set_cell_type(gpsdata, 6, 0, 1);
-  lv_table_set_cell_type(gpsdata, 6, 1, 1);
-  lv_table_set_cell_type(gpsdata, 7, 0, 1);
-  lv_table_set_cell_type(gpsdata, 7, 1, 1);
-  lv_table_set_cell_type(gpsdata, 8, 0, 1);
-  lv_table_set_cell_type(gpsdata, 8, 1, 1);
-
-  lv_obj_align(gpsdata, label, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
-  lv_table_set_cell_align(gpsdata, 0, 0, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 0, 1, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 1, 0, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 1, 1, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 2, 0, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 2, 1, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 3, 0, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 3, 1, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 4, 0, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 4, 1, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 5, 0, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 5, 1, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 6, 0, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 6, 1, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 7, 0, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 7, 1, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 8, 0, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(gpsdata, 8, 1, LV_LABEL_ALIGN_LEFT);
-
-  lv_table_set_cell_value(gpsdata, 0, 0, "Locked");
-  lv_table_set_cell_value(gpsdata, 1, 0, "Altitude");
-  lv_table_set_cell_value(gpsdata, 2, 0, "Course");
-  lv_table_set_cell_value(gpsdata, 3, 0, "Latitude");
-  lv_table_set_cell_value(gpsdata, 4, 0, "Longitude");
-  lv_table_set_cell_value(gpsdata, 5, 0, "Num. of sat.");
-  lv_table_set_cell_value(gpsdata, 6, 0, "Speed");
-  lv_table_set_cell_value(gpsdata, 7, 0, "Date");
-  lv_table_set_cell_value(gpsdata, 8, 0, "Time");
+  lv_obj_t *time_panel =
+      Ui::panel(scr, Ui::Margin, 356, Ui::ScreenWidth - 2 * Ui::Margin, 34,
+                nullptr);
+  date_value =
+      Ui::label(time_panel, "--/--/--", Ui::caption_style(), 8, 9, 96);
+  time_value = Ui::label(
+      time_panel, "--:--:--", Ui::body_right_style(), 112, 6, 100,
+      LV_LABEL_ALIGN_RIGHT);
 
   return scr;
 }

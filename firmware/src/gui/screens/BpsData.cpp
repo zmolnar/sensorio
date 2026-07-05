@@ -7,27 +7,16 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "BpsData.h"
+#include "Ui.h"
 #include "dashboard/Dashboard.hpp"
 
-#include <stdio.h>
-
-/*****************************************************************************/
-/* DEFINED CONSTANTS                                                         */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* TYPE DEFINITIONS                                                          */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* MACRO DEFINITIONS                                                         */
-/*****************************************************************************/
+#include <cstdint>
 
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static lv_obj_t *         label;
-static lv_obj_t *         table;
+static lv_obj_t *         temperature_value;
+static lv_obj_t *         pressure_value;
 static lv_obj_t *         chart;
 static lv_chart_series_t *pseries;
 static lv_task_t *        task;
@@ -38,10 +27,6 @@ static lv_coord_t ymax   = 0;
 static lv_coord_t ymin   = INT16_MAX;
 
 /*****************************************************************************/
-/* DECLARATION OF LOCAL FUNCTIONS                                            */
-/*****************************************************************************/
-
-/*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
 /*****************************************************************************/
 static void refresh_task(lv_task_t *p)
@@ -50,18 +35,11 @@ static void refresh_task(lv_task_t *p)
 
   Dashboard::Bps bps {dashboard.bps.get()};
 
-  // Update temperature
-  char value[20];
-  lv_snprintf(
-      value, sizeof(value), "%04.02f C", (float)bps.cooked.temp / 100.0);
-  lv_table_set_cell_value(table, 0, 1, value);
+  lv_label_set_text_fmt(
+      temperature_value, "%.1f", (float)bps.cooked.temp / 100.0);
+  lv_label_set_text_fmt(
+      pressure_value, "%.1f", (float)bps.cooked.pressure / 100.0);
 
-  // Update pressure
-  lv_snprintf(
-      value, sizeof(value), "%04.02f mb", (float)bps.cooked.pressure / 100.0);
-  lv_table_set_cell_value(table, 1, 1, value);
-
-  // Update static variables
   if (count < lv_chart_get_point_count(chart)) {
     count++;
   }
@@ -70,11 +48,9 @@ static void refresh_task(lv_task_t *p)
     offset = bps.cooked.pressure - (INT16_MAX / 2);
   }
 
-  // Add point to the data series
   lv_coord_t point = (lv_coord_t)(bps.cooked.pressure - offset);
   lv_chart_set_next(chart, pseries, point);
 
-  // Search the minimum and maximum of the data series
   lv_coord_t min = point;
   lv_coord_t max = point;
   for (uint16_t i = 0; i < count; ++i) {
@@ -88,7 +64,6 @@ static void refresh_task(lv_task_t *p)
     }
   }
 
-  // Adjust the chart range if needed
   if (((min - 2) != ymin) || ((max + 2) != ymax)) {
     ymin = min - 2;
     ymax = max + 2;
@@ -103,6 +78,7 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
   switch (event) {
   case LV_EVENT_FOCUSED: {
     task = lv_task_create(refresh_task, 100, LV_TASK_PRIO_LOW, NULL);
+    refresh_task(task);
     break;
   }
   case LV_EVENT_DEFOCUSED: {
@@ -122,65 +98,53 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
 }
 
 /*****************************************************************************/
-/* DEFINITION OF GLOBAL FUNCTIONS */
+/* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
 lv_obj_t *bps_data_screen_create(lv_style_t *style)
 {
-  lv_obj_t *scr = lv_obj_create(NULL, NULL);
-  lv_obj_add_style(scr, LV_STATE_DEFAULT, style);
+  using namespace Gui;
+
+  lv_obj_t *scr = Ui::screen(style);
   lv_obj_set_event_cb(scr, event_handler);
 
-  static lv_style_t lstyle;
-  lv_style_init(&lstyle);
-  lv_style_set_text_font(&lstyle, LV_STATE_DEFAULT, &lv_font_montserrat_24);
-  label = lv_label_create(scr, NULL);
-  lv_label_set_text(label, "BPS");
-  lv_obj_add_style(label, LV_STATE_DEFAULT, style);
-  lv_obj_add_style(label, LV_STATE_DEFAULT, &lstyle);
-  lv_obj_align(label, scr, LV_ALIGN_IN_TOP_MID, 0, 0);
+  Ui::header(scr, "BARO");
 
-  static lv_style_t tstyle;
-  lv_style_init(&tstyle);
-  lv_style_set_pad_all(&tstyle, LV_STATE_DEFAULT, 2);
+  lv_obj_t *temp_panel =
+      Ui::panel(scr, Ui::Margin, 40, 108, 86, "TEMP");
+  temperature_value = Ui::label(
+      temp_panel, "0.0", Ui::large_value_style(), 0, 28, 108, LV_LABEL_ALIGN_CENTER);
+  Ui::label(
+      temp_panel, "deg C", Ui::unit_style(), 0, 61, 108, LV_LABEL_ALIGN_CENTER);
 
-  table = lv_table_create(scr, NULL);
-  lv_obj_add_style(table, LV_TABLE_PART_BG, style);
-  lv_obj_add_style(table, LV_TABLE_PART_BG, &tstyle);
-  lv_obj_add_style(table, LV_TABLE_PART_CELL1, style);
-  lv_obj_add_style(table, LV_TABLE_PART_CELL1, &tstyle);
+  lv_obj_t *pressure_panel = Ui::panel(scr, 124, 40, 108, 86, "PRESSURE");
+  pressure_value = Ui::label(pressure_panel,
+                             "0.0",
+                             Ui::value_style(),
+                             0,
+                             32,
+                             108,
+                             LV_LABEL_ALIGN_CENTER);
+  Ui::label(
+      pressure_panel, "mbar", Ui::unit_style(), 0, 62, 108, LV_LABEL_ALIGN_CENTER);
 
-  lv_table_set_col_cnt(table, 2);
-  lv_table_set_row_cnt(table, 2);
-
-  lv_table_set_col_width(table, 0, lv_obj_get_width(scr) * 0.55);
-  lv_table_set_col_width(table, 1, lv_obj_get_width(scr) * 0.45);
-
-  lv_table_set_cell_type(table, 0, 0, 1);
-  lv_table_set_cell_type(table, 0, 1, 1);
-  lv_table_set_cell_type(table, 1, 0, 1);
-  lv_table_set_cell_type(table, 1, 1, 1);
-
-  lv_obj_align(table, label, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
-  lv_table_set_cell_align(table, 0, 0, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(table, 0, 1, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(table, 1, 0, LV_LABEL_ALIGN_LEFT);
-  lv_table_set_cell_align(table, 1, 1, LV_LABEL_ALIGN_LEFT);
-
-  lv_table_set_cell_value(table, 0, 0, "Temperature");
-  lv_table_set_cell_value(table, 0, 1, "");
-  lv_table_set_cell_value(table, 1, 0, "Pressure");
-  lv_table_set_cell_value(table, 1, 1, "");
+  Ui::label(scr,
+            LV_SYMBOL_REFRESH,
+            Ui::icon_style(),
+            Ui::Margin,
+            142,
+            Ui::ScreenWidth - 2 * Ui::Margin,
+            LV_LABEL_ALIGN_CENTER);
 
   chart = lv_chart_create(scr, NULL);
-  lv_obj_add_style(chart, LV_CHART_PART_BG, style);
-  lv_obj_set_width(chart, lv_obj_get_width(scr));
-  lv_obj_align(chart, table, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
+  Ui::style_chart(chart);
+  lv_obj_set_pos(chart, Ui::Margin, 162);
+  lv_obj_set_size(chart, Ui::ScreenWidth - 2 * Ui::Margin, 228);
   lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
 
   pseries = lv_chart_add_series(chart, LV_COLOR_BLACK);
   lv_chart_set_update_mode(chart, LV_CHART_UPDATE_MODE_SHIFT);
   lv_chart_set_point_count(chart, 100);
-  lv_chart_set_div_line_count(chart, 0, 0);
+  lv_chart_set_div_line_count(chart, 4, 0);
 
   return scr;
 }

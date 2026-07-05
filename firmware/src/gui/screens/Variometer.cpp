@@ -7,28 +7,25 @@
 /* INCLUDES                                                                  */
 /*****************************************************************************/
 #include "Variometer.h"
+#include "Ui.h"
 #include "VariometerSettings.h"
 
-#include <dashboard/Dashboard.hpp>
 #include <dashboard/Config.hpp>
+#include <dashboard/Dashboard.hpp>
 #include "gui/Sensorio.h"
 
-/*****************************************************************************/
-/* DEFINED CONSTANTS                                                         */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* TYPE DEFINITIONS                                                          */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/* MACRO DEFINITIONS                                                         */
-/*****************************************************************************/
+#if defined(SIMULATOR)
+#include <stdlib.h>
+#include <string.h>
+#endif
 
 /*****************************************************************************/
 /* DEFINITION OF GLOBAL CONSTANTS AND VARIABLES                              */
 /*****************************************************************************/
-static lv_obj_t *         data_table;
+static lv_obj_t *         vario_value;
+static lv_obj_t *         vario_symbol;
+static lv_obj_t *         speed_value;
+static lv_obj_t *         altitude_value;
 static lv_obj_t *         height_chart;
 static lv_chart_series_t *height_history;
 static uint32_t           chart_refresh_period;
@@ -37,10 +34,6 @@ static lv_task_t *task;
 static lv_task_t *chart_task;
 
 static lv_obj_t *settings;
-
-/*****************************************************************************/
-/* DECLARATION OF LOCAL FUNCTIONS                                            */
-/*****************************************************************************/
 
 /*****************************************************************************/
 /* DEFINITION OF LOCAL FUNCTIONS                                             */
@@ -72,7 +65,6 @@ static void chart_refresh(lv_task_t *p)
     }
   }
 
-  // Update the scale if needed
   static lv_coord_t height_min;
   static lv_coord_t height_max;
 
@@ -103,37 +95,23 @@ static void refresh_task(lv_task_t *p)
 {
   (void)p;
 
-  // Set time
   Dashboard::Gps gps {dashboard.gps.get()};
-  Config::System system {config.system.get()};
-  Dashboard::Gps::DateTime lt {gps.getLocalTime(system.location.utcOffset)};
-
-  lv_table_set_cell_value_fmt(data_table,
-                              0,
-                              0,
-                              "%02d:%02d:%02d",
-                              lt.hour,
-                              lt.minute,
-                              lt.second);
-
   Dashboard::Filter filter {dashboard.filter.get()};
 
-  // Set vario
   double vario = filter.vario.instant;
   vario        = ((int32_t)(vario * 10.0)) / 10.0;
-  const char *symbol;
 
   if (vario < -0.2) {
-    symbol = LV_SYMBOL_DOWN;
+    lv_label_set_text(vario_symbol, LV_SYMBOL_DOWN);
   } else if (0.2 < vario) {
-    symbol = LV_SYMBOL_UP;
+    lv_label_set_text(vario_symbol, LV_SYMBOL_UP);
   } else {
-    symbol = LV_SYMBOL_MINUS;
+    lv_label_set_text(vario_symbol, LV_SYMBOL_MINUS);
   }
 
-  lv_table_set_cell_value_fmt(data_table, 1, 0, "%2.1f %s", vario, symbol);
-  lv_table_set_cell_value_fmt(data_table, 3, 0, "%d", (int)gps.speed);
-  lv_table_set_cell_value_fmt(data_table, 3, 1, "%d", (int)filter.height);
+  lv_label_set_text_fmt(vario_value, "%+.1f", vario);
+  lv_label_set_text_fmt(speed_value, "%d", (int)gps.speed);
+  lv_label_set_text_fmt(altitude_value, "%d", (int)filter.height);
 }
 
 static void reschedule_chart_refresh_task(void)
@@ -156,6 +134,7 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
   case LV_EVENT_FOCUSED: {
     reschedule_chart_refresh_task();
     task = lv_task_create(refresh_task, 100, LV_TASK_PRIO_LOW, NULL);
+    refresh_task(task);
     break;
   }
   case LV_EVENT_DEFOCUSED: {
@@ -176,98 +155,71 @@ static void event_handler(lv_obj_t *obj, lv_event_t event)
 }
 
 /*****************************************************************************/
-/* DEFINITION OF GLOBAL FUNCTIONS */
+/* DEFINITION OF GLOBAL FUNCTIONS                                            */
 /*****************************************************************************/
 lv_obj_t *variometer_screen_create(lv_style_t *style)
 {
-  settings = variometer_settings_screen_create(style);
+  using namespace Gui;
 
-  lv_obj_t *scr = lv_obj_create(NULL, NULL);
-  lv_obj_add_style(scr, LV_STATE_DEFAULT, style);
+  settings = variometer_settings_screen_create(style);
+#if defined(SIMULATOR)
+  const char *screen = getenv("SENSORIO_SIM_SCREEN");
+  if (screen && 0 == strcmp(screen, "settings")) {
+    return settings;
+  }
+#endif
+
+  lv_obj_t *scr = Ui::screen(style);
   lv_obj_set_event_cb(scr, event_handler);
 
-  static lv_style_t tstyle;
-  lv_style_init(&tstyle);
-  lv_style_set_pad_all(&tstyle, LV_STATE_DEFAULT, 2);
+  Ui::header(scr, "VARIO");
 
-  static lv_style_t small_style;
-  lv_style_init(&small_style);
-  lv_style_set_text_font(
-      &small_style, LV_STATE_DEFAULT, &lv_font_montserrat_18);
+  lv_obj_t *main_panel =
+      Ui::panel(scr, Ui::Margin, 40, Ui::ScreenWidth - 2 * Ui::Margin, 104,
+                nullptr);
+  Ui::label(main_panel, LV_SYMBOL_UP, Ui::icon_style(), 8, 5, 26,
+            LV_LABEL_ALIGN_CENTER);
+  vario_value = Ui::label(
+      main_panel, "+0.0", Ui::hero_value_style(), 14, 27, 146, LV_LABEL_ALIGN_CENTER);
+  vario_symbol = Ui::label(
+      main_panel, LV_SYMBOL_MINUS, Ui::large_value_style(), 160, 28, 50,
+      LV_LABEL_ALIGN_CENTER);
+  Ui::label(main_panel, "meters / second", Ui::unit_style(), 14, 78, 146,
+            LV_LABEL_ALIGN_CENTER);
 
-  static lv_style_t big_style;
-  lv_style_init(&big_style);
-  lv_style_set_text_font(&big_style, LV_STATE_DEFAULT, &lv_font_montserrat_48);
-  lv_style_set_pad_top(&big_style, LV_STATE_DEFAULT, 10);
-  lv_style_set_pad_bottom(&big_style, LV_STATE_DEFAULT, 10);
+  lv_obj_t *speed_panel = Ui::panel(scr, Ui::Margin, 154, 108, 68, nullptr);
+  Ui::label(speed_panel, LV_SYMBOL_RIGHT, Ui::icon_style(), 8, 4, 24,
+            LV_LABEL_ALIGN_CENTER);
+  speed_value = Ui::label(
+      speed_panel, "0", Ui::value_style(), 0, 28, 108, LV_LABEL_ALIGN_CENTER);
+  Ui::label(speed_panel, "km/h", Ui::unit_style(), 0, 50, 108, LV_LABEL_ALIGN_CENTER);
 
-  static lv_style_t medium_style;
-  lv_style_init(&medium_style);
-  lv_style_set_text_font(
-      &medium_style, LV_STATE_DEFAULT, &lv_font_montserrat_36);
+  lv_obj_t *alt_panel =
+      Ui::panel(scr, 124, 154, 108, 68, nullptr);
+  Ui::label(alt_panel, LV_SYMBOL_UPLOAD, Ui::icon_style(), 8, 4, 24,
+            LV_LABEL_ALIGN_CENTER);
+  altitude_value = Ui::label(
+      alt_panel, "0", Ui::value_style(), 0, 28, 108, LV_LABEL_ALIGN_CENTER);
+  Ui::label(alt_panel, "m AMSL", Ui::unit_style(), 0, 50, 108, LV_LABEL_ALIGN_CENTER);
 
-  data_table = lv_table_create(scr, NULL);
-  lv_obj_add_style(data_table, LV_TABLE_PART_BG, style);
-  lv_obj_add_style(data_table, LV_TABLE_PART_BG, &tstyle);
-  lv_obj_add_style(data_table, LV_TABLE_PART_CELL1, style);
-  lv_obj_add_style(data_table, LV_TABLE_PART_CELL1, &tstyle);
-  lv_obj_add_style(data_table, LV_TABLE_PART_CELL1, &small_style);
-  lv_obj_add_style(data_table, LV_TABLE_PART_CELL2, style);
-  lv_obj_add_style(data_table, LV_TABLE_PART_CELL2, &tstyle);
-  lv_obj_add_style(data_table, LV_TABLE_PART_CELL2, &medium_style);
-  lv_obj_add_style(data_table, LV_TABLE_PART_CELL3, style);
-  lv_obj_add_style(data_table, LV_TABLE_PART_CELL3, &tstyle);
-  lv_obj_add_style(data_table, LV_TABLE_PART_CELL3, &big_style);
-
-  lv_obj_set_width(data_table, lv_obj_get_width(scr));
-  lv_obj_set_height(data_table, lv_obj_get_height(scr) * 0.4);
-
-  lv_table_set_col_cnt(data_table, 2);
-  lv_table_set_row_cnt(data_table, 4);
-
-  lv_table_set_col_width(data_table, 0, lv_obj_get_width(scr) * 0.54);
-  lv_table_set_col_width(data_table, 1, lv_obj_get_width(scr) * 0.45);
-
-  lv_table_set_cell_type(data_table, 0, 0, 2);
-  lv_table_set_cell_type(data_table, 0, 1, 2);
-  lv_table_set_cell_type(data_table, 1, 0, 3);
-  lv_table_set_cell_type(data_table, 1, 1, 3);
-  lv_table_set_cell_type(data_table, 2, 0, 1);
-  lv_table_set_cell_type(data_table, 2, 1, 1);
-  lv_table_set_cell_type(data_table, 3, 0, 2);
-  lv_table_set_cell_type(data_table, 3, 1, 2);
-
-  lv_table_set_cell_merge_right(data_table, 0, 0, true);
-  lv_table_set_cell_merge_right(data_table, 1, 0, true);
-
-  lv_obj_align(data_table, scr, LV_ALIGN_IN_TOP_MID, 0, 0);
-  lv_table_set_cell_align(data_table, 0, 0, LV_LABEL_ALIGN_CENTER);
-  lv_table_set_cell_align(data_table, 1, 0, LV_LABEL_ALIGN_CENTER);
-  lv_table_set_cell_align(data_table, 1, 1, LV_LABEL_ALIGN_CENTER);
-  lv_table_set_cell_align(data_table, 2, 0, LV_LABEL_ALIGN_CENTER);
-  lv_table_set_cell_align(data_table, 2, 1, LV_LABEL_ALIGN_CENTER);
-  lv_table_set_cell_align(data_table, 3, 0, LV_LABEL_ALIGN_CENTER);
-  lv_table_set_cell_align(data_table, 3, 1, LV_LABEL_ALIGN_CENTER);
-
-  lv_table_set_cell_value(data_table, 2, 0, "Speed (km/h)");
-  lv_table_set_cell_value(data_table, 2, 1, "AMSL (m)");
-
-  static lv_style_t chart_style;
-  lv_style_init(&chart_style);
-  lv_style_set_pad_left(&chart_style, LV_STATE_DEFAULT, 65);
+  Ui::label(scr,
+            LV_SYMBOL_REFRESH,
+            Ui::icon_style(),
+            Ui::Margin,
+            230,
+            Ui::ScreenWidth - 2 * Ui::Margin,
+            LV_LABEL_ALIGN_CENTER);
 
   height_chart = lv_chart_create(scr, NULL);
-  lv_obj_add_style(height_chart, LV_CHART_PART_BG, style);
-  lv_obj_add_style(height_chart, LV_CHART_PART_BG, &chart_style);
-  lv_obj_set_width(height_chart, lv_obj_get_width(scr));
-  lv_obj_set_height(height_chart, lv_obj_get_height(scr) * 0.5);
-  lv_obj_align(height_chart, scr, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
+  Ui::style_chart(height_chart);
+  lv_obj_set_pos(height_chart, Ui::Margin, 250);
+  lv_obj_set_size(height_chart, Ui::ScreenWidth - 2 * Ui::Margin, 140);
   lv_chart_set_type(height_chart, LV_CHART_TYPE_LINE);
 
   height_history = lv_chart_add_series(height_chart, LV_COLOR_BLACK);
   lv_chart_set_update_mode(height_chart, LV_CHART_UPDATE_MODE_SHIFT);
-  lv_chart_set_point_count(height_chart, 100);
-  lv_chart_set_div_line_count(height_chart, 0, 2);
+  lv_chart_set_point_count(height_chart, 80);
+  lv_chart_set_div_line_count(height_chart, 3, 0);
 
   return scr;
 }
