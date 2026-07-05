@@ -29,6 +29,14 @@ Monitor:
 python3 tools/firmware.py monitor
 ```
 
+GUI simulator on macOS:
+
+```sh
+python3 tools/simulator.py setup
+python3 tools/simulator.py build
+python3 tools/simulator.py run
+```
+
 Notes:
 
 - `setup` creates `.venv`, installs the host serial tools, and prepares the
@@ -40,3 +48,4 @@ Notes:
 - `monitor` uses host `pyserial` from `.venv`.
 - `flash` and `monitor` auto-detect the Sensorio USB serial port by USB
   VID:PID `0403:6015`. Pass `--port` to override it.
+- The GUI simulator is host-native and uses SDL2, so it is not run in Docker.

@@ -8,13 +8,14 @@
 /*****************************************************************************/
 #include "Sensorio.h"
 #include "Power.hpp"
-#include "core/DataLoggerThread.hpp"
 // #include "dashboard/Dashboard.hpp"
 
 
 #if defined(SIMULATOR)
 #include <stdio.h>
+void LogWaitToFinish(void);
 #else
+#include "core/DataLoggerThread.hpp"
 #include "core/BeepControlThread.hpp"
 #include "core/LvglThread.hpp"
 #endif
