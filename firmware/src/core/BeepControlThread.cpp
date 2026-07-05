@@ -70,11 +70,14 @@ public:
         .counter_en = TIMER_PAUSE,
         .intr_type = TIMER_INTR_LEVEL,
         .counter_dir = TIMER_COUNT_UP,
-        .auto_reload = TIMER_AUTORELOAD_EN,
+        .auto_reload = TIMER_AUTORELOAD_DIS,
         .divider = DIVIDER,
     };
     timer_init(TIMER_GROUP, TIMER, &config);
     timer_set_counter_value(TIMER_GROUP, TIMER, 0);
+    ESP_ERROR_CHECK(
+        timer_isr_callback_add(TIMER_GROUP, TIMER, Timer::callback, this, 0));
+    timer_disable_intr(TIMER_GROUP, TIMER);
   }
 
   void setCb(Callback cb) {
@@ -86,7 +89,6 @@ public:
     timer_set_alarm_value(TIMER_GROUP, TIMER, millisecToTimerTick(duration));
     timer_set_alarm(TIMER_GROUP, TIMER, TIMER_ALARM_EN);
     timer_enable_intr(TIMER_GROUP, TIMER);
-    timer_isr_callback_add(TIMER_GROUP, TIMER, Timer::callback, this, 0);
     timer_set_counter_value(TIMER_GROUP, TIMER, 0);
     timer_start(TIMER_GROUP, TIMER);
 
@@ -98,7 +100,6 @@ public:
     timer_pause(TIMER_GROUP, TIMER);
     timer_set_alarm(TIMER_GROUP, TIMER, TIMER_ALARM_DIS);
     timer_disable_intr(TIMER_GROUP, TIMER);
-    timer_isr_callback_remove(TIMER_GROUP, TIMER);
 
     state = State::STOPPED;
   }
@@ -426,10 +427,10 @@ static void subscribeForConfig() {
 }
 
 static void timerCb() {
-  BaseType_t xHigherPriorityTaskWoken;
+  BaseType_t xHigherPriorityTaskWoken{pdFALSE};
   Command cmd = Command::UPDATE_BEEP;
   (void)xQueueSendFromISR(beepQueue, &cmd, &xHigherPriorityTaskWoken);
-  if(xHigherPriorityTaskWoken) {
+  if (pdTRUE == xHigherPriorityTaskWoken) {
     portYIELD_FROM_ISR();
   }
 }

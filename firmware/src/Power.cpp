@@ -19,11 +19,15 @@
 #include <core/LvglThread.hpp>
 
 #include <driver/gpio.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 static constexpr gpio_num_t nBUTTON{GPIO_NUM_36};
 static constexpr uint64_t nBUTTON_SEL{GPIO_SEL_36};
 static constexpr gpio_num_t LOCK{GPIO_NUM_4};
 static constexpr uint64_t LOCK_SEL{GPIO_SEL_4};
+
+static TaskHandle_t powerTaskHandle{nullptr};
 
 void Power::configurePins(void) {
   gpio_config_t conf;
@@ -62,7 +66,15 @@ void Power::unlockPower(void) {
 void Power::buttonReleasedCb(void *p) {
   (void)p;
 
-  gpio_reset_pin(nBUTTON);
+  BaseType_t higherPriorityTaskWoken{pdFALSE};
+  vTaskNotifyGiveFromISR(powerTaskHandle, &higherPriorityTaskWoken);
+  if (pdTRUE == higherPriorityTaskWoken) {
+    portYIELD_FROM_ISR();
+  }
+}
+
+void Power::handleButtonReleased(void) {
+  gpio_intr_disable(nBUTTON);
 
   if (Power::get().ready) {
     LvglStartupFinished();
@@ -72,7 +84,19 @@ void Power::buttonReleasedCb(void *p) {
   }
 }
 
+void Power::task(void *p) {
+  (void)p;
+
+  while (1) {
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    Power::get().handleButtonReleased();
+  }
+}
+
 void Power::start(void) {
+  xTaskCreate(Power::task, "power", 2048, NULL, 10, &powerTaskHandle);
+  configASSERT(powerTaskHandle);
+
   configurePins();
 
   if (isButtonPressed()) {

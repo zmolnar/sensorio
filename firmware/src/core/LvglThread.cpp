@@ -33,23 +33,14 @@ static constexpr auto *tag = "lvgl-thread";
 
 static TaskHandle_t lvglTask = NULL;
 static TimerHandle_t timerHandle;
+static volatile bool startupFinishedRequested = false;
 static bool shutdownRequested = false;
 
 static void tick(TimerHandle_t xTimer) {
   (void)xTimer;
 
-  static uint32_t counter = 0;
-  counter += LVGL_TICK_IN_MS;
-
-  if (SHARP_LCD_VCOM_CHANGE_PERIOD_IN_MS <= counter) {
-    SharpLcdToggleVcom();
-    counter = 0;
-  }
-
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  vTaskNotifyGiveFromISR(lvglTask, &xHigherPriorityTaskWoken);
-  if (pdTRUE == xHigherPriorityTaskWoken) {
-    portYIELD_FROM_ISR();
+  if (nullptr != lvglTask) {
+    xTaskNotifyGive(lvglTask);
   }
 }
 
@@ -73,13 +64,26 @@ void LvglThread(void *p) {
 
   xTimerStart(timerHandle, 0);
 
+  uint32_t vcomCounter = 0;
+
   while (1) {
     uint32_t notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     if (0 < notification) {
       lv_tick_inc(notification * LVGL_TICK_IN_MS);
 
+      vcomCounter += notification * LVGL_TICK_IN_MS;
+      if (SHARP_LCD_VCOM_CHANGE_PERIOD_IN_MS <= vcomCounter) {
+        SharpLcdToggleVcom();
+        vcomCounter = 0;
+      }
+
       lv_task_handler();
+      if (startupFinishedRequested) {
+        EncoderInit();
+        EncoderRegisterDriver(SensorioGetEncoderGroup());
+        startupFinishedRequested = false;
+      }
       if (shutdownRequested) {
         SensorioConfirmExit();
         shutdownRequested = false;
@@ -92,8 +96,7 @@ void LvglThread(void *p) {
 }
 
 void LvglStartupFinished(void) {
-  EncoderInit();
-  EncoderRegisterDriver(SensorioGetEncoderGroup());
+  startupFinishedRequested = true;
 }
 
 void LvglShutdownRequested(void) {

@@ -28,7 +28,9 @@ class Power {
   bool isButtonPressed(void);
   void lockPower(void);
   void unlockPower(void);
+  void handleButtonReleased(void);
   static void buttonReleasedCb(void *p);
+  static void task(void *p);
 
 public:
   Power(const Power &) = delete;
