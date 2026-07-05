@@ -3,10 +3,12 @@ if(ESP_PLATFORM)
 file(GLOB_RECURSE SOURCES src/*.c)
 
 idf_component_register(SRCS ${SOURCES}
-                       INCLUDE_DIRS . src
-                       REQUIRES main)
+                       INCLUDE_DIRS . src "${CMAKE_CURRENT_LIST_DIR}/../../src")
 
-target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLV_CONF_INCLUDE_SIMPLE")
+target_compile_definitions(${COMPONENT_LIB} PUBLIC
+    LV_CONF_INCLUDE_SIMPLE
+    "LV_CONF_PATH=${CMAKE_CURRENT_LIST_DIR}/../../src/lv_conf.h"
+)
 
 if (CONFIG_LV_MEM_CUSTOM)
     if (CONFIG_LV_MEM_CUSTOM_ALLOC)

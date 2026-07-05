@@ -114,7 +114,7 @@ extern "C" void app_main(void) {
 #if 1
   xTaskCreatePinnedToCore(BatteryMonitorThread,
                           "Battery thread",
-                          2048,
+                          4096,
                           NULL,
                           PRIO_0_BATTMON,
                           NULL,

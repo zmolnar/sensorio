@@ -16,11 +16,13 @@
 #  include "esp_attr.h"
 #endif
 
-/* Handle special Kconfig options */
-#include "lv_conf_kconfig.h"
-
 #ifdef CONFIG_LV_CONF_SKIP
 #define LV_CONF_SKIP
+#endif
+
+/* Handle special Kconfig options when lv_conf.h is skipped or externally provided. */
+#if defined(LV_CONF_SKIP) || defined(LV_CONF_KCONFIG_EXTERNAL_INCLUDE)
+#include "lv_conf_kconfig.h"
 #endif
 
 /* If "lv_conf.h" is available from here try to use it later.*/

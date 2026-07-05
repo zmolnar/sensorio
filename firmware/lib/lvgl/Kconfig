@@ -15,7 +15,7 @@ menu "LVGL configuration"
     # lv_conf_kconfig.h files are used instead.
     config LV_CONF_SKIP
         bool
-        default y
+        default n
 
     config LV_HOR_RES_MAX
         int "Maximal horizontal resolution to support by the library."

@@ -1,37 +1,55 @@
-# This file was automatically generated for projects
-# without default 'CMakeLists.txt' file.
+idf_component_register(
+    SRCS
+        "main.cpp"
+        "Power.cpp"
+        "core/BatteryMonitorThread.cpp"
+        "core/BeepControlThread.cpp"
+        "core/GpsManagerThread.cpp"
+        "core/LvglThread.cpp"
+        "core/ImuManagerThread.cpp"
+        "core/PressureReaderThread.cpp"
+        "core/DataFilterThread_NoAcc.cpp"
+        "core/DataLoggerThread.cpp"
+        "core/nmea/Message.cpp"
+        "core/nmea/Parser.cpp"
+        "core/nmea/Processor.cpp"
+        "dashboard/Gps.cpp"
+        "dashboard/Config.cpp"
+        "dashboard/NvsStorage.cpp"
+        "dashboard/RawSerializer.cpp"
+        "drivers/bno055/bst/bst_bno055.c"
+        "drivers/bno055/bno055.cpp"
+        "drivers/encoder/Encoder.cpp"
+        "drivers/lcd/SharpLcd.cpp"
+        "drivers/ms5611/ms5611.cpp"
+        "gui/Sensorio.cpp"
+        "gui/images/paraglider.c"
+        "gui/screens/BpsData.cpp"
+        "gui/screens/GpsData.cpp"
+        "gui/screens/ImuData.cpp"
+        "gui/screens/Startup.c"
+        "gui/screens/SystemStatus.cpp"
+        "gui/screens/Variometer.cpp"
+        "gui/screens/VariometerSettings.cpp"
+        "platform/esp-idf/Assert.cpp"
+        "platform/esp-idf/Log.cpp"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        driver
+        esp_adc_cal
+        etl
+        fatfs
+        freertos
+        log
+        lvgl
+        nvs_flash
+        sdmmc
+)
 
-idf_component_register(SRCS "main.cpp"
-                            "Power.cpp"
-                            "core/BatteryMonitorThread.cpp"
-                            "core/BeepControlThread.cpp"
-                            "core/GpsManagerThread.cpp"
-                            "core/LvglThread.cpp"
-                            "core/ImuManagerThread.cpp"
-                            "core/PressureReaderThread.cpp"
-                            "core/DataFilterThread_NoAcc.cpp"
-                            "core/DataLoggerThread.cpp"
-                            "core/nmea/Message.cpp"
-                            "core/nmea/Parser.cpp"
-                            "core/nmea/Processor.cpp"
-                            "dashboard/Gps.cpp"
-                            "dashboard/Config.cpp"
-                            "dashboard/NvsStorage.cpp"
-                            "dashboard/RawSerializer.cpp"
-                            "drivers/bno055/bst/bst_bno055.c"
-                            "drivers/bno055/bno055.cpp"
-                            "drivers/encoder/Encoder.cpp"
-                            "drivers/lcd/SharpLcd.cpp"
-                            "drivers/ms5611/ms5611.cpp"
-                            "gui/Sensorio.cpp"
-                            "gui/images/paraglider.c"
-                            "gui/screens/BpsData.cpp"
-                            "gui/screens/GpsData.cpp"
-                            "gui/screens/ImuData.cpp"
-                            "gui/screens/Startup.c"
-                            "gui/screens/SystemStatus.cpp"
-                            "gui/screens/Variometer.cpp"
-                            "gui/screens/VariometerSettings.cpp"
-                            "platform/esp-idf/Assert.cpp"
-                            "platform/esp-idf/Log.cpp"
-                            )
+target_compile_definitions(${COMPONENT_LIB} PUBLIC
+    LV_CONF_INCLUDE_SIMPLE
+    PRINTF_SUPPORT_FLOAT
+)
+
+target_compile_options(${COMPONENT_LIB} PRIVATE -Wall)

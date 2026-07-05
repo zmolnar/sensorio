@@ -26,7 +26,9 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 
+#include <stdint.h>
 #include <string.h>
+#include <sys/time.h>
 
 static constexpr auto GPS_3DFIX{GPIO_NUM_18};
 static constexpr auto GPS_3DFIX_SEL{GPIO_SEL_18};
@@ -38,6 +40,40 @@ static constexpr auto UART_TX{GPS_RX};
 static constexpr auto UART_RX{GPS_TX};
 
 static const char *tag = "gps-thread";
+
+static bool isValidDateTime(const Dashboard::Gps::DateTime &dt) {
+  return 1980U <= dt.year && 1U <= dt.month && 12U >= dt.month &&
+         1U <= dt.day && 31U >= dt.day && 23U >= dt.hour &&
+         59U >= dt.minute && 59U >= dt.second;
+}
+
+static int64_t daysFromCivil(int year, uint32_t month, uint32_t day) {
+  year -= month <= 2U ? 1 : 0;
+  const int era = (year >= 0 ? year : year - 399) / 400;
+  const uint32_t yoe = static_cast<uint32_t>(year - era * 400);
+  const uint32_t monthAdjusted = month + (month > 2U ? -3 : 9);
+  const uint32_t doy = (153U * monthAdjusted + 2U) / 5U + day - 1U;
+  const uint32_t doe = yoe * 365U + yoe / 4U - yoe / 100U + doy;
+  return era * 146097LL + static_cast<int64_t>(doe) - 719468LL;
+}
+
+static void updateSystemClock(const Dashboard::Gps &gps) {
+  if (!gps.locked || !isValidDateTime(gps.gmt)) {
+    return;
+  }
+
+  const Dashboard::Gps::DateTime &dt{gps.gmt};
+  const int64_t seconds =
+      daysFromCivil(static_cast<int>(dt.year), dt.month, dt.day) * 86400LL +
+      static_cast<int64_t>(dt.hour) * 3600LL +
+      static_cast<int64_t>(dt.minute) * 60LL +
+      static_cast<int64_t>(dt.second);
+
+  struct timeval tv;
+  tv.tv_sec = static_cast<time_t>(seconds);
+  tv.tv_usec = 0;
+  settimeofday(&tv, nullptr);
+}
 
 static void configure3dFixPin(void) {
   gpio_config_t conf;
@@ -89,6 +125,7 @@ void GpsManagerThread(void *p) {
     gps.gmt.second = data.time.second;
 
     dashboard.gps.set(gps);
+    updateSystemClock(gps);
 
     clearNeeded = true;
   };

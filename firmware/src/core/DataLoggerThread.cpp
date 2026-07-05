@@ -40,29 +40,6 @@ static const char *tag = "data-logger-thread";
 static constexpr uint32_t QUEUE_LENGTH{10};
 static QueueHandle_t queue{xQueueCreate(QUEUE_LENGTH, sizeof(LogFile::Block))};
 
-DWORD get_fattime() {
-  Dashboard::Gps gps{dashboard.gps.get()};
-  DWORD timestamp{0};
-
-  if (gps.locked) {
-    timestamp |= (DWORD)(gps.gmt.year - 1980) << 25;
-    timestamp |= (DWORD)(gps.gmt.month) << 21;
-    timestamp |= (DWORD)(gps.gmt.day) << 16;
-    timestamp |= (DWORD)(gps.gmt.hour) << 11;
-    timestamp |= (DWORD)(gps.gmt.minute) << 5;
-    timestamp |= (DWORD)(gps.gmt.second) >> 1;
-  } else {
-    timestamp |= (DWORD)(2021U << 25);
-    timestamp |= (DWORD)(1U << 21);
-    timestamp |= (DWORD)(1U << 16);
-    timestamp |= (DWORD)(0U << 11);
-    timestamp |= (DWORD)(0U << 5);
-    timestamp |= (DWORD)(0U >> 1);
-  }
-
-  return timestamp;
-}
-
 class Sdcard {
   etl::mutex mutex;
   sdmmc_host_t host;
