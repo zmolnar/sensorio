@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shlex
@@ -16,11 +17,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FIRMWARE_DIR = ROOT / "firmware"
 DOCKERFILE = ROOT / "docker" / "firmware.Dockerfile"
+HOST_VENV_DIR = ROOT / ".venv"
+HOST_REQUIREMENTS = ROOT / "tools" / "host-requirements.txt"
 DEFAULT_IMAGE = "sensorio-firmware:idf-v4.4.8"
 DEFAULT_PLATFORM = "linux/amd64"
 DEFAULT_BAUD = 115200
 DEFAULT_USB_VID = 0x0403
 DEFAULT_USB_PID = 0x6015
+DOCKERFILE_HASH_LABEL = "sensorio.firmware.dockerfile-sha256"
 
 
 def env_value(name: str, default: str) -> str:
@@ -47,12 +51,35 @@ def docker_image() -> str:
     return env_value("SENSORIO_IDF_IMAGE", DEFAULT_IMAGE)
 
 
-def run(cmd: list[str], check: bool = True, cwd: Path | None = None) -> int:
-    print("+ " + shlex.join(cmd), flush=True)
-    completed = subprocess.run(cmd, check=False, cwd=cwd)
+def run(
+    cmd: list[str],
+    check: bool = True,
+    cwd: Path | None = None,
+    label: str | None = None,
+    quiet: bool = False,
+) -> int:
+    print("+ " + (label or shlex.join(cmd)), flush=True)
+    completed = subprocess.run(
+        cmd,
+        check=False,
+        cwd=cwd,
+        stdout=subprocess.PIPE if quiet else None,
+        stderr=subprocess.STDOUT if quiet else None,
+        text=quiet,
+    )
+    if quiet and completed.returncode != 0 and completed.stdout:
+        print(completed.stdout, end="")
     if check and completed.returncode != 0:
         raise SystemExit(completed.returncode)
     return completed.returncode
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def docker_base_args() -> list[str]:
@@ -77,13 +104,15 @@ def docker_base_args() -> list[str]:
 
 
 def docker_run(command: list[str]) -> int:
+    ensure_firmware_image()
     args = docker_base_args()
     args.append(docker_image())
     args.extend(command)
-    return run(args)
+    return run(args, label=shlex.join(command))
 
 
-def build_image(_: argparse.Namespace) -> int:
+def build_image() -> int:
+    dockerfile_hash = file_sha256(DOCKERFILE)
     return run(
         [
             "docker",
@@ -96,9 +125,91 @@ def build_image(_: argparse.Namespace) -> int:
             str(DOCKERFILE),
             "-t",
             docker_image(),
+            "--label",
+            f"{DOCKERFILE_HASH_LABEL}={dockerfile_hash}",
             str(ROOT),
+        ],
+        label="prepare firmware build environment",
+        quiet=True,
+    )
+
+
+def image_dockerfile_hash() -> str | None:
+    completed = subprocess.run(
+        ["docker", "image", "inspect", docker_image()],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        return None
+
+    try:
+        image_info = json.loads(completed.stdout)
+        labels = image_info[0]["Config"].get("Labels") or {}
+        value = labels.get(DOCKERFILE_HASH_LABEL)
+    except (KeyError, IndexError, TypeError, json.JSONDecodeError):
+        return None
+
+    return value if isinstance(value, str) else None
+
+
+def ensure_firmware_image() -> None:
+    expected_hash = file_sha256(DOCKERFILE)
+    if image_dockerfile_hash() == expected_hash:
+        return
+
+    build_image()
+
+
+def host_python_candidates() -> list[Path]:
+    if os.name == "nt":
+        return [HOST_VENV_DIR / "Scripts" / "python.exe"]
+
+    return [
+        HOST_VENV_DIR / "bin" / "python",
+        HOST_VENV_DIR / "bin" / "python3",
+    ]
+
+
+def create_host_venv(recreate: bool) -> None:
+    if recreate and HOST_VENV_DIR.exists():
+        current = Path(sys.executable).resolve()
+        venv = HOST_VENV_DIR.resolve()
+        if current == venv or venv in current.parents:
+            raise RuntimeError("cannot recreate the venv while running from it")
+        print(f"removing {HOST_VENV_DIR}")
+        shutil.rmtree(HOST_VENV_DIR)
+
+    if any(candidate.exists() for candidate in host_python_candidates()):
+        print(f"host venv already exists: {HOST_VENV_DIR}")
+        return
+
+    run([sys.executable, "-m", "venv", str(HOST_VENV_DIR)])
+
+
+def install_host_requirements() -> None:
+    run(
+        [
+            host_python(),
+            "-m",
+            "pip",
+            "install",
+            "--disable-pip-version-check",
+            "--no-cache-dir",
+            "-r",
+            str(HOST_REQUIREMENTS),
         ]
     )
+
+
+def setup(args: argparse.Namespace) -> int:
+    create_host_venv(args.recreate_venv)
+    install_host_requirements()
+    ensure_firmware_image()
+
+    return 0
 
 
 def build(_: argparse.Namespace) -> int:
@@ -116,15 +227,7 @@ def clean(_: argparse.Namespace) -> int:
 
 
 def host_python() -> str:
-    if os.name == "nt":
-        candidates = [ROOT / ".venv" / "Scripts" / "python.exe"]
-    else:
-        candidates = [
-            ROOT / ".venv" / "bin" / "python",
-            ROOT / ".venv" / "bin" / "python3",
-        ]
-
-    for candidate in candidates:
+    for candidate in host_python_candidates():
         if candidate.exists():
             return str(candidate)
 
@@ -136,14 +239,12 @@ def host_python() -> str:
 def host_setup_hint() -> str:
     if os.name == "nt":
         return (
-            "Create the host venv and install serial tools:\n"
-            "  py -3 -m venv .venv\n"
-            "  .venv\\Scripts\\python -m pip install -r tools\\host-requirements.txt"
+            "Run the one-time setup:\n"
+            "  py -3 tools\\firmware.py setup"
         )
     return (
-        "Create the host venv and install serial tools:\n"
-        "  python3 -m venv .venv\n"
-        "  .venv/bin/python -m pip install -r tools/host-requirements.txt"
+        "Run the one-time setup:\n"
+        "  python3 tools/firmware.py setup"
     )
 
 
@@ -386,15 +487,17 @@ def add_flash_args(parser: argparse.ArgumentParser) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--image",
-        default=None,
-        help=f"Docker image override, default {DEFAULT_IMAGE}",
-    )
     subcommands = parser.add_subparsers(dest="command", required=True)
 
-    image_parser = subcommands.add_parser("image", help="Build the firmware Docker image")
-    image_parser.set_defaults(func=build_image)
+    setup_parser = subcommands.add_parser(
+        "setup", help="Prepare the local firmware workflow"
+    )
+    setup_parser.add_argument(
+        "--recreate-venv",
+        action="store_true",
+        help="Remove and recreate the host venv before installing tools",
+    )
+    setup_parser.set_defaults(func=setup)
 
     build_parser = subcommands.add_parser("build", help="Build firmware")
     build_parser.set_defaults(func=build)
@@ -410,10 +513,7 @@ def parse_args() -> argparse.Namespace:
     add_serial_args(monitor_parser)
     monitor_parser.set_defaults(func=monitor)
 
-    args = parser.parse_args()
-    if args.image:
-        os.environ["SENSORIO_IDF_IMAGE"] = args.image
-    return args
+    return parser.parse_args()
 
 
 def main() -> int:
