@@ -280,28 +280,6 @@ void DataFilterThread(void *p) {
     TickType_t timeStamp = xTaskGetTickCount();
     double dt = calculateDtInSec();
 
-    static uint32_t counter{0};
-    static double min{25.0};
-    static double max{};
-    static double avg{};
-
-    if (dt < min) {
-      min = dt;
-    }
-
-    if (max < dt) {
-      max = dt;
-    }
-
-    avg += dt;
-
-    if (++counter == 50) {
-      ESP_LOGE("zzzz", "%lf %lf %lf", min, max, avg / 50.0);
-      max = avg = 0.0;
-      min = 25.0;
-      counter = 0;
-    }
-
     Dashboard::Bps bps{dashboard.bps.get()};
     Dashboard::Imu imu{dashboard.imu.get()};
 

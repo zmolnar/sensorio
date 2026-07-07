@@ -23,8 +23,6 @@
 #include <etl/string.h>
 #include <etl/string_utilities.h>
 
-#include <iostream>
-
 namespace Nmea0183 {
   class Token {
     enum class Format { DEC, HEX };

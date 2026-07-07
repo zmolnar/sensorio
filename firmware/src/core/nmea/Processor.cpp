@@ -18,8 +18,6 @@
 #include <core/nmea/Processor.hpp>
 #include <etl/string_utilities.h>
 
-#include <iostream>
-
 namespace Nmea0183 {
 
   void Processor::saveChar(char c) {
